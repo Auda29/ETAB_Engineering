@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>ETAB Engineering</AssemblyName>
+    <RootNamespace>ETAB.Engineering.Desktop</RootNamespace>
+    <Version>0.1.0.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <DebugType>embedded</DebugType>
+    <_EditorProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\ETAB.Engineering.Editor'))</_EditorProjectDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Web.WebView2" />
+    <ProjectReference Include="..\ETAB.Engineering.Service\ETAB.Engineering.Service.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\schemas\etab-project.schema.json"
+             Link="schemas\etab-project.schema.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\examples\BrushMachine.reference.etab.json"
+             Link="examples\BrushMachine.reference.etab.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="BuildEditorAssets" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(OS)' != 'Windows_NT'"
+           Text="The ETAB Engineering desktop editor currently builds on Windows only." />
+    <Exec Condition="!Exists('$(_EditorProjectDirectory)\node_modules\.package-lock.json')"
+          WorkingDirectory="$(_EditorProjectDirectory)"
+          Command="npm.cmd ci --no-audit --no-fund" />
+    <Exec WorkingDirectory="$(_EditorProjectDirectory)"
+          Command="npm.cmd run build" />
+  </Target>
+
+  <Target Name="CopyEditorAssetsToOutput" AfterTargets="Build" DependsOnTargets="BuildEditorAssets">
+    <ItemGroup>
+      <_EditorAsset Include="$(_EditorProjectDirectory)\dist\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_EditorAsset)"
+          DestinationFolder="$(OutDir)wwwroot\%(_EditorAsset.RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyEditorAssetsToPublish" AfterTargets="Publish" DependsOnTargets="BuildEditorAssets">
+    <ItemGroup>
+      <_EditorPublishAsset Include="$(_EditorProjectDirectory)\dist\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_EditorPublishAsset)"
+          DestinationFolder="$(PublishDir)wwwroot\%(_EditorPublishAsset.RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

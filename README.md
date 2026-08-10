@@ -4,13 +4,15 @@ Visual engineering tool for describing a logical machine and subsequently genera
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. A portable Windows x64 desktop bundle is also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
 The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, and lean ApplicationUnit base FBs; manages stable TwinCAT GUIDs and content hashes in the manifest; and applies conflict-free changes transactionally and exclusively within the configured generator-owned area.
 
 The TypeScript visual editor and its loopback .NET service are implemented. The editor opens and saves complete `*.etab.json` documents, provides a component palette, hierarchy, property and contract editors, relationships, a draggable SVG canvas, live validation, and a read-only generation preview. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
+
+`ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
 GVL/PRG generation and `.plcproj` integration are not yet included. A real compile of the generated project artifacts is therefore part of Phase 3; the underlying base-FB inheritance and hook pattern was already compiled successfully in TwinCAT during Phase 0.
 
@@ -34,7 +36,7 @@ dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- c
 Start the local service in the first terminal:
 
 ```powershell
-dotnet run --project .\src\ETAB.Engineering.Service\ETAB.Engineering.Service.csproj
+dotnet run --project .\src\ETAB.Engineering.Service.Host\ETAB.Engineering.Service.Host.csproj
 ```
 
 Install and start the editor in a second terminal:
@@ -45,6 +47,25 @@ npm.cmd --prefix .\src\ETAB.Engineering.Editor run dev
 ```
 
 Open `http://127.0.0.1:5173/`. The editor initially loads the BrushMachine reference model and talks only to the loopback service at `http://127.0.0.1:5079/`.
+
+### Windows Desktop Bundle
+
+Create the verified portable Windows x64 ZIP from the repository root:
+
+```powershell
+.\publish-win-x64.ps1 -Version 0.1.0.0
+```
+
+The script installs the locked frontend dependencies, checks TypeScript, restores and tests the .NET solution, publishes a self-contained desktop application, runs the packaged executable smoke test, and creates:
+
+```text
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip.sha256
+```
+
+Extract the complete ZIP and start `ETAB Engineering.exe`. Microsoft Edge WebView2 Runtime is required; it is already present on Windows 11 and most supported Windows 10 systems. No terminal or separately started service is required.
+
+The GitHub Actions workflow `Desktop release` runs the same script. A tag such as `v0.1.0.0` publishes the ZIP and checksum as workflow artifacts and attaches them to a GitHub Release. The workflow can also be started manually to build artifacts without creating a release.
 
 ## Documents
 
@@ -59,6 +80,7 @@ Open `http://127.0.0.1:5173/`. The editor initially loads the BrushMachine refer
 - [Phase 1C Validation Record](docs/Phase1C_Validation.md)
 - [Phase 1 Completion Validation](docs/Phase1_Validation.md)
 - [Phase 2 Visual Editor Validation](docs/Phase2_Validation.md)
+- [Windows Desktop Release](docs/Desktop_Release.md)
 - [TwinCAT Base-FB Inheritance Spike](spikes/TwinCAT_BaseFb_Inheritance.md)
 - [JSON Schema v0.1](schemas/etab-project.schema.json)
 - [BrushMachine Reference Model](examples/BrushMachine.reference.etab.json)

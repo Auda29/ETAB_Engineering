@@ -297,11 +297,11 @@ etab check    BrushMachine.etab.json
 
 ### Editor
 
-- local web interface
-- TypeScript
-- SVG- or node-based canvas
+- local TypeScript web interface
+- SVG-based node canvas
 - generator calls through a local .NET service
-- later packaging as a desktop application is possible
+- WPF/WebView2 desktop host with the service running in the same process
+- self-contained portable Windows x64 release bundle
 
 ### TwinCAT Integration
 
@@ -408,7 +408,7 @@ MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB
 - [ ] schema migrations
 - [ ] import of existing ETAB structures
 - [ ] CI `check`
-- [ ] installer or portable application
+- [x] portable Windows x64 application (2026-08-10)
 - [ ] user documentation
 - [ ] additional example projects
 
@@ -485,6 +485,14 @@ Binding decisions for Phase 2:
 - Project saves use UTF-8 without BOM, LF line endings, and an atomic temporary-file replacement.
 - Validation remains live while editing; parseable invalid drafts may still be saved for later correction.
 - MTP exposure metadata is preserved and editable, while procedure editing remains assigned to Phase 5.
+
+Binding decisions for desktop packaging:
+
+- The production React build is shipped in the portable bundle and served by the in-process loopback service.
+- WPF hosts the editor through Microsoft WebView2 and permits navigation only to the service origin allocated for the current process.
+- The `win-x64` package is self-contained for .NET; Microsoft Edge WebView2 Runtime remains a target-system prerequisite.
+- `publish-win-x64.ps1` is the single local and CI packaging entry point and must run the published executable smoke test before creating the ZIP and checksum.
+- Tags matching `v*` create GitHub Releases through `.github/workflows/desktop-release.yml`.
 
 Non-blocking decisions for later phases:
 

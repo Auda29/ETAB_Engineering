@@ -1,11 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>ETAB.Engineering.Service</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\ETAB.Engineering.Core\ETAB.Engineering.Core.csproj" />
-    <None Include="..\..\schemas\etab-project.schema.json"
-          Link="schemas\etab-project.schema.json"
-          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

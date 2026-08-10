@@ -1,0 +1,93 @@
+name: Desktop release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v
+        required: true
+        default: 0.1.0.0
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-desktop:
+    name: Build Windows desktop bundle
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/ETAB.Engineering.Editor/package-lock.json
+
+      - name: Build and verify portable bundle
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            if (-not $env:GITHUB_REF_NAME.StartsWith('v')) {
+              throw "Release tag must start with v."
+            }
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+          } else {
+            $version = '${{ inputs.version }}'
+          }
+
+          .\publish-win-x64.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) {
+            throw "Desktop publish script failed with exit code $LASTEXITCODE."
+          }
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETAB-Engineering-v${{ env.RELEASE_VERSION }}-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Create or update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem -LiteralPath .\artifacts -File |
+            Where-Object { $_.Extension -in '.zip', '.sha256' } |
+            ForEach-Object { $_.FullName }
+          if ($assets.Count -ne 2) {
+            throw "Expected one ZIP and one SHA256 file, found $($assets.Count)."
+          }
+
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME @assets --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME @assets `
+              --verify-tag `
+              --generate-notes `
+              --title "ETAB Engineering $env:GITHUB_REF_NAME"
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Release publication failed with exit code $LASTEXITCODE."
+          }

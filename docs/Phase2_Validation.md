@@ -9,7 +9,7 @@
 
 ## Implemented Architecture
 
-The editor is a TypeScript/React application in `src/ETAB.Engineering.Editor`. It communicates with the loopback ASP.NET service in `src/ETAB.Engineering.Service`.
+The editor is a TypeScript/React application in `src/ETAB.Engineering.Editor`. It communicates with the reusable loopback ASP.NET service in `src/ETAB.Engineering.Service`; `src/ETAB.Engineering.Service.Host` is the development executable, while the WPF desktop application hosts the same service in process.
 
 The service is a facade over `ETAB.Engineering.Core` and exposes project session, open, save, validate, and preview operations. Validation uses `ProjectValidator`; preview uses `ArtifactPreviewGenerator` and `GenerationPlanBuilder`. The CLI and editor therefore share one model, validator, planner, and generator implementation.
 

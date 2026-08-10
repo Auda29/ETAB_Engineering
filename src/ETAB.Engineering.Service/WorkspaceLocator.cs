@@ -1,6 +1,6 @@
 namespace ETAB.Engineering.Service;
 
-internal static class WorkspaceLocator
+public static class WorkspaceLocator
 {
     public static string Find(string startPath)
     {

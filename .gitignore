@@ -7,3 +7,4 @@ TestResults/
 **/*.tsbuildinfo
 .playwright-cli/
 output/playwright/
+artifacts/
