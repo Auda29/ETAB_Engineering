@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0 and Phase 1 completed, next implementation step is Phase 2
+- Status: implementation; Phase 0, Phase 1, and Phase 2 completed, next implementation step is Phase 3
 - As of: 2026-08-10
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
@@ -347,19 +347,21 @@ Acceptance:
 - no file outside the generator-owned area is modified
 - TwinCAT XML can be parsed structurally
 
-### Phase 2 – Visual Editor MVP
+### Phase 2 – Visual Editor MVP (completed 2026-08-10)
 
-- [ ] open and save a project
-- [ ] component palette
-- [ ] machine canvas
-- [ ] unit selection and property inspector
-- [ ] command editor
-- [ ] request/status field editor
-- [ ] relationships
-- [ ] live validation
-- [ ] generation preview
+- [x] open and save a project
+- [x] component palette
+- [x] machine canvas
+- [x] unit selection and property inspector
+- [x] command editor
+- [x] request/status field editor
+- [x] relationships
+- [x] live validation
+- [x] generation preview
 
 Acceptance: BrushMachine can be modeled visually, saved, closed, and reopened without data loss.
+
+Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETAB.Engineering.Core`; editor validation and preview do not duplicate generator logic. Browser acceptance covered editing all Phase 2 contract types, invalid-to-valid live feedback, relationship creation, canvas movement, an 18-artifact read-only preview, and a successful save/reopen round-trip.
 
 ### Phase 3 – TwinCAT Project Integration
 
@@ -476,10 +478,17 @@ Binding decisions for Phase 1:
 - Base function blocks follow the compiler-verified pattern `User-FB -> Generated-Base-FB -> ETAB.FB_ETAB_ApplicationUnit`, with `SUPER^()` at both levels and protected hooks.
 - The JSON schema, naming and ID rules, and rename/delete behavior are defined by the Phase 0 contracts.
 
+Binding decisions for Phase 2:
+
+- The editor is a TypeScript/React local web application backed by a loopback ASP.NET service.
+- The service transports the complete JSON model and calls the existing core for validation and generation preview.
+- Project saves use UTF-8 without BOM, LF line endings, and an atomic temporary-file replacement.
+- Validation remains live while editing; parseable invalid drafts may still be saved for later correction.
+- MTP exposure metadata is preserved and editable, while procedure editing remains assigned to Phase 5.
+
 Non-blocking decisions for later phases:
 
 - exact scope of automatically generated GVL and PRG structures in Phase 3,
-- canvas component in Phase 2,
 - Automation Interface only after file-based project integration,
 - exact MTP state mapping in Phase 5.
 
@@ -496,4 +505,4 @@ The initially approved development slice comprised:
 7. CLI `preview` and CLI `check`
 8. tests based on a simplified `ProcessUnit`
 
-Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. The next implementation step is Phase 2, beginning with the visual editor.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. The next implementation step is Phase 3, beginning with safe TwinCAT project integration.

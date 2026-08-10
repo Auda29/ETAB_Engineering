@@ -2,3 +2,8 @@
 **/obj/
 .vs/
 TestResults/
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
+.playwright-cli/
+output/playwright/
