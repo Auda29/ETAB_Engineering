@@ -56,8 +56,9 @@ The ZIP contains one root directory so it can be extracted without scattering fi
 
 `.github/workflows/desktop-release.yml` runs on Windows and calls the same `publish-win-x64.ps1` script used locally.
 
-- `workflow_dispatch` builds and retains the ZIP and checksum as workflow artifacts.
-- A pushed `v*` tag derives the package version from the tag, builds and verifies the bundle, uploads the workflow artifacts, and creates or updates the corresponding GitHub Release.
+- `workflow_dispatch` builds and verifies the ZIP and checksum without creating a Release.
+- A pushed `v*` tag derives the package version from the tag, builds and verifies the bundle, and creates or updates the corresponding GitHub Release with the ZIP and checksum attached directly.
+- The workflow additionally attempts to retain the two files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
 For version `0.1.0.0`, publish with:
 

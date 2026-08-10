@@ -65,7 +65,7 @@ artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip.sha256
 
 Extract the complete ZIP and start `ETAB Engineering.exe`. Microsoft Edge WebView2 Runtime is required; it is already present on Windows 11 and most supported Windows 10 systems. No terminal or separately started service is required.
 
-The GitHub Actions workflow `Desktop release` runs the same script. A tag such as `v0.1.0.0` publishes the ZIP and checksum as workflow artifacts and attaches them to a GitHub Release. The workflow can also be started manually to build artifacts without creating a release.
+The GitHub Actions workflow `Desktop release` runs the same script. A tag such as `v0.1.0.0` attaches the ZIP and checksum directly to a GitHub Release. The workflow also attempts to retain a copy as a workflow artifact, but an exhausted Actions storage quota does not block the Release. A manual run builds and verifies the bundle without creating a Release.
 
 ## Documents
 
