@@ -12,7 +12,7 @@ FB_ETABENG_GeneratedUnitBase
 ETAB.FB_ETAB_ApplicationUnit
 ```
 
-Der generierte Basis-FB gehört später zu `Generated/`. Der abgeleitete Benutzer-FB gehört zu `Application/` und wird bei einer Regenerierung nicht verändert.
+Der generierte Basis-FB gehört zu `Generated/`. Der abgeleitete Benutzer-FB gehört zu `Application/` und wird bei einer Regenerierung nicht verändert.
 
 ## Compile-Host
 

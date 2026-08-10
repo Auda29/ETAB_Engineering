@@ -1,5 +1,7 @@
 # Phase-1A-Validierungsprotokoll
 
+> Dieses Dokument hält den damaligen Zwischenstand 1A fest. Der aktuelle, vollständig abgeschlossene Phase-1-Stand ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
+
 ## Status
 
 - Phase: 1A – Modell- und Validierungskern

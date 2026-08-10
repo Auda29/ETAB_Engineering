@@ -19,8 +19,8 @@ dotnet build .\ETAB.Engineering.sln
 dotnet test .\ETAB.Engineering.sln --no-build
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- validate .\examples\BrushMachine.reference.etab.json
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json --root . --content
-dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root .
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- generate .\examples\BrushMachine.reference.etab.json --root .
+dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root .
 ```
 
 `generate` ist der explizite Schreibbefehl. Er bricht bei Konflikten vor jedem Schreibzugriff ab und verändert keine Datei außerhalb des im Modell konfigurierten Generatorbereichs.
@@ -52,3 +52,15 @@ Phase 0 ist abgeschlossen, wenn:
 - der Bürstautomat ohne Übernahme seiner Prozessimplementierung beschreibbar ist.
 
 Alle Kriterien wurden im [Validierungsprotokoll](docs/Phase0_Validation.md) nachgewiesen.
+
+## Phase-1-Abnahme
+
+Phase 1 ist abgeschlossen, wenn:
+
+- gleiche Eingaben byte-identische SPS-Artefakte erzeugen,
+- doppelte stabile Command-IDs und `enumValue`-Werte abgewiesen werden,
+- ausschließlich der konfigurierte Generatorbereich verändert wird,
+- geschriebene TwinCAT-XML-Artefakte strukturell gültig sind,
+- Konflikte den gesamten Schreibablauf blockieren und ein Schreibfehler zurückgerollt wird.
+
+Alle Kriterien wurden in der [Phase-1-Abschlussvalidierung](docs/Phase1_Validation.md) nachgewiesen.

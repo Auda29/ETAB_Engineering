@@ -2,7 +2,7 @@
 
 ## Dokumentstatus
 
-- Status: Umsetzung; Phase 0, Phase 1A, Phase 1B und Phase 1C abgeschlossen
+- Status: Umsetzung; Phase 0 und Phase 1 abgeschlossen, nächster Umsetzungsschritt ist Phase 2
 - Stand: 2026-08-10
 - Arbeitstitel: `ETAB Engineering`
 - Zielumgebung: TwinCAT 3 und `ET_AutomationBase`
@@ -483,9 +483,9 @@ Nicht blockierend und in späteren Phasen zu entscheiden:
 - Automation Interface erst nach der dateibasierten Projektintegration,
 - genaue MTP-Zustandsabbildung in Phase 5.
 
-## 14. Empfohlener erster Umsetzungsschnitt
+## 14. Erster Umsetzungsschnitt (abgeschlossen)
 
-Der erste freizugebende Entwicklungsschnitt umfasst ausschließlich:
+Der ursprünglich freigegebene Entwicklungsschnitt umfasste:
 
 1. JSON-Schema v0.1
 2. C#-Modellklassen
@@ -496,4 +496,4 @@ Der erste freizugebende Entwicklungsschnitt umfasst ausschließlich:
 7. CLI-`preview` und CLI-`check`
 8. Tests anhand einer vereinfachten `ProcessUnit`
 
-Erst wenn dieser Kern stabil und reproduzierbar arbeitet, beginnt die Implementierung des visuellen Editors.
+Phase 1 hat diesen Schnitt vollständig umgesetzt und zusätzlich ApplicationUnit-Basis-FBs, den schreibenden CLI-Befehl `generate`, transaktionale Dateioperationen und Rollback ergänzt. Der Kern ist reproduzierbar und gemäß `docs/Phase1_Validation.md` abgenommen. Als nächster Umsetzungsschritt beginnt Phase 2 mit dem visuellen Editor.

@@ -1,6 +1,6 @@
 # Phase-1C-Validierungsprotokoll
 
-> Dieses Dokument hält den damaligen read-only Zwischenstand 1C fest. Die inzwischen abgeschlossene schreibende Phase 1 einschließlich Basis-FBs, `check`, `generate` und Rollback ist in `Phase1_Validation.md` dokumentiert.
+> Dieses Dokument hält den damaligen read-only Zwischenstand 1C fest. Die inzwischen abgeschlossene schreibende Phase 1 einschließlich Basis-FBs, `check`, `generate` und Rollback ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
 
 ## Status
 

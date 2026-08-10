@@ -95,7 +95,7 @@ Für Präfix `BM`, Node-Name `MotionUnit` und `symbolStem` `Motion`:
 | Request-DUT | `ST_BM_MotionRequest` |
 | Status-DUT | `ST_BM_MotionStatus` |
 | Basis-FB | `FB_BM_MotionUnitBase` |
-| Command-Router | `FB_BM_MotionCommandRouter` |
+| Command-Router (geplant ab Phase 3) | `FB_BM_MotionCommandRouter` |
 
 Namenskollisionen werden als Validierungsfehler behandelt.
 
@@ -118,7 +118,7 @@ Jeder Node definiert explizit:
 - `requestType`
 - `statusType`
 - `baseFunctionBlock`
-- `instance`
+- `instance` (im Modell gespeichert; Instanzerzeugung erst ab Phase 3)
 
 Nicht sinnvolle Kombinationen werden semantisch abgewiesen. Ein `recipeManager` erzeugt beispielsweise im MVP kein projektspezifisches Command-Enum.
 
@@ -312,7 +312,7 @@ Der Generator verwendet folgende Sortierung:
 
 ## 12. Validierung außerhalb des JSON-Schemas
 
-Der spätere semantische Validator prüft zusätzlich:
+Der in Phase 1 implementierte semantische Validator prüft zusätzlich:
 
 - globale Eindeutigkeit aller IDs,
 - referenzielle Integrität,

@@ -2,7 +2,7 @@
 
 ## 1. Zweck
 
-Dieser Vertrag definiert die Schreib- und Eigentumsgrenzen des späteren Generators. Er ist bereits in Phase 0 verbindlich, damit Editor und Generator keine widersprüchlichen Annahmen entwickeln.
+Dieser Vertrag definiert die Schreib- und Eigentumsgrenzen des Generators. Er ist seit Phase 0 verbindlich, damit Editor und Generator keine widersprüchlichen Annahmen entwickeln.
 
 ## 2. Eigentumsbereiche
 
@@ -59,8 +59,13 @@ Das Manifest wird erst geschrieben, wenn alle vorgesehenen Ausgabedateien erfolg
 8. Änderungsvorschau ausgeben.
 9. Bei Konflikten ohne Schreiben abbrechen.
 10. Erst nach explizitem Generate-Befehl schreiben.
-11. Nur exakt manifestierte, veraltete Dateien innerhalb von `Generated/` entfernen.
-12. Neues Manifest zuletzt schreiben.
+11. Zielpfade, Reparse Points, Zielbelegung und erwartete Alt-Hashes unmittelbar vor dem Schreiben erneut prüfen.
+12. Neue Inhalte in einem UUID-basierten Staging-Verzeichnis innerhalb von `Generated/` vorbereiten.
+13. Zu ändernde oder zu löschende verwaltete Dateien in einem separaten Transaktionsverzeichnis sichern.
+14. Nur die konkret geplanten `create`-, `update`-, `rename`- und `delete`-Operationen ausführen.
+15. Neues Manifest zuletzt schreiben.
+16. Transaktionsverzeichnisse erst nach erneuter Pfad- und Reparse-Point-Prüfung entfernen.
+17. Bei einem Schreibfehler bereits geschriebene Ziele entfernen und gesicherte Dateien einzeln zurückspielen.
 
 ## 5. Konfliktregeln
 
@@ -70,7 +75,9 @@ Ein Konflikt liegt mindestens vor, wenn:
 - ein Zielpfad durch eine nicht manifestierte Datei belegt ist,
 - zwei Modellobjekte denselben Zielpfad erzeugen,
 - eine User-Datei umbenannt, überschrieben oder gelöscht werden müsste,
-- die Projekt- oder Ausgabewurzel nicht eindeutig aufgelöst werden kann.
+- die Projekt- oder Ausgabewurzel nicht eindeutig aufgelöst werden kann,
+- ein Zielpfad einen symbolischen Link, Junction oder anderen Reparse Point durchläuft,
+- eine verwaltete Datei nach der Planung verändert wurde oder ein freies Ziel inzwischen belegt ist.
 
 Bei Konflikten wird nicht automatisch überschrieben, umbenannt oder gelöscht.
 
@@ -90,7 +97,13 @@ Bei Konflikten wird nicht automatisch überschrieben, umbenannt oder gelöscht.
 - veränderte Dateien werden als Konflikt behalten,
 - User-Dateien werden nie automatisch gelöscht.
 
-## 8. TwinCAT-Projektdatei
+## 8. Transaktionssicherheit
+
+Staging und Backup liegen in eindeutig benannten UUID-Unterordnern der konfigurierten Generatorwurzel. Der Generator löst jeden Quell-, Ziel- und Transaktionspfad absolut auf und prüft ihn erneut gegen diese Wurzel. Rekursive Bereinigungen werden abgebrochen, sobald ein Reparse Point erkannt wird.
+
+Scheitert eine Dateioperation, wird der bisherige Stand zurückgesichert. Kann eine einzelne Sicherung nicht an ihren ursprünglichen Pfad zurückgespielt werden, wird dieses Backup nicht entfernt. Der Lauf meldet die unvollständige Rücksicherung und den verbliebenen Wiederherstellungspfad als Fehler.
+
+## 9. TwinCAT-Projektdatei
 
 Die Bearbeitung einer `.plcproj` beginnt erst in Phase 3.
 
@@ -102,7 +115,7 @@ Dann gelten zusätzlich:
 - vor dem Schreiben wird eine XML-Strukturprüfung durchgeführt,
 - nach dem Schreiben ist ein echter XAE-Compile ein eigener Abnahmeschritt.
 
-## 9. Ausgabeattribute
+## 10. Ausgabeattribute
 
 Generierte PLC-Objekte erhalten einen klaren Hinweis im ST-Quellbereich, beispielsweise:
 
@@ -112,7 +125,7 @@ Generierte PLC-Objekte erhalten einen klaren Hinweis im ST-Quellbereich, beispie
 
 Wo TwinCAT-Attribute sinnvoll sind, kann zusätzlich `{attribute 'TcGenerated'}` verwendet werden. Ein Attribut ersetzt nicht die Manifest- und Hash-Prüfung.
 
-## 10. Determinismus
+## 11. Determinismus
 
 Nicht in die SPS-Ausgabe einfließen dürfen:
 
@@ -124,7 +137,7 @@ Nicht in die SPS-Ausgabe einfließen dürfen:
 
 Zeilenenden und Einrückung werden generatorweit festgelegt. Die gleiche Modellversion muss auf unterschiedlichen Rechnern dieselben Inhalte und TwinCAT-GUIDs erzeugen.
 
-## 11. Validierungsnachweise
+## 12. Validierungsnachweise
 
 Die Nachweise werden getrennt berichtet:
 

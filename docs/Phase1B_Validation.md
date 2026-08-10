@@ -1,5 +1,7 @@
 # Phase-1B-Validierungsprotokoll
 
+> Dieses Dokument hält den damaligen read-only Zwischenstand 1B fest. Der aktuelle, vollständig abgeschlossene Phase-1-Stand einschließlich Basis-FBs und schreibender Generierung ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
+
 ## Status
 
 - Phase: 1B – deterministische DUT-Vorschau
