@@ -120,7 +120,7 @@ try {
             --runtime win-x64 `
             --self-contained true `
             --no-restore `
-            -p:Version=$Version `
+            /p:Version=$Version `
             --output $bundleDirectory
     } finally {
         Pop-Location
