@@ -1,0 +1,703 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:etab-engineering:schema:project:0.1",
+  "title": "ETAB Engineering project model v0.1",
+  "description": "Logical machine model used to generate ET_AutomationBase TwinCAT templates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project",
+    "nodes",
+    "relations",
+    "layout"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1"
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "layout": {
+      "$ref": "#/$defs/layout"
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "iecIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "displayText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "descriptionText": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "dataType": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.]*(\\([1-9][0-9]*\\))?$"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "displayName",
+        "prefix",
+        "namespace",
+        "etabLibrary",
+        "twinCAT",
+        "generation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "displayName": {
+          "$ref": "#/$defs/displayText"
+        },
+        "description": {
+          "$ref": "#/$defs/descriptionText"
+        },
+        "prefix": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16,
+          "pattern": "^[A-Z][A-Z0-9]{1,15}$"
+        },
+        "namespace": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "etabLibrary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "placeholder",
+            "version"
+          ],
+          "properties": {
+            "placeholder": {
+              "$ref": "#/$defs/iecIdentifier"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          }
+        },
+        "twinCAT": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^3\\.1\\.[0-9]{4}\\.[0-9]+$"
+            },
+            "plcProject": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        },
+        "generation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "generatedRoot",
+            "applicationRoot",
+            "createUserStubs"
+          ],
+          "properties": {
+            "generatedRoot": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            },
+            "applicationRoot": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            },
+            "createUserStubs": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "symbolStem",
+        "displayName",
+        "role",
+        "generate",
+        "commands",
+        "requestPayload",
+        "statusPayload"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "kind": {
+          "enum": [
+            "applicationUnit",
+            "commandUnit",
+            "recipeManager",
+            "machineLink"
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "symbolStem": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "displayName": {
+          "$ref": "#/$defs/displayText"
+        },
+        "description": {
+          "$ref": "#/$defs/descriptionText"
+        },
+        "role": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "generate": {
+          "$ref": "#/$defs/nodeGeneration"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "requestPayload": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "statusPayload": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "applicationUnit": {
+          "$ref": "#/$defs/applicationUnitSettings"
+        },
+        "commandUnit": {
+          "$ref": "#/$defs/commandUnitSettings"
+        },
+        "recipeManager": {
+          "$ref": "#/$defs/recipeManagerSettings"
+        },
+        "machineLink": {
+          "$ref": "#/$defs/machineLinkSettings"
+        },
+        "mtp": {
+          "$ref": "#/$defs/mtpSettings"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "applicationUnit"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "applicationUnit"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "commandUnit"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "commandUnit"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "recipeManager"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "recipeManager"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "machineLink"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "machineLink"
+            ]
+          }
+        }
+      ]
+    },
+    "nodeGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commandEnum",
+        "requestType",
+        "statusType",
+        "baseFunctionBlock",
+        "instance"
+      ],
+      "properties": {
+        "commandEnum": {
+          "type": "boolean"
+        },
+        "requestType": {
+          "type": "boolean"
+        },
+        "statusType": {
+          "type": "boolean"
+        },
+        "baseFunctionBlock": {
+          "type": "boolean"
+        },
+        "instance": {
+          "type": "boolean"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "displayName",
+        "enumValue",
+        "etabCommand"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "displayName": {
+          "$ref": "#/$defs/displayText"
+        },
+        "description": {
+          "$ref": "#/$defs/descriptionText"
+        },
+        "enumValue": {
+          "description": "Stable numeric literal of the generated IEC enum; distinct from the runtime nCommandID.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "etabCommand": {
+          "enum": [
+            "NoAction",
+            "Reset",
+            "Start",
+            "Homing",
+            "Stop",
+            "Abort",
+            "Clear",
+            "User"
+          ]
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "dataType"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "dataType": {
+          "$ref": "#/$defs/dataType"
+        },
+        "arrayDimensions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/arrayDimension"
+          }
+        },
+        "description": {
+          "$ref": "#/$defs/descriptionText"
+        },
+        "defaultValue": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "arrayDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lower",
+        "upper"
+      ],
+      "properties": {
+        "lower": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "upper": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "applicationUnitSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startMode",
+        "homingMode",
+        "stopMode",
+        "keepRemoteControl",
+        "setMachineErrorOnCommandError",
+        "command"
+      ],
+      "properties": {
+        "startMode": {
+          "$ref": "#/$defs/modeLiteral"
+        },
+        "homingMode": {
+          "$ref": "#/$defs/modeLiteral"
+        },
+        "stopMode": {
+          "$ref": "#/$defs/modeLiteral"
+        },
+        "keepRemoteControl": {
+          "type": "boolean"
+        },
+        "setMachineErrorOnCommandError": {
+          "type": "boolean"
+        },
+        "command": {
+          "$ref": "#/$defs/commandUnitSettings"
+        }
+      }
+    },
+    "modeLiteral": {
+      "type": "string",
+      "pattern": "^(ET\\.eMODE\\.)?[A-Z][A-Z0-9_]*$"
+    },
+    "commandUnitSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startState",
+        "resetErrorOnStart"
+      ],
+      "properties": {
+        "startState": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "resetErrorOnStart": {
+          "type": "boolean"
+        }
+      }
+    },
+    "recipeManagerSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataType",
+        "filePath",
+        "fileName",
+        "xPath"
+      ],
+      "properties": {
+        "dataType": {
+          "$ref": "#/$defs/dataType"
+        },
+        "filePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260
+        },
+        "xPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "enableAutoSave": {
+          "type": "boolean"
+        },
+        "enableBackupFile": {
+          "type": "boolean"
+        },
+        "requireExternalValidation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "machineLinkSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bridgeType",
+        "isPrimary",
+        "watchdogTime",
+        "primaryWinsTie",
+        "allowTokenWithoutPartnerAlive",
+        "clearTxWhenDisabled"
+      ],
+      "properties": {
+        "bridgeType": {
+          "enum": [
+            "GenericBridge",
+            "EL6695",
+            "EL6692",
+            "ExternalBridge"
+          ]
+        },
+        "isPrimary": {
+          "type": "boolean"
+        },
+        "watchdogTime": {
+          "type": "string",
+          "pattern": "^T#[0-9]+(MS|S|M|H)$"
+        },
+        "primaryWinsTie": {
+          "type": "boolean"
+        },
+        "allowTokenWithoutPartnerAlive": {
+          "type": "boolean"
+        },
+        "clearTxWhenDisabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mtpSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exposed",
+        "procedures"
+      ],
+      "properties": {
+        "exposed": {
+          "type": "boolean"
+        },
+        "serviceName": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "procedures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mtpProcedure"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "exposed": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "serviceName"
+            ]
+          }
+        }
+      ]
+    },
+    "mtpProcedure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "procedureId",
+        "commandId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "procedureId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "commandId": {
+          "$ref": "#/$defs/stableId"
+        }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "sourceNodeId",
+        "targetNodeId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "kind": {
+          "enum": [
+            "contains",
+            "commands",
+            "observes",
+            "usesRecipe",
+            "usesLink"
+          ]
+        },
+        "sourceNodeId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "targetNodeId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 160
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodes"
+      ],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nodeLayout"
+          }
+        }
+      }
+    },
+    "nodeLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeId",
+        "x",
+        "y"
+      ],
+      "properties": {
+        "nodeId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "group": {
+          "$ref": "#/$defs/iecIdentifier"
+        }
+      }
+    }
+  }
+}

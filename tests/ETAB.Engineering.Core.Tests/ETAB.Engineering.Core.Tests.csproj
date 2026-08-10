@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ETAB.Engineering.Core\ETAB.Engineering.Core.csproj" />
+    <None Include="..\..\schemas\etab-project.schema.json"
+          Link="Fixtures\etab-project.schema.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\examples\BrushMachine.reference.etab.json"
+          Link="Fixtures\BrushMachine.reference.etab.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Snapshots\**\*.snap"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

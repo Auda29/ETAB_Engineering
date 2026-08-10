@@ -1,0 +1,910 @@
+{
+  "schemaVersion": "0.1",
+  "project": {
+    "id": "019fdbdc-23c3-4463-a140-a087267a0001",
+    "name": "BrushMachine",
+    "displayName": "AutomationBase Brush Machine",
+    "description": "Phase-0 reference model derived from AutomationBase Beispiel. It describes contracts and relations, not process implementation.",
+    "prefix": "BM",
+    "namespace": "BM",
+    "etabLibrary": {
+      "placeholder": "ETAB",
+      "version": "0.1.0.3"
+    },
+    "twinCAT": {
+      "version": "3.1.4024.74",
+      "plcProject": "AutomationBase_Beispiel.plcproj"
+    },
+    "generation": {
+      "generatedRoot": "Generated",
+      "applicationRoot": "Application",
+      "createUserStubs": false
+    }
+  },
+  "nodes": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "kind": "applicationUnit",
+      "name": "Machine",
+      "symbolStem": "Machine",
+      "displayName": "Brush Machine",
+      "description": "Master application unit for machine state and recovery command.",
+      "role": "machine",
+      "generate": {
+        "commandEnum": false,
+        "requestType": false,
+        "statusType": true,
+        "baseFunctionBlock": true,
+        "instance": true
+      },
+      "commands": [
+        {
+          "id": "11000000-0000-4000-8000-000000000001",
+          "name": "NoAction",
+          "displayName": "No action",
+          "enumValue": 0,
+          "etabCommand": "NoAction"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000002",
+          "name": "Reset",
+          "displayName": "Reset",
+          "enumValue": 10,
+          "etabCommand": "Reset"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000003",
+          "name": "Start",
+          "displayName": "Start automatic mode",
+          "enumValue": 20,
+          "etabCommand": "Start"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000004",
+          "name": "Homing",
+          "displayName": "Home machine",
+          "enumValue": 25,
+          "etabCommand": "Homing"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000005",
+          "name": "Stop",
+          "displayName": "Controlled stop",
+          "enumValue": 30,
+          "etabCommand": "Stop"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000006",
+          "name": "Abort",
+          "displayName": "Abort",
+          "enumValue": 40,
+          "etabCommand": "Abort"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000007",
+          "name": "Clear",
+          "displayName": "Clear",
+          "enumValue": 50,
+          "etabCommand": "Clear"
+        },
+        {
+          "id": "11000000-0000-4000-8000-000000000008",
+          "name": "Recover",
+          "displayName": "Recover machine",
+          "enumValue": 100,
+          "etabCommand": "User"
+        }
+      ],
+      "requestPayload": [],
+      "statusPayload": [
+        {
+          "id": "11100000-0000-4000-8000-000000000001",
+          "name": "bReadyForCycle",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "11100000-0000-4000-8000-000000000002",
+          "name": "bRecoveryRequested",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "11100000-0000-4000-8000-000000000003",
+          "name": "eLastMode",
+          "dataType": "ET.eMODE"
+        },
+        {
+          "id": "11100000-0000-4000-8000-000000000004",
+          "name": "eLastState",
+          "dataType": "ET.eSTATE"
+        }
+      ],
+      "applicationUnit": {
+        "startMode": "ET.eMODE.AUTO",
+        "homingMode": "ET.eMODE.INIT",
+        "stopMode": "ET.eMODE.IDLE",
+        "keepRemoteControl": false,
+        "setMachineErrorOnCommandError": true,
+        "command": {
+          "startState": 1,
+          "resetErrorOnStart": true
+        }
+      },
+      "mtp": {
+        "exposed": false,
+        "procedures": []
+      }
+    },
+    {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "kind": "applicationUnit",
+      "name": "MotionUnit",
+      "symbolStem": "Motion",
+      "displayName": "Motion Unit",
+      "description": "Exclusive owner of all six axis commands.",
+      "role": "motion",
+      "generate": {
+        "commandEnum": true,
+        "requestType": true,
+        "statusType": true,
+        "baseFunctionBlock": true,
+        "instance": true
+      },
+      "commands": [
+        {
+          "id": "21000000-0000-4000-8000-000000000001",
+          "name": "NoAction",
+          "displayName": "No action",
+          "enumValue": 0,
+          "etabCommand": "NoAction"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000002",
+          "name": "HomeAll",
+          "displayName": "Home all axes",
+          "enumValue": 10,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000003",
+          "name": "MoveAllSafe",
+          "displayName": "Move all axes safe",
+          "enumValue": 20,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000004",
+          "name": "MeasureLength",
+          "displayName": "Measure workpiece length",
+          "enumValue": 30,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000005",
+          "name": "ReturnX1Start",
+          "displayName": "Return X1 to start",
+          "enumValue": 40,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000006",
+          "name": "PositionSeamApproach",
+          "displayName": "Position seam approach",
+          "enumValue": 50,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000007",
+          "name": "ApplySeamInfeed",
+          "displayName": "Apply seam infeed",
+          "enumValue": 55,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000008",
+          "name": "ExecuteSynchronizedSeamPass",
+          "displayName": "Execute synchronized seam pass",
+          "enumValue": 60,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000009",
+          "name": "RetractSeamBrushes",
+          "displayName": "Retract seam brushes",
+          "enumValue": 70,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000a",
+          "name": "PositionEndFaceFront",
+          "displayName": "Position front end face",
+          "enumValue": 80,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000b",
+          "name": "ExecuteEndFaceFront",
+          "displayName": "Execute front end face",
+          "enumValue": 90,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000c",
+          "name": "PositionEndFaceRear",
+          "displayName": "Position rear end face",
+          "enumValue": 100,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000d",
+          "name": "ExecuteEndFaceRear",
+          "displayName": "Execute rear end face",
+          "enumValue": 110,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000e",
+          "name": "ParkAll",
+          "displayName": "Park all axes",
+          "enumValue": 120,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-00000000000f",
+          "name": "RecoverToUnloadPosition",
+          "displayName": "Recover to unload position",
+          "enumValue": 130,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000010",
+          "name": "StopAll",
+          "displayName": "Stop all axes",
+          "enumValue": 140,
+          "etabCommand": "User"
+        },
+        {
+          "id": "21000000-0000-4000-8000-000000000011",
+          "name": "AbortAll",
+          "displayName": "Abort all axes",
+          "enumValue": 150,
+          "etabCommand": "User"
+        }
+      ],
+      "requestPayload": [
+        {
+          "id": "22000000-0000-4000-8000-000000000001",
+          "name": "stJobData",
+          "dataType": "ST_BM_JobData"
+        }
+      ],
+      "statusPayload": [
+        {
+          "id": "22100000-0000-4000-8000-000000000001",
+          "name": "bAllHomed",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "22100000-0000-4000-8000-000000000002",
+          "name": "bAllSafe",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "22100000-0000-4000-8000-000000000003",
+          "name": "bAllStandstill",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "22100000-0000-4000-8000-000000000004",
+          "name": "bSynchronized",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "22100000-0000-4000-8000-000000000005",
+          "name": "fMeasuredLength",
+          "dataType": "LREAL"
+        }
+      ],
+      "applicationUnit": {
+        "startMode": "ET.eMODE.AUTO",
+        "homingMode": "ET.eMODE.INIT",
+        "stopMode": "ET.eMODE.IDLE",
+        "keepRemoteControl": false,
+        "setMachineErrorOnCommandError": true,
+        "command": {
+          "startState": 1,
+          "resetErrorOnStart": true
+        }
+      },
+      "mtp": {
+        "exposed": false,
+        "procedures": []
+      }
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "kind": "applicationUnit",
+      "name": "WorkpieceUnit",
+      "symbolStem": "Workpiece",
+      "displayName": "Workpiece Unit",
+      "description": "Exclusive owner of door, vacuum, blow-off and laser commands.",
+      "role": "workpiece",
+      "generate": {
+        "commandEnum": true,
+        "requestType": true,
+        "statusType": true,
+        "baseFunctionBlock": true,
+        "instance": true
+      },
+      "commands": [
+        {
+          "id": "31000000-0000-4000-8000-000000000001",
+          "name": "NoAction",
+          "displayName": "No action",
+          "enumValue": 0,
+          "etabCommand": "NoAction"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000002",
+          "name": "CloseDoor",
+          "displayName": "Close door",
+          "enumValue": 10,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000003",
+          "name": "OpenDoor",
+          "displayName": "Open door",
+          "enumValue": 20,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000004",
+          "name": "ClampWorkpiece",
+          "displayName": "Clamp workpiece",
+          "enumValue": 30,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000005",
+          "name": "ReleaseAndBlow",
+          "displayName": "Release and blow",
+          "enumValue": 40,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000006",
+          "name": "VacuumOff",
+          "displayName": "Vacuum off",
+          "enumValue": 50,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000007",
+          "name": "LaserOn",
+          "displayName": "Laser on",
+          "enumValue": 60,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000008",
+          "name": "LaserOff",
+          "displayName": "Laser off",
+          "enumValue": 70,
+          "etabCommand": "User"
+        },
+        {
+          "id": "31000000-0000-4000-8000-000000000009",
+          "name": "StopAll",
+          "displayName": "Stop all workpiece functions",
+          "enumValue": 80,
+          "etabCommand": "User"
+        }
+      ],
+      "requestPayload": [
+        {
+          "id": "32000000-0000-4000-8000-000000000001",
+          "name": "aVacuumZone",
+          "dataType": "BOOL",
+          "arrayDimensions": [
+            {
+              "lower": 1,
+              "upper": 13
+            }
+          ]
+        },
+        {
+          "id": "32000000-0000-4000-8000-000000000002",
+          "name": "fVacuumMinimum",
+          "dataType": "LREAL"
+        },
+        {
+          "id": "32000000-0000-4000-8000-000000000003",
+          "name": "tVacuumTimeout",
+          "dataType": "TIME"
+        },
+        {
+          "id": "32000000-0000-4000-8000-000000000004",
+          "name": "tBlowTime",
+          "dataType": "TIME"
+        }
+      ],
+      "statusPayload": [
+        {
+          "id": "32100000-0000-4000-8000-000000000001",
+          "name": "bDoorSafe",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "32100000-0000-4000-8000-000000000002",
+          "name": "bWorkpieceClamped",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "32100000-0000-4000-8000-000000000003",
+          "name": "bVacuumReleased",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "32100000-0000-4000-8000-000000000004",
+          "name": "bBlowComplete",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "32100000-0000-4000-8000-000000000005",
+          "name": "fMeasuredLength",
+          "dataType": "LREAL"
+        }
+      ],
+      "applicationUnit": {
+        "startMode": "ET.eMODE.AUTO",
+        "homingMode": "ET.eMODE.INIT",
+        "stopMode": "ET.eMODE.IDLE",
+        "keepRemoteControl": false,
+        "setMachineErrorOnCommandError": true,
+        "command": {
+          "startState": 1,
+          "resetErrorOnStart": true
+        }
+      },
+      "mtp": {
+        "exposed": false,
+        "procedures": []
+      }
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "kind": "applicationUnit",
+      "name": "ProcessUnit",
+      "symbolStem": "Process",
+      "displayName": "Process Unit",
+      "description": "Exclusive owner of brushes and exhaust commands.",
+      "role": "process",
+      "generate": {
+        "commandEnum": true,
+        "requestType": true,
+        "statusType": true,
+        "baseFunctionBlock": true,
+        "instance": true
+      },
+      "commands": [
+        {
+          "id": "41000000-0000-4000-8000-000000000001",
+          "name": "NoAction",
+          "displayName": "No action",
+          "enumValue": 0,
+          "etabCommand": "NoAction"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000002",
+          "name": "StartExhaust",
+          "displayName": "Start exhaust",
+          "enumValue": 10,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000003",
+          "name": "StopExhaust",
+          "displayName": "Stop exhaust",
+          "enumValue": 20,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000004",
+          "name": "StartSeamBrushes",
+          "displayName": "Start seam brushes",
+          "enumValue": 30,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000005",
+          "name": "StopSeamBrushes",
+          "displayName": "Stop seam brushes",
+          "enumValue": 40,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000006",
+          "name": "StartEndBrush",
+          "displayName": "Start end brush",
+          "enumValue": 50,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000007",
+          "name": "StopEndBrush",
+          "displayName": "Stop end brush",
+          "enumValue": 60,
+          "etabCommand": "User"
+        },
+        {
+          "id": "41000000-0000-4000-8000-000000000008",
+          "name": "StopAll",
+          "displayName": "Stop all process functions",
+          "enumValue": 70,
+          "etabCommand": "User"
+        }
+      ],
+      "requestPayload": [
+        {
+          "id": "42000000-0000-4000-8000-000000000001",
+          "name": "aBrushSpeed",
+          "dataType": "LREAL",
+          "arrayDimensions": [
+            {
+              "lower": 1,
+              "upper": 3
+            }
+          ]
+        },
+        {
+          "id": "42000000-0000-4000-8000-000000000002",
+          "name": "tBrushTimeout",
+          "dataType": "TIME"
+        },
+        {
+          "id": "42000000-0000-4000-8000-000000000003",
+          "name": "tExhaustTimeout",
+          "dataType": "TIME"
+        },
+        {
+          "id": "42000000-0000-4000-8000-000000000004",
+          "name": "tExhaustRunOn",
+          "dataType": "TIME"
+        }
+      ],
+      "statusPayload": [
+        {
+          "id": "42100000-0000-4000-8000-000000000001",
+          "name": "bExhaustAvailable",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "42100000-0000-4000-8000-000000000002",
+          "name": "bSeamBrushesAtSpeed",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "42100000-0000-4000-8000-000000000003",
+          "name": "bEndBrushAtSpeed",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "42100000-0000-4000-8000-000000000004",
+          "name": "bAllBrushesStopped",
+          "dataType": "BOOL"
+        }
+      ],
+      "applicationUnit": {
+        "startMode": "ET.eMODE.AUTO",
+        "homingMode": "ET.eMODE.INIT",
+        "stopMode": "ET.eMODE.IDLE",
+        "keepRemoteControl": false,
+        "setMachineErrorOnCommandError": true,
+        "command": {
+          "startState": 1,
+          "resetErrorOnStart": true
+        }
+      },
+      "mtp": {
+        "exposed": false,
+        "procedures": []
+      }
+    },
+    {
+      "id": "50000000-0000-4000-8000-000000000001",
+      "kind": "commandUnit",
+      "name": "ProcessCycle",
+      "symbolStem": "Cycle",
+      "displayName": "Process Cycle",
+      "description": "Hand-written orchestrator for cycle, stop, abort and recovery.",
+      "role": "orchestrator",
+      "generate": {
+        "commandEnum": false,
+        "requestType": false,
+        "statusType": false,
+        "baseFunctionBlock": false,
+        "instance": true
+      },
+      "commands": [
+        {
+          "id": "51000000-0000-4000-8000-000000000001",
+          "name": "NoAction",
+          "displayName": "No action",
+          "enumValue": 0,
+          "etabCommand": "NoAction"
+        },
+        {
+          "id": "51000000-0000-4000-8000-000000000002",
+          "name": "Cycle",
+          "displayName": "Run process cycle",
+          "enumValue": 1,
+          "etabCommand": "User"
+        },
+        {
+          "id": "51000000-0000-4000-8000-000000000003",
+          "name": "Recover",
+          "displayName": "Run recovery",
+          "enumValue": 2,
+          "etabCommand": "User"
+        },
+        {
+          "id": "51000000-0000-4000-8000-000000000004",
+          "name": "Reset",
+          "displayName": "Reset cycle",
+          "enumValue": 10,
+          "etabCommand": "Reset"
+        },
+        {
+          "id": "51000000-0000-4000-8000-000000000005",
+          "name": "Stop",
+          "displayName": "Controlled cycle stop",
+          "enumValue": 30,
+          "etabCommand": "Stop"
+        },
+        {
+          "id": "51000000-0000-4000-8000-000000000006",
+          "name": "Abort",
+          "displayName": "Abort cycle",
+          "enumValue": 40,
+          "etabCommand": "Abort"
+        }
+      ],
+      "requestPayload": [
+        {
+          "id": "52000000-0000-4000-8000-000000000001",
+          "name": "stActiveRecipe",
+          "dataType": "ST_BM_ProductRecipe"
+        }
+      ],
+      "statusPayload": [
+        {
+          "id": "52100000-0000-4000-8000-000000000001",
+          "name": "eStep",
+          "dataType": "E_BM_ProcessStep"
+        },
+        {
+          "id": "52100000-0000-4000-8000-000000000002",
+          "name": "sStepText",
+          "dataType": "STRING(255)"
+        },
+        {
+          "id": "52100000-0000-4000-8000-000000000003",
+          "name": "bCycleActive",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "52100000-0000-4000-8000-000000000004",
+          "name": "bRecoveryActive",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "52100000-0000-4000-8000-000000000005",
+          "name": "bRecoveryComplete",
+          "dataType": "BOOL"
+        },
+        {
+          "id": "52100000-0000-4000-8000-000000000006",
+          "name": "bRecoveryNeeded",
+          "dataType": "BOOL"
+        }
+      ],
+      "commandUnit": {
+        "startState": 1,
+        "resetErrorOnStart": true
+      },
+      "mtp": {
+        "exposed": false,
+        "procedures": []
+      }
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "kind": "recipeManager",
+      "name": "RecipeManager",
+      "symbolStem": "Recipe",
+      "displayName": "Product Recipe Manager",
+      "description": "ETAB recipe manager wrapped by the project-specific recipe service.",
+      "role": "recipe",
+      "generate": {
+        "commandEnum": false,
+        "requestType": false,
+        "statusType": false,
+        "baseFunctionBlock": false,
+        "instance": true
+      },
+      "commands": [],
+      "requestPayload": [],
+      "statusPayload": [],
+      "recipeManager": {
+        "dataType": "ST_BM_ProductRecipe",
+        "filePath": "C:\\TwinCAT\\3.1\\Boot\\Recipes\\",
+        "fileName": "BrushMachineRecipe.xml",
+        "xPath": "/dataentry/data",
+        "enableAutoSave": false,
+        "enableBackupFile": true,
+        "requireExternalValidation": true
+      }
+    },
+    {
+      "id": "70000000-0000-4000-8000-000000000001",
+      "kind": "machineLink",
+      "name": "CellLink",
+      "symbolStem": "CellLink",
+      "displayName": "Cell Machine Link",
+      "description": "Logical machine-to-machine link used by the cell interface.",
+      "role": "cellCommunication",
+      "generate": {
+        "commandEnum": false,
+        "requestType": false,
+        "statusType": false,
+        "baseFunctionBlock": false,
+        "instance": true
+      },
+      "commands": [],
+      "requestPayload": [],
+      "statusPayload": [],
+      "machineLink": {
+        "bridgeType": "ExternalBridge",
+        "isPrimary": true,
+        "watchdogTime": "T#2S",
+        "primaryWinsTie": true,
+        "allowTokenWithoutPartnerAlive": false,
+        "clearTxWhenDisabled": true
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "90000000-0000-4000-8000-000000000001",
+      "kind": "contains",
+      "sourceNodeId": "10000000-0000-4000-8000-000000000001",
+      "targetNodeId": "20000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000002",
+      "kind": "contains",
+      "sourceNodeId": "10000000-0000-4000-8000-000000000001",
+      "targetNodeId": "30000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000003",
+      "kind": "contains",
+      "sourceNodeId": "10000000-0000-4000-8000-000000000001",
+      "targetNodeId": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000004",
+      "kind": "contains",
+      "sourceNodeId": "10000000-0000-4000-8000-000000000001",
+      "targetNodeId": "50000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000005",
+      "kind": "commands",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "20000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000006",
+      "kind": "commands",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "30000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000007",
+      "kind": "commands",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000008",
+      "kind": "observes",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "20000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000009",
+      "kind": "observes",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "30000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-00000000000a",
+      "kind": "observes",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-00000000000b",
+      "kind": "usesRecipe",
+      "sourceNodeId": "50000000-0000-4000-8000-000000000001",
+      "targetNodeId": "60000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "90000000-0000-4000-8000-00000000000c",
+      "kind": "usesLink",
+      "sourceNodeId": "10000000-0000-4000-8000-000000000001",
+      "targetNodeId": "70000000-0000-4000-8000-000000000001"
+    }
+  ],
+  "layout": {
+    "nodes": [
+      {
+        "nodeId": "10000000-0000-4000-8000-000000000001",
+        "x": 420,
+        "y": 80,
+        "width": 180,
+        "height": 90,
+        "group": "machine"
+      },
+      {
+        "nodeId": "20000000-0000-4000-8000-000000000001",
+        "x": 100,
+        "y": 280,
+        "width": 180,
+        "height": 90,
+        "group": "machine"
+      },
+      {
+        "nodeId": "30000000-0000-4000-8000-000000000001",
+        "x": 320,
+        "y": 280,
+        "width": 180,
+        "height": 90,
+        "group": "machine"
+      },
+      {
+        "nodeId": "40000000-0000-4000-8000-000000000001",
+        "x": 540,
+        "y": 280,
+        "width": 180,
+        "height": 90,
+        "group": "machine"
+      },
+      {
+        "nodeId": "50000000-0000-4000-8000-000000000001",
+        "x": 320,
+        "y": 470,
+        "width": 180,
+        "height": 90,
+        "group": "machine"
+      },
+      {
+        "nodeId": "60000000-0000-4000-8000-000000000001",
+        "x": 100,
+        "y": 470,
+        "width": 180,
+        "height": 90,
+        "group": "services"
+      },
+      {
+        "nodeId": "70000000-0000-4000-8000-000000000001",
+        "x": 760,
+        "y": 280,
+        "width": 180,
+        "height": 90,
+        "group": "communication"
+      }
+    ]
+  }
+}
