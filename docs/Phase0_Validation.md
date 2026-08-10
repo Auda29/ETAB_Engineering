@@ -1,13 +1,13 @@
-# Phase-0-Validierungsprotokoll
+# Phase 0 Validation Record
 
 ## Status
 
-- Phase: 0 – Spezifikation
-- Ergebnis: abgeschlossen
-- Prüfdatum: 2026-08-10
-- Implementierungsstand: kein Generator- oder Editorcode; isolierter, nicht instanziierter TwinCAT-Compile-Spike vorhanden
+- Phase: 0 – Specification
+- Result: completed
+- Validation date: 2026-08-10
+- Implementation state: no generator or editor code; an isolated, non-instantiated TwinCAT compile spike is available
 
-## Erzeugte Spezifikationsartefakte
+## Specification Artifacts Produced
 
 - `docs/Component_Catalog_v0.1.md`
 - `docs/Model_Specification_v0.1.md`
@@ -17,100 +17,100 @@
 - `examples/BrushMachine.reference.etab.json`
 - `spikes/TwinCAT_BaseFb_Inheritance.md`
 
-## Architektur-Nachtrag vom 2026-08-10
+## Architecture Addendum from 2026-08-10
 
-- Das Command-Enum-Literal heißt im Modell und Schema `enumValue`. Es ist ausdrücklich nicht das Laufzeitfeld `nCommandID`.
-- Generierte projektspezifische Status-DUTs betten die unveränderten öffentlichen Library-Status-DUTs ein und ergänzen nur `statusPayload`.
-- Für Application Units mit fachlichen Typed Commands werden `stUnit : ETAB.ST_ETAB_ApplicationUnitStatus` und `stOperation : ETAB.ST_ETAB_CommandStatus` getrennt geführt.
-- Die Quellen unter `ET_AutomationBase_v0.1.0.3` wurden für diesen Nachtrag nicht verändert.
+- The command enum literal is named `enumValue` in the model and schema. It is explicitly not the runtime field `nCommandID`.
+- Generated project-specific status DUTs embed the unchanged public library status DUTs and add only `statusPayload`.
+- For Application Units with domain-specific typed commands, `stUnit : ETAB.ST_ETAB_ApplicationUnitStatus` and `stOperation : ETAB.ST_ETAB_CommandStatus` are maintained separately.
+- The sources under `ET_AutomationBase_v0.1.0.3` were not modified for this addendum.
 
-## Referenzinventur
+## Reference Inventory
 
-Statisch geprüft wurden:
+The following were reviewed statically:
 
-- öffentliche ApplicationUnit-/CommandUnit-Verträge,
-- RecipeManager-Verträge,
-- MachineLink-Verträge und Bridge-Typen,
-- FANUC-Bausteine zur Abgrenzung des MVP,
+- public ApplicationUnit/CommandUnit contracts,
+- RecipeManager contracts,
+- MachineLink contracts and bridge types,
+- FANUC components to delimit the MVP,
 - `FB_BM_Application`,
-- Master-, Motion-, Workpiece- und ProcessUnit,
-- ProcessCycle und CommandBroker,
-- fachliche Command-Enums sowie Request-/Statusverträge.
+- Master, Motion, Workpiece, and Process units,
+- ProcessCycle and CommandBroker,
+- domain-specific command enums and request/status contracts.
 
-## JSON-Schema-Prüfung
+## JSON Schema Validation
 
 Validator:
 
 - JSON Schema Draft 2020-12
-- Python-Paket `jsonschema` mit `Draft202012Validator`
-- UUID-Formatprüfung aktiviert
+- Python package `jsonschema` with `Draft202012Validator`
+- UUID format validation enabled
 
-Ergebnis:
+Result:
 
 ```text
 VALID
 ```
 
-## Semantikprüfung des Referenzmodells
+## Semantic Validation of the Reference Model
 
-Geprüfte Modellwerte:
+Validated model values:
 
-| Wert | Ergebnis |
+| Value | Result |
 |---|---:|
 | Nodes | 7 |
-| Beziehungen | 12 |
-| persistente IDs insgesamt | 102 |
-| generierbare Artefaktnamen | 14 |
-| `contains`-Parentbeziehungen | 4 |
+| Relationships | 12 |
+| Total persistent IDs | 102 |
+| Generatable artifact names | 14 |
+| `contains` parent relationships | 4 |
 
-Geprüfte Regeln:
+Validated rules:
 
-- alle IDs eindeutig,
-- alle Relation-Endpunkte vorhanden,
-- keine Selbstbeziehungen,
-- Command-Namen und `enumValue`-Werte je Node eindeutig,
-- `NoAction = 0` für generierte Command-Enums,
-- gültige Arraygrenzen,
-- Layouteinträge referenzieren existierende Nodes,
-- höchstens ein Parent je Node,
-- keine `contains`-Zyklen,
-- Relationstypen passen zum Ziel-Node,
-- implizite Request-Felder nicht als Payload dupliziert,
-- Request-DUT wird nur zusammen mit Command-Enum erzeugt,
-- keine Kollision generierter Artefaktnamen,
-- keine Kollision projektspezifischer Statusfelder mit reservierten Library-Statusfeldern.
+- all IDs are unique,
+- all relationship endpoints exist,
+- no self-relations,
+- command names and `enumValue` values are unique within each node,
+- `NoAction = 0` for generated command enums,
+- valid array bounds,
+- layout entries reference existing nodes,
+- at most one parent per node,
+- no `contains` cycles,
+- relationship types match the target node,
+- implicit request fields are not duplicated as payload,
+- a request DUT is generated only together with a command enum,
+- no collisions among generated artifact names,
+- no collisions between project-specific status fields and reserved library-status fields.
 
-Ergebnis:
+Result:
 
 ```text
 EXTENDED_SEMANTIC_CHECKS_VALID
 ```
 
-## Abnahme gegen Phase-0-Kriterien
+## Acceptance Against Phase 0 Criteria
 
-- [x] aktueller öffentlicher ETAB-Stand katalogisiert
-- [x] Projektmodell strukturell definiert
-- [x] semantische Zusatzregeln definiert
-- [x] JSON-Schema v0.1 gültig
-- [x] BrushMachine-Referenzmodell schemafähig
-- [x] Namensregeln verbindlich
-- [x] Modell- und TwinCAT-ID-Regeln verbindlich
-- [x] Generator-/User-Eigentumsgrenze verbindlich
-- [x] Beispiel-Units klassifiziert
-- [x] Safety-, IO- und Prozessimplementierung außerhalb der Generierung gehalten
-- [x] `enumValue` und Laufzeit-`nCommandID` eindeutig getrennt
-- [x] Statusaggregation ohne Library-Änderung festgelegt
-- [x] Basis-FB-Vererbung und Hook-Überschreibung compilerseitig bestätigt
+- [x] current public ETAB state cataloged
+- [x] project model structurally defined
+- [x] additional semantic rules defined
+- [x] JSON schema v0.1 valid
+- [x] BrushMachine reference model conforms to the schema
+- [x] naming rules established as binding
+- [x] model and TwinCAT ID rules established as binding
+- [x] generator/user ownership boundary established as binding
+- [x] example units classified
+- [x] safety, I/O, and process implementations kept outside generation
+- [x] `enumValue` clearly distinguished from runtime `nCommandID`
+- [x] status aggregation defined without a library change
+- [x] base-FB inheritance and hook override confirmed at compile time
 
-## TwinCAT-Compile-Spike
+## TwinCAT Compile Spike
 
-Compile-Host:
+Compile host:
 
 - `AutomationBase_Beispiel.sln`
-- Konfiguration `Release | TwinCAT RT (x64)`
-- drei nicht instanziierte POUs unter `POUs/Spikes/ETABEngineering/`
+- configuration `Release | TwinCAT RT (x64)`
+- three non-instantiated POUs under `POUs/Spikes/ETABEngineering/`
 
-Ausführung über die lokale Beckhoff XAE-DTE-Automation:
+Execution through the local Beckhoff XAE DTE automation:
 
 ```text
 TcXaeShell.DTE.15.0
@@ -118,14 +118,14 @@ LastBuildInfo=0
 COMPILE_SUCCESS
 ```
 
-Der Compile bestätigt die gültige Kette `FB_ETABENG_UserUnit -> FB_ETABENG_GeneratedUnitBase -> ETAB.FB_ETAB_ApplicationUnit`, geerbte Ein-/Ausgänge und den überschreibbaren geschützten Hook `OnExecuteOperation`.
+The compile confirms the valid `FB_ETABENG_UserUnit -> FB_ETABENG_GeneratedUnitBase -> ETAB.FB_ETAB_ApplicationUnit` chain, inherited inputs and outputs, and the overridable protected `OnExecuteOperation` hook.
 
-## Nicht nachgewiesen
+## Not Demonstrated
 
-- kein Generatorlauf,
-- keine durch einen Generator erzeugten `.TcPOU`-/`.TcDUT`-Dateien; die drei Spike-POUs sind bewusst handgeschriebene Testartefakte,
-- kein Online-/Runtime-Nachweis des Spike-Testtreibers,
-- keine Simulation,
-- keine Maschinenvalidierung.
+- no generator run,
+- no `.TcPOU`/`.TcDUT` files produced by a generator; the three spike POUs are deliberately handwritten test artifacts,
+- no online/runtime evidence for the spike test driver,
+- no simulation,
+- no machine validation.
 
-Diese Nachweise gehören in spätere Phasen und werden durch die Phase-0-Prüfungen nicht ersetzt.
+These forms of evidence belong to later phases and are not replaced by the Phase 0 validations.

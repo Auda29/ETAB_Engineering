@@ -1,152 +1,152 @@
-# Generierungsvertrag v0.1
+# Generation Contract v0.1
 
-## 1. Zweck
+## 1. Purpose
 
-Dieser Vertrag definiert die Schreib- und Eigentumsgrenzen des Generators. Er ist seit Phase 0 verbindlich, damit Editor und Generator keine widersprüchlichen Annahmen entwickeln.
+This contract defines the write and ownership boundaries of the generator. It has been binding since Phase 0 so that the editor and generator do not develop conflicting assumptions.
 
-## 2. Eigentumsbereiche
+## 2. Ownership Areas
 
-### Generatorbereich
+### Generator-Owned Area
 
-Standardpfad:
+Default path:
 
 ```text
 Generated/
 ```
 
-Nur Dateien, die im letzten gültigen Manifest dem aktuellen Projekt und einer Modell-ID zugeordnet sind, gelten als generatorverwaltet.
+Only files assigned to the current project and a model ID in the last valid manifest are considered generator-managed.
 
-### Benutzerbereich
+### User-Owned Area
 
-Standardpfad:
+Default path:
 
 ```text
 Application/
 ```
 
-Der Generator verändert oder löscht dort keine bestehende Datei.
+The generator does not modify or delete any existing file there.
 
-Optional darf ein User-Startgerüst nur erzeugt werden, wenn:
+An initial user scaffold may optionally be generated only when:
 
-- der Benutzer dies ausdrücklich anfordert,
-- die konkrete Zieldatei noch nicht existiert,
-- keine Namenskollision vorliegt.
+- the user explicitly requests it,
+- the specific target file does not yet exist,
+- no naming collision exists.
 
-Standardmäßig ist die Erzeugung von User-Startgerüsten deaktiviert.
+Generation of initial user scaffolds is disabled by default.
 
 ## 3. Manifest
 
-`etab-generation-manifest.json` enthält mindestens:
+`etab-generation-manifest.json` contains at least:
 
-- Manifest-Version,
-- Generator-Version,
-- Schema-Version,
-- Projekt-ID,
-- semantischen Modell-Hash ohne Layout,
-- je Artefakt Modell-ID, Artefaktart, TwinCAT-GUID, relativen Pfad und Inhalts-Hash.
+- manifest version,
+- generator version,
+- schema version,
+- project ID,
+- semantic model hash excluding layout,
+- model ID, artifact kind, TwinCAT GUID, relative path, and content hash for each artifact.
 
-Das Manifest wird erst geschrieben, wenn alle vorgesehenen Ausgabedateien erfolgreich erzeugt wurden.
+The manifest is written only after all intended output files have been generated successfully.
 
-## 4. Ablauf einer Generierung
+## 4. Generation Process
 
-1. Projektdatei strukturell validieren.
-2. Semantische Regeln validieren.
-3. Zielpfade absolut auflösen und gegen die erlaubten Wurzeln prüfen.
-4. Vorhandenes Manifest lesen.
-5. Aktuelle generatorverwaltete Dateien gegen ihre alten Hashes prüfen.
-6. Alle neuen Inhalte im Speicher erzeugen.
-7. Plan mit `create`, `update`, `rename`, `delete`, `unchanged` und `conflict` bilden.
-8. Änderungsvorschau ausgeben.
-9. Bei Konflikten ohne Schreiben abbrechen.
-10. Erst nach explizitem Generate-Befehl schreiben.
-11. Zielpfade, Reparse Points, Zielbelegung und erwartete Alt-Hashes unmittelbar vor dem Schreiben erneut prüfen.
-12. Neue Inhalte in einem UUID-basierten Staging-Verzeichnis innerhalb von `Generated/` vorbereiten.
-13. Zu ändernde oder zu löschende verwaltete Dateien in einem separaten Transaktionsverzeichnis sichern.
-14. Nur die konkret geplanten `create`-, `update`-, `rename`- und `delete`-Operationen ausführen.
-15. Neues Manifest zuletzt schreiben.
-16. Transaktionsverzeichnisse erst nach erneuter Pfad- und Reparse-Point-Prüfung entfernen.
-17. Bei einem Schreibfehler bereits geschriebene Ziele entfernen und gesicherte Dateien einzeln zurückspielen.
+1. Validate the project file structurally.
+2. Validate semantic rules.
+3. Resolve target paths to absolute paths and verify them against the permitted roots.
+4. Read the existing manifest.
+5. Verify current generator-managed files against their previous hashes.
+6. Generate all new content in memory.
+7. Build a plan containing `create`, `update`, `rename`, `delete`, `unchanged`, and `conflict` operations.
+8. Output the change preview.
+9. Abort without writing if conflicts exist.
+10. Write only after an explicit generate command.
+11. Immediately before writing, revalidate target paths, reparse points, target occupancy, and expected previous hashes.
+12. Prepare new content in a UUID-based staging directory within `Generated/`.
+13. Back up managed files to be modified or deleted in a separate transaction directory.
+14. Execute only the specifically planned `create`, `update`, `rename`, and `delete` operations.
+15. Write the new manifest last.
+16. Remove transaction directories only after another path and reparse-point validation.
+17. If a write fails, remove targets already written and restore backed-up files individually.
 
-## 5. Konfliktregeln
+## 5. Conflict Rules
 
-Ein Konflikt liegt mindestens vor, wenn:
+A conflict exists at least when:
 
-- eine generierte Datei seit dem letzten Manifest manuell verändert wurde,
-- ein Zielpfad durch eine nicht manifestierte Datei belegt ist,
-- zwei Modellobjekte denselben Zielpfad erzeugen,
-- eine User-Datei umbenannt, überschrieben oder gelöscht werden müsste,
-- die Projekt- oder Ausgabewurzel nicht eindeutig aufgelöst werden kann,
-- ein Zielpfad einen symbolischen Link, Junction oder anderen Reparse Point durchläuft,
-- eine verwaltete Datei nach der Planung verändert wurde oder ein freies Ziel inzwischen belegt ist.
+- a generated file has been modified manually since the last manifest,
+- a target path is occupied by a file not recorded in the manifest,
+- two model objects produce the same target path,
+- a user file would have to be renamed, overwritten, or deleted,
+- the project or output root cannot be resolved unambiguously,
+- a target path traverses a symbolic link, junction, or other reparse point,
+- a managed file changed after planning or a previously free target is now occupied.
 
-Bei Konflikten wird nicht automatisch überschrieben, umbenannt oder gelöscht.
+Conflicts are never overwritten, renamed, or deleted automatically.
 
-## 6. Umbenennen
+## 6. Renaming
 
-- Modell-ID bleibt erhalten.
-- TwinCAT-GUID bleibt erhalten.
-- neuer Zielname wird aus den aktuellen Namensregeln berechnet.
-- alter Pfad wird nur entfernt, wenn er im Manifest steht, unverändert ist und innerhalb von `Generated/` liegt.
-- Vorschau weist die Operation als `rename` aus.
+- The model ID is retained.
+- The TwinCAT GUID is retained.
+- The new target name is calculated from the current naming rules.
+- The old path is removed only if it is present in the manifest, unchanged, and within `Generated/`.
+- The preview reports the operation as `rename`.
 
-## 7. Löschen
+## 7. Deletion
 
-- gelöscht werden ausschließlich konkrete, manifestierte Dateien,
-- der Generator verwendet keine rekursiven Globs zur Zielermittlung,
-- der aufgelöste Pfad muss innerhalb der konfigurierten Generatorwurzel liegen,
-- veränderte Dateien werden als Konflikt behalten,
-- User-Dateien werden nie automatisch gelöscht.
+- Only specific, manifested files are deleted.
+- The generator does not use recursive globs to determine targets.
+- The resolved path must be within the configured generator root.
+- Modified files are retained and reported as conflicts.
+- User files are never deleted automatically.
 
-## 8. Transaktionssicherheit
+## 8. Transaction Safety
 
-Staging und Backup liegen in eindeutig benannten UUID-Unterordnern der konfigurierten Generatorwurzel. Der Generator löst jeden Quell-, Ziel- und Transaktionspfad absolut auf und prüft ihn erneut gegen diese Wurzel. Rekursive Bereinigungen werden abgebrochen, sobald ein Reparse Point erkannt wird.
+Staging and backup data reside in uniquely named UUID subdirectories of the configured generator root. The generator resolves every source, target, and transaction path to an absolute path and revalidates it against this root. Recursive cleanup is aborted as soon as a reparse point is detected.
 
-Scheitert eine Dateioperation, wird der bisherige Stand zurückgesichert. Kann eine einzelne Sicherung nicht an ihren ursprünglichen Pfad zurückgespielt werden, wird dieses Backup nicht entfernt. Der Lauf meldet die unvollständige Rücksicherung und den verbliebenen Wiederherstellungspfad als Fehler.
+If a file operation fails, the previous state is restored. If an individual backup cannot be restored to its original path, that backup is not removed. The run reports the incomplete restoration and remaining recovery path as an error.
 
-## 9. TwinCAT-Projektdatei
+## 9. TwinCAT Project File
 
-Die Bearbeitung einer `.plcproj` beginnt erst in Phase 3.
+Modification of a `.plcproj` file begins only in Phase 3.
 
-Dann gelten zusätzlich:
+The following additional rules then apply:
 
-- vorhandene, nicht verwaltete Compile-Einträge bleiben unverändert,
-- der Generator verwaltet ausschließlich die von ihm manifestierten Einträge,
-- Library-Referenzen werden nicht global neu sortiert oder ersetzt,
-- vor dem Schreiben wird eine XML-Strukturprüfung durchgeführt,
-- nach dem Schreiben ist ein echter XAE-Compile ein eigener Abnahmeschritt.
+- existing unmanaged compile entries remain unchanged,
+- the generator manages only entries recorded in its manifest,
+- library references are not globally reordered or replaced,
+- an XML structural validation is performed before writing,
+- a real XAE compile is a separate acceptance step after writing.
 
-## 10. Ausgabeattribute
+## 10. Output Attributes
 
-Generierte PLC-Objekte erhalten einen klaren Hinweis im ST-Quellbereich, beispielsweise:
+Generated PLC objects contain a clear notice in the ST source area, for example:
 
 ```iecst
 (* <auto-generated by ETAB Engineering; source-id: ...> *)
 ```
 
-Wo TwinCAT-Attribute sinnvoll sind, kann zusätzlich `{attribute 'TcGenerated'}` verwendet werden. Ein Attribut ersetzt nicht die Manifest- und Hash-Prüfung.
+Where TwinCAT attributes are useful, `{attribute 'TcGenerated'}` may also be used. An attribute does not replace manifest and hash validation.
 
-## 11. Determinismus
+## 11. Determinism
 
-Nicht in die SPS-Ausgabe einfließen dürfen:
+The following must not affect PLC output:
 
-- Zeitstempel,
-- Benutzername,
-- absoluter Workspace-Pfad,
-- Canvas-Positionen,
-- aktuelle Rechner- oder XAE-Sitzung.
+- timestamps,
+- user name,
+- absolute workspace path,
+- canvas positions,
+- current machine or XAE session.
 
-Zeilenenden und Einrückung werden generatorweit festgelegt. Die gleiche Modellversion muss auf unterschiedlichen Rechnern dieselben Inhalte und TwinCAT-GUIDs erzeugen.
+Line endings and indentation are defined globally for the generator. The same model version must produce identical content and TwinCAT GUIDs on different machines.
 
-## 12. Validierungsnachweise
+## 12. Validation Evidence
 
-Die Nachweise werden getrennt berichtet:
+Evidence is reported separately:
 
-1. JSON-Schema erfolgreich.
-2. Semantische Modellvalidierung erfolgreich.
-3. TwinCAT-XML strukturell erfolgreich.
-4. TwinCAT-Projekt lässt sich öffnen.
-5. TwinCAT-Compile erfolgreich.
-6. optionale Simulation erfolgreich.
-7. optionale Maschinenvalidierung erfolgreich.
+1. JSON schema validation successful.
+2. Semantic model validation successful.
+3. TwinCAT XML structurally valid.
+4. TwinCAT project opens successfully.
+5. TwinCAT compile successful.
+6. Optional simulation successful.
+7. Optional machine validation successful.
 
-Kein früherer Nachweis ersetzt einen späteren.
+No earlier level of evidence substitutes for a later one.

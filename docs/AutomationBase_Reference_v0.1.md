@@ -1,59 +1,59 @@
-# AutomationBase-Referenzklassifikation v0.1
+# AutomationBase Reference Classification v0.1
 
-## 1. Zweck und Grenze
+## 1. Purpose and Boundary
 
-Das Projekt `AutomationBase Beispiel` dient als Golden Sample für das Modell v0.1. Diese Klassifikation beschreibt Struktur, Verantwortung und öffentliche Verträge. Sie übernimmt keine Prozessimplementierung in den Generator.
+The `AutomationBase Beispiel` project serves as the golden sample for model v0.1. This classification describes structure, responsibilities, and public contracts. It does not incorporate process implementations into the generator.
 
-Prüfstand: statische Quellprüfung im Workspace. Kein TwinCAT-Compile, keine Simulation und keine Maschinenvalidierung wurden für dieses Dokument ausgeführt.
+Validation basis: static source review in the workspace. No TwinCAT compile, simulation, or machine validation was performed for this document.
 
-## 2. Logische Struktur
+## 2. Logical Structure
 
 ```text
 FB_BM_Application                         Composition Root
 ├─ FB_BM_Machine                         Master Application Unit
-│  ├─ FB_BM_MotionUnit                   Subunit / Achskommandos
-│  ├─ FB_BM_WorkpieceUnit                Subunit / Werkstückhandling
-│  ├─ FB_BM_ProcessUnit                  Subunit / Bürsten und Absaugung
-│  └─ FB_BM_ProcessCycle                 Ablaufkoordinator
-├─ FB_BM_RecipeService                   Recipe-Adapter
-└─ FB_BM_CellInterface                   Machine-Link-Adapter
+│  ├─ FB_BM_MotionUnit                   Subunit / Axis Commands
+│  ├─ FB_BM_WorkpieceUnit                Subunit / Workpiece Handling
+│  ├─ FB_BM_ProcessUnit                  Subunit / Brushes and Extraction
+│  └─ FB_BM_ProcessCycle                 Sequence Coordinator
+├─ FB_BM_RecipeService                   Recipe Adapter
+└─ FB_BM_CellInterface                   Machine-Link Adapter
 ```
 
-Im Quellcode werden Motion-, Workpiece- und ProcessUnit über `rUnit.ipMasterUnit` an `FB_BM_Machine` gebunden. `FB_BM_ProcessCycle` erzeugt typisierte Requests für die drei fachlichen Units.
+In the source code, MotionUnit, WorkpieceUnit, and ProcessUnit are bound to `FB_BM_Machine` through `rUnit.ipMasterUnit`. `FB_BM_ProcessCycle` creates typed requests for the three functional units.
 
-## 3. Node-Klassifikation
+## 3. Node Classification
 
 ### `FB_BM_Application`
 
-- Klassifikation: Composition Root.
-- ETAB-Kind: keiner.
-- Aufgabe: Aufrufreihenfolge, Providerwahl, Request-Arbitration, Statusaggregation und Ausgabeübergabe.
-- Generatorgrenze: kein automatisch generierter Ablaufkörper.
-- Modellbehandlung: Projektwurzel und Quelle des visuellen Gesamtlayouts.
+- Classification: composition root.
+- ETAB kind: none.
+- Responsibility: call order, provider selection, request arbitration, status aggregation, and output transfer.
+- Generator boundary: no automatically generated sequence body.
+- Model treatment: project root and source of the overall visual layout.
 
 ### `FB_BM_Machine`
 
-- Klassifikation: Master Application Unit.
-- ETAB-Kind: `applicationUnit`.
-- Rolle: `machine`.
-- Basis: `EXTENDS ETAB.FB_ETAB_ApplicationUnit`.
-- enthält die drei fachlichen Subunits und den Ablaufkoordinator.
-- projektspezifischer Status: Ready-for-cycle, Recovery-Anforderung, letzter Mode und State.
+- Classification: master application unit.
+- ETAB kind: `applicationUnit`.
+- Role: `machine`.
+- Base: `EXTENDS ETAB.FB_ETAB_ApplicationUnit`.
+- Contains the three functional subunits and the sequence coordinator.
+- Project-specific status: ready for cycle, recovery request, last mode, and last state.
 
 ### `FB_BM_MotionUnit`
 
-- Klassifikation: Typed Application Unit.
-- ETAB-Kind: `applicationUnit`.
-- Rolle: `motion`.
-- exklusive Verantwortung: sechs Achskommandos.
-- verwendet intern `ETAB.FB_ETAB_CommandUnit`.
-- alle fachlichen Kommandos außer `NoAction` werden auf `E_ETAB_UnitCommand.User` abgebildet.
+- Classification: typed application unit.
+- ETAB kind: `applicationUnit`.
+- Role: `motion`.
+- Exclusive responsibility: six axis commands.
+- Internally uses `ETAB.FB_ETAB_CommandUnit`.
+- All functional commands except `NoAction` are mapped to `E_ETAB_UnitCommand.User`.
 
-Request-Payload:
+Request payload:
 
 - `stJobData : ST_BM_JobData`
 
-Status-Payload:
+Status payload:
 
 - `bAllHomed : BOOL`
 - `bAllSafe : BOOL`
@@ -63,21 +63,21 @@ Status-Payload:
 
 ### `FB_BM_WorkpieceUnit`
 
-- Klassifikation: Typed Application Unit.
-- ETAB-Kind: `applicationUnit`.
-- Rolle: `workpiece`.
-- exklusive Verantwortung: Tor, Vakuum, Ausblasen und Laser.
-- verwendet intern `ETAB.FB_ETAB_CommandUnit`.
-- alle fachlichen Kommandos außer `NoAction` werden auf `E_ETAB_UnitCommand.User` abgebildet.
+- Classification: typed application unit.
+- ETAB kind: `applicationUnit`.
+- Role: `workpiece`.
+- Exclusive responsibility: door, vacuum, blow-off, and laser.
+- Internally uses `ETAB.FB_ETAB_CommandUnit`.
+- All functional commands except `NoAction` are mapped to `E_ETAB_UnitCommand.User`.
 
-Request-Payload:
+Request payload:
 
 - `aVacuumZone : ARRAY[1..13] OF BOOL`
 - `fVacuumMinimum : LREAL`
 - `tVacuumTimeout : TIME`
 - `tBlowTime : TIME`
 
-Status-Payload:
+Status payload:
 
 - `bDoorSafe : BOOL`
 - `bWorkpieceClamped : BOOL`
@@ -87,21 +87,21 @@ Status-Payload:
 
 ### `FB_BM_ProcessUnit`
 
-- Klassifikation: Typed Application Unit.
-- ETAB-Kind: `applicationUnit`.
-- Rolle: `process`.
-- exklusive Verantwortung: Bürsten und Absaugung.
-- verwendet intern `ETAB.FB_ETAB_CommandUnit`.
-- alle fachlichen Kommandos außer `NoAction` werden auf `E_ETAB_UnitCommand.User` abgebildet.
+- Classification: typed application unit.
+- ETAB kind: `applicationUnit`.
+- Role: `process`.
+- Exclusive responsibility: brushes and extraction.
+- Internally uses `ETAB.FB_ETAB_CommandUnit`.
+- All functional commands except `NoAction` are mapped to `E_ETAB_UnitCommand.User`.
 
-Request-Payload:
+Request payload:
 
 - `aBrushSpeed : ARRAY[1..3] OF LREAL`
 - `tBrushTimeout : TIME`
 - `tExhaustTimeout : TIME`
 - `tExhaustRunOn : TIME`
 
-Status-Payload:
+Status payload:
 
 - `bExhaustAvailable : BOOL`
 - `bSeamBrushesAtSpeed : BOOL`
@@ -110,32 +110,32 @@ Status-Payload:
 
 ### `FB_BM_ProcessCycle`
 
-- Klassifikation: Ablaufkoordinator.
-- ETAB-Kind: `commandUnit`.
-- Rolle: `orchestrator`.
-- verwendet `ETAB.FB_ETAB_CommandUnit`.
-- erzeugt Motion-, Workpiece- und ProcessRequests.
-- beobachtet die Command-Status der drei Units.
-- verwendet Rezept-, Job- und Interlockdaten.
-- besitzt kontrollierte Stop-, Abort- und Recovery-Pfade.
-- die Sequenzschritte bleiben vollständig handgeschrieben.
+- Classification: sequence coordinator.
+- ETAB kind: `commandUnit`.
+- Role: `orchestrator`.
+- Uses `ETAB.FB_ETAB_CommandUnit`.
+- Creates Motion, Workpiece, and Process requests.
+- Observes the command status of the three units.
+- Uses recipe, job, and interlock data.
+- Has controlled stop, abort, and recovery paths.
+- The sequence steps remain entirely handwritten.
 
 ### `FB_BM_CommandBroker`
 
-- Klassifikation: Projektmuster für Bedienkommando-Arbitration.
-- priorisiert Abort, Stop, Reset, Recover, Start, Home und Clear.
-- wird in v0.1 nicht als generischer ETAB-Node modelliert.
-- kann später als wiederverwendbares Editor-/Generator-Pattern bewertet werden.
+- Classification: project pattern for operator-command arbitration.
+- Prioritizes Abort, Stop, Reset, Recover, Start, Home, and Clear.
+- Is not modeled as a generic ETAB node in v0.1.
+- May later be evaluated as a reusable editor/generator pattern.
 
-### Rezept und Machine Link
+### Recipe and Machine Link
 
-- `FB_BM_RecipeService` wird als projektspezifischer Adapter um einen `recipeManager` betrachtet.
-- `FB_BM_CellInterface` wird als projektspezifischer Adapter um einen `machineLink` betrachtet.
-- Projekt-Datentypen, Hardwarebezug und Fachvalidierung bleiben Handcode.
+- `FB_BM_RecipeService` is treated as a project-specific adapter around a `recipeManager`.
+- `FB_BM_CellInterface` is treated as a project-specific adapter around a `machineLink`.
+- Project data types, hardware coupling, and domain validation remain handwritten.
 
-## 4. Beziehungen des Referenzmodells
+## 4. Relationships in the Reference Model
 
-| Quelle | Beziehung | Ziel |
+| Source | Relationship | Target |
 |---|---|---|
 | Machine | `contains` | MotionUnit |
 | Machine | `contains` | WorkpieceUnit |
@@ -150,28 +150,28 @@ Status-Payload:
 | ProcessCycle | `usesRecipe` | RecipeManager |
 | Machine | `usesLink` | CellLink |
 
-## 5. Generierbarer Anteil
+## 5. Generatable Portion
 
-- Command-Enums der fachlichen Units,
-- Request-DUTs einschließlich implizitem ETAB-Request-Kopf,
-- projektspezifische Status-DUTs,
-- Basisgerüste für ApplicationUnit und CommandUnit,
-- Instanz- und Beziehungsgerüste,
-- spätere Statusaggregation.
+- command enums for the functional units,
+- request DUTs including the implicit ETAB request header,
+- project-specific status DUTs,
+- base scaffolds for ApplicationUnit and CommandUnit,
+- instance and relationship scaffolds,
+- future status aggregation.
 
-## 6. Handgeschriebener Anteil
+## 6. Handwritten Portion
 
-- `FB_BM_Application`-Aufruf- und Arbitrationlogik,
-- komplette Sequenzlogik der Units,
-- `FB_BM_ProcessCycle`-Ablauf,
-- Safety- und Interlockauswertung,
-- Output-Arbitration,
-- IO-/Hardwareprovider,
-- Simulation,
-- Recovery- und sichere Stoppdetails,
-- fachliche Rezept- und Jobvalidierung.
+- call and arbitration logic in `FB_BM_Application`,
+- complete sequence logic of the units,
+- the `FB_BM_ProcessCycle` sequence,
+- safety and interlock evaluation,
+- output arbitration,
+- I/O and hardware providers,
+- simulation,
+- recovery and safe-stop details,
+- domain-specific recipe and job validation.
 
-## 7. Quellpfade
+## 7. Source Paths
 
 - `../../AutomationBase Beispiel/AutomationBase_Beispiel/AutomationBase_Beispiel/AutomationBase_Beispiel/POUs/Application/FB_BM_Application.TcPOU`
 - `../../AutomationBase Beispiel/AutomationBase_Beispiel/AutomationBase_Beispiel/AutomationBase_Beispiel/POUs/Units/FB_BM_Machine.TcPOU`

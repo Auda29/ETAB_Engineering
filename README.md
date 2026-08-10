@@ -1,18 +1,18 @@
 # ETAB Engineering v0.1.0.0
 
-Visuelles Engineering-Werkzeug zur Beschreibung einer logischen Maschine und zur späteren Erzeugung eines TwinCAT-SPS-Templates auf Basis der `ET_AutomationBase`-Library.
+Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
-## Aktueller Stand
+## Current Status
 
-Phase 0 – Spezifikation: abgeschlossen am 2026-08-07, Architektur-Nachtrag validiert am 2026-08-10. Phase 1 – Headless Generator-Kern: abgeschlossen am 2026-08-10.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core: completed on 2026-08-10.
 
-Modell, Regeln, Generierungsgrenze und Referenzklassifikation sind festgelegt und am BrushMachine-Referenzmodell geprüft. `enumValue`, der projektspezifische Statusvertrag und das Basis-FB-Vererbungsmuster sind verbindlich geklärt. Der Basis-FB-Spike kompiliert im BrushMachine-Projekt erfolgreich.
+The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
-Der Headless-Kern ist als .NET-Solution umgesetzt. Er lädt `*.etab.json`, validiert JSON Schema Draft 2020-12 und die projektspezifischen Semantikregeln. Die CLI-Befehle `validate`, `preview`, `check` und `generate` stehen zur Verfügung. Der Generator rendert Command-Enums, Request- und Status-DUTs sowie schlanke ApplicationUnit-Basis-FBs, verwaltet stabile TwinCAT-GUIDs und Inhalts-Hashes im Manifest und führt konfliktfreie Änderungen transaktional ausschließlich im konfigurierten Generatorbereich aus.
+The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, and lean ApplicationUnit base FBs; manages stable TwinCAT GUIDs and content hashes in the manifest; and applies conflict-free changes transactionally and exclusively within the configured generator-owned area.
 
-Noch nicht enthalten sind der visuelle Editor, GVL-/PRG-Erzeugung und die `.plcproj`-Integration. Der echte Compile der generierten Projektartefakte ist deshalb Teil von Phase 3; das zugrunde liegende Basis-FB-Vererbungs- und Hook-Muster wurde bereits in Phase 0 erfolgreich in TwinCAT kompiliert.
+The visual editor, GVL/PRG generation, and `.plcproj` integration are not yet included. A real compile of the generated project artifacts is therefore part of Phase 3; the underlying base-FB inheritance and hook pattern was already compiled successfully in TwinCAT during Phase 0.
 
-## Schnellstart
+## Quick Start
 
 ```powershell
 dotnet build .\ETAB.Engineering.sln
@@ -23,44 +23,44 @@ dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- g
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root .
 ```
 
-`generate` ist der explizite Schreibbefehl. Er bricht bei Konflikten vor jedem Schreibzugriff ab und verändert keine Datei außerhalb des im Modell konfigurierten Generatorbereichs.
+`generate` is the explicit write command. It aborts on conflicts before performing any write and does not modify files outside the generator-owned area configured in the model.
 
-## Dokumente
+## Documents
 
-- [Gesamtplan](ETAB_Engineering_Plan.md)
-- [ETAB-Bausteinkatalog v0.1](docs/Component_Catalog_v0.1.md)
-- [Modellspezifikation v0.1](docs/Model_Specification_v0.1.md)
-- [Generierungsvertrag v0.1](docs/Generation_Contract_v0.1.md)
-- [AutomationBase-Referenzklassifikation](docs/AutomationBase_Reference_v0.1.md)
-- [Phase-0-Validierungsprotokoll](docs/Phase0_Validation.md)
-- [Phase-1A-Validierungsprotokoll](docs/Phase1A_Validation.md)
-- [Phase-1B-Validierungsprotokoll](docs/Phase1B_Validation.md)
-- [Phase-1C-Validierungsprotokoll](docs/Phase1C_Validation.md)
-- [Phase-1-Abschlussvalidierung](docs/Phase1_Validation.md)
-- [TwinCAT-Spike Basis-FB-Vererbung](spikes/TwinCAT_BaseFb_Inheritance.md)
-- [JSON-Schema v0.1](schemas/etab-project.schema.json)
-- [BrushMachine-Referenzmodell](examples/BrushMachine.reference.etab.json)
+- [Overall Plan](ETAB_Engineering_Plan.md)
+- [ETAB Component Catalog v0.1](docs/Component_Catalog_v0.1.md)
+- [Model Specification v0.1](docs/Model_Specification_v0.1.md)
+- [Generation Contract v0.1](docs/Generation_Contract_v0.1.md)
+- [AutomationBase Reference Classification](docs/AutomationBase_Reference_v0.1.md)
+- [Phase 0 Validation Record](docs/Phase0_Validation.md)
+- [Phase 1A Validation Record](docs/Phase1A_Validation.md)
+- [Phase 1B Validation Record](docs/Phase1B_Validation.md)
+- [Phase 1C Validation Record](docs/Phase1C_Validation.md)
+- [Phase 1 Completion Validation](docs/Phase1_Validation.md)
+- [TwinCAT Base-FB Inheritance Spike](spikes/TwinCAT_BaseFb_Inheritance.md)
+- [JSON Schema v0.1](schemas/etab-project.schema.json)
+- [BrushMachine Reference Model](examples/BrushMachine.reference.etab.json)
 
-## Phase-0-Abnahme
+## Phase 0 Acceptance
 
-Phase 0 ist abgeschlossen, wenn:
+Phase 0 is complete when:
 
-- der Bausteinkatalog den aktuellen öffentlichen ETAB-Stand korrekt klassifiziert,
-- Struktur und Semantik des Projektmodells definiert sind,
-- das Referenzmodell gegen das JSON-Schema validiert,
-- Namens-, ID- und Regenerationsregeln verbindlich dokumentiert sind,
-- der Bürstautomat ohne Übernahme seiner Prozessimplementierung beschreibbar ist.
+- the component catalog correctly classifies the current public ETAB state,
+- the structure and semantics of the project model are defined,
+- the reference model validates against the JSON schema,
+- naming, ID, and regeneration rules are documented as binding,
+- the brush machine can be described without incorporating its process implementation.
 
-Alle Kriterien wurden im [Validierungsprotokoll](docs/Phase0_Validation.md) nachgewiesen.
+All criteria are demonstrated in the [validation record](docs/Phase0_Validation.md).
 
-## Phase-1-Abnahme
+## Phase 1 Acceptance
 
-Phase 1 ist abgeschlossen, wenn:
+Phase 1 is complete when:
 
-- gleiche Eingaben byte-identische SPS-Artefakte erzeugen,
-- doppelte stabile Command-IDs und `enumValue`-Werte abgewiesen werden,
-- ausschließlich der konfigurierte Generatorbereich verändert wird,
-- geschriebene TwinCAT-XML-Artefakte strukturell gültig sind,
-- Konflikte den gesamten Schreibablauf blockieren und ein Schreibfehler zurückgerollt wird.
+- identical inputs produce byte-identical PLC artifacts,
+- duplicate stable command IDs and `enumValue` values are rejected,
+- only the configured generator-owned area is modified,
+- written TwinCAT XML artifacts are structurally valid,
+- conflicts block the entire write operation and a write failure is rolled back.
 
-Alle Kriterien wurden in der [Phase-1-Abschlussvalidierung](docs/Phase1_Validation.md) nachgewiesen.
+All criteria are demonstrated in the [Phase 1 completion validation](docs/Phase1_Validation.md).

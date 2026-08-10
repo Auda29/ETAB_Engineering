@@ -1,14 +1,14 @@
-# ETAB-Projektmodell – Spezifikation v0.1
+# ETAB Project Model – Specification v0.1
 
-## 1. Geltungsbereich
+## 1. Scope
 
-Diese Spezifikation definiert das persistente Projektmodell für den ersten ETAB-Engineering-MVP. Die normative Maschinenstruktur wird in einer JSON-Datei mit der Endung `.etab.json` gespeichert.
+This specification defines the persistent project model for the first ETAB Engineering MVP. The normative machine structure is stored in a JSON file with the `.etab.json` extension.
 
-Das Modell beschreibt SPS-Verträge und logische Beziehungen. Es beschreibt keine ausführbare Safety-, Bewegungs- oder Prozesslogik.
+The model describes PLC contracts and logical relationships. It does not describe executable safety, motion, or process logic.
 
-Normative Strukturprüfung: `../schemas/etab-project.schema.json`.
+Normative structural validation: `../schemas/etab-project.schema.json`.
 
-## 2. Grundstruktur
+## 2. Basic Structure
 
 ```json
 {
@@ -20,140 +20,140 @@ Normative Strukturprüfung: `../schemas/etab-project.schema.json`.
 }
 ```
 
-### Bereiche
+### Sections
 
-- `project`: projektweite Namens-, Versions- und Ausgabeeinstellungen.
-- `nodes`: ETAB-Komponenten und projektspezifische Rollen.
-- `relations`: normative logische Verbindungen.
-- `layout`: ausschließlich visuelle Position und Größe.
+- `project`: project-wide naming, version, and output settings.
+- `nodes`: ETAB components and project-specific roles.
+- `relations`: normative logical connections.
+- `layout`: visual position and size only.
 
-Änderungen unter `layout` dürfen keine Änderung der SPS-Ausgabe verursachen.
+Changes under `layout` must not cause any change to the PLC output.
 
-## 3. Identitäten
+## 3. Identities
 
-### 3.1 Modell-ID
+### 3.1 Model ID
 
-- Jede persistente Entität besitzt eine UUID.
-- UUIDs werden beim Anlegen zufällig erzeugt und danach nicht mehr geändert.
-- Eine Umbenennung ändert keine Modell-ID.
-- IDs werden nicht aus Namen oder Positionen abgeleitet.
-- IDs werden im JSON kleingeschrieben gespeichert.
+- Every persistent entity has a UUID.
+- UUIDs are generated randomly when an entity is created and are not changed afterward.
+- Renaming does not change a model ID.
+- IDs are not derived from names or positions.
+- IDs are stored in lowercase in JSON.
 
-### 3.2 TwinCAT-Objekt-ID
+### 3.2 TwinCAT Object ID
 
-Die TwinCAT-GUID eines generierten Objekts wird deterministisch als UUID v5 aus folgenden Bestandteilen abgeleitet:
+The TwinCAT GUID of a generated object is derived deterministically as a UUID v5 from the following components:
 
-1. fester ETAB-Engineering-Generator-Namespace,
-2. Projekt-ID,
-3. Modell-ID,
-4. Artefaktart, beispielsweise `command-enum` oder `request-dut`.
+1. fixed ETAB Engineering generator namespace,
+2. project ID,
+3. model ID,
+4. artifact kind, for example `command-enum` or `request-dut`.
 
-Damit bleibt die TwinCAT-GUID bei Umbenennungen und auf unterschiedlichen Engineering-Rechnern stabil. Das Generierungsmanifest protokolliert die abgeleitete GUID, ist aber nicht deren einzige Quelle.
+This keeps the TwinCAT GUID stable across renames and on different engineering machines. The generation manifest records the derived GUID, but is not its only source.
 
-Fester UUID-v5-Namespace für ETAB Engineering v0.x:
+Fixed UUID v5 namespace for ETAB Engineering v0.x:
 
 ```text
 8d487292-cc21-4f2e-8c6e-3c4742e1d8a1
 ```
 
-Der zu hashende Name wird UTF-8-codiert und in dieser Form aufgebaut:
+The name to be hashed is UTF-8 encoded and constructed as follows:
 
 ```text
 <project-id>/<model-id>/<artifact-kind>
 ```
 
-## 4. Namen
+## 4. Names
 
 ### 4.1 `project.prefix`
 
-- Großbuchstaben und Ziffern,
-- beginnt mit einem Großbuchstaben,
-- zwei bis sechzehn Zeichen,
-- Beispiel: `BM`.
+- uppercase letters and digits,
+- starts with an uppercase letter,
+- two to sixteen characters,
+- example: `BM`.
 
-### 4.2 SPS-Namen
+### 4.2 PLC Names
 
-- IEC-Bezeichner ohne Leerzeichen,
-- beginnen mit Buchstabe oder Unterstrich,
-- enthalten nur Buchstaben, Ziffern und Unterstriche,
-- bevorzugt PascalCase für FBs und Typstämme.
+- IEC identifiers without spaces,
+- start with a letter or underscore,
+- contain only letters, digits, and underscores,
+- PascalCase is preferred for FBs and type stems.
 
-### 4.3 Node-Namen
+### 4.3 Node Names
 
-- `name`: Name des Funktionsbausteins ohne `FB_<Prefix>_`, beispielsweise `MotionUnit`.
-- `symbolStem`: Stamm für Command-, Request- und Status-DUT, beispielsweise `Motion`.
-- `displayName`: frei lesbarer Anzeigename.
-- `role`: semantische Projektrolle wie `machine`, `motion`, `workpiece`, `process` oder `orchestrator`.
+- `name`: function block name without `FB_<Prefix>_`, for example `MotionUnit`.
+- `symbolStem`: stem for the command, request, and status DUTs, for example `Motion`.
+- `displayName`: freely readable display name.
+- `role`: semantic project role such as `machine`, `motion`, `workpiece`, `process`, or `orchestrator`.
 
-### 4.4 Generierte Namen
+### 4.4 Generated Names
 
-Für Präfix `BM`, Node-Name `MotionUnit` und `symbolStem` `Motion`:
+For prefix `BM`, node name `MotionUnit`, and `symbolStem` `Motion`:
 
-| Artefakt | Name |
+| Artifact | Name |
 |---|---|
-| Command-Enum | `E_BM_MotionCommand` |
-| Request-DUT | `ST_BM_MotionRequest` |
-| Status-DUT | `ST_BM_MotionStatus` |
-| Basis-FB | `FB_BM_MotionUnitBase` |
-| Command-Router (geplant ab Phase 3) | `FB_BM_MotionCommandRouter` |
+| Command Enum | `E_BM_MotionCommand` |
+| Request DUT | `ST_BM_MotionRequest` |
+| Status DUT | `ST_BM_MotionStatus` |
+| Base FB | `FB_BM_MotionUnitBase` |
+| Command Router (planned for Phase 3 onward) | `FB_BM_MotionCommandRouter` |
 
-Namenskollisionen werden als Validierungsfehler behandelt.
+Naming collisions are treated as validation errors.
 
 ## 5. Nodes
 
-Gültige `kind`-Werte in v0.1:
+Valid `kind` values in v0.1:
 
 - `applicationUnit`
 - `commandUnit`
 - `recipeManager`
 - `machineLink`
 
-Spezialisierungen werden über `role` beschrieben und erzeugen keinen neuen Library-Basistyp.
+Specializations are described through `role` and do not create a new library base type.
 
-### 5.1 Generierungsoptionen
+### 5.1 Generation Options
 
-Jeder Node definiert explizit:
+Each node explicitly defines:
 
 - `commandEnum`
 - `requestType`
 - `statusType`
 - `baseFunctionBlock`
-- `instance` (im Modell gespeichert; Instanzerzeugung erst ab Phase 3)
+- `instance` (stored in the model; instance generation begins in Phase 3)
 
-Nicht sinnvolle Kombinationen werden semantisch abgewiesen. Ein `recipeManager` erzeugt beispielsweise im MVP kein projektspezifisches Command-Enum.
+Invalid combinations are rejected semantically. For example, a `recipeManager` does not generate a project-specific command enum in the MVP.
 
 ### 5.2 `applicationUnit`
 
-Kann folgende Einstellungen tragen:
+May contain the following settings:
 
-- Start-, Homing- und Stop-Modus,
-- Remote-Control-Verhalten,
-- Fehlerübernahme in den Unit-Fehlerhandler,
-- Startzustand und Reset-on-Start des internen Command Handlers.
+- start, homing, and stop mode,
+- remote-control behavior,
+- propagation of errors to the unit error handler,
+- initial state and reset-on-start behavior of the internal command handler.
 
 ### 5.3 `commandUnit`
 
-Kann Startzustand und Reset-on-Start konfigurieren. Die eigentliche Sequenzimplementierung ist nicht Bestandteil des Modells.
+May configure the initial state and reset-on-start behavior. The actual sequence implementation is not part of the model.
 
 ### 5.4 `recipeManager`
 
-Referenziert den projektspezifischen Rezeptdatentyp und beschreibt Datei-/XPath-Vorgaben. Pointer, Speichergröße und fachliche Validierung bleiben Projektcode.
+References the project-specific recipe data type and describes file/XPath settings. Pointers, memory size, and domain validation remain project code.
 
 ### 5.5 `machineLink`
 
-Beschreibt Bridge-Typ, Rolle, Watchdog und Protokolloptionen. Hardwareadressen bleiben außerhalb des Modells.
+Describes bridge type, role, watchdog, and protocol options. Hardware addresses remain outside the model.
 
-## 6. Kommandos
+## 6. Commands
 
-Ein Kommando enthält:
+A command contains:
 
-- stabile `id`,
+- stable `id`,
 - `name`,
-- numerischen `enumValue`,
-- lesbaren Namen und optionale Beschreibung,
-- Abbildung auf ein `ETAB.E_ETAB_UnitCommand`.
+- numeric `enumValue`,
+- readable name and optional description,
+- mapping to an `ETAB.E_ETAB_UnitCommand`.
 
-Gültige ETAB-Ziele:
+Valid ETAB targets:
 
 - `NoAction`
 - `Reset`
@@ -164,57 +164,57 @@ Gültige ETAB-Ziele:
 - `Clear`
 - `User`
 
-### Semantische Regeln
+### Semantic Rules
 
-- Stabile Command-`id` ist global eindeutig; `name` und `enumValue` sind innerhalb eines Nodes eindeutig.
-- Wenn `commandEnum = true`, existiert genau ein `NoAction` mit Wert `0`.
-- Projektspezifische Typed Commands werden in v0.1 grundsätzlich auf `User` abgebildet.
-- Eine direkte Abbildung auf `Stop` oder `Abort` ist nur für echte ETAB-Unit-Kommandos vorgesehen.
-- Numerische Werte werden bei der Generierung aufsteigend sortiert; bei Gleichstand ist das Modell ungültig.
+- The stable command `id` is globally unique; `name` and `enumValue` are unique within a node.
+- If `commandEnum = true`, exactly one `NoAction` with value `0` exists.
+- Project-specific typed commands are always mapped to `User` in v0.1.
+- Direct mapping to `Stop` or `Abort` is intended only for actual ETAB unit commands.
+- Numeric values are sorted in ascending order during generation; equal values make the model invalid.
 
-## 7. Request- und Status-Payload
+## 7. Request and Status Payload
 
-### 7.1 Impliziter Request-Kopf
+### 7.1 Implicit Request Header
 
-Bei `requestType = true` erzeugt der Generator automatisch:
+When `requestType = true`, the generator automatically creates:
 
 ```iecst
 bExecute   : BOOL;
-eCommand   : <generiertes Command-Enum>;
+eCommand   : <generated command enum>;
 nCommandID : UDINT;
 ```
 
-Diese Felder dürfen deshalb nicht noch einmal unter `requestPayload` definiert werden.
+These fields must therefore not be defined again under `requestPayload`.
 
-### 7.2 Generierter Statusvertrag
+### 7.2 Generated Status Contract
 
-Bei `statusType = true` erzeugt der Generator einen projektspezifischen Status-DUT. Er ändert oder dupliziert keine DUT-Definition der `ET_AutomationBase`-Library, sondern bindet deren öffentlichen Status als Feld ein und ergänzt ausschließlich die unter `statusPayload` beschriebenen Projektfelder.
+When `statusType = true`, the generator creates a project-specific status DUT. It neither changes nor duplicates any DUT definition from the `ET_AutomationBase` library; instead, it embeds the library's public status as a field and adds only the project fields described under `statusPayload`.
 
-Für eine `applicationUnit` lautet der feste Kopf:
+For an `applicationUnit`, the fixed header is:
 
 ```iecst
 stUnit : ETAB.ST_ETAB_ApplicationUnitStatus;
 ```
 
-Wenn die Unit zusätzlich ein projektspezifisches Command-Enum und einen Request-Vertrag besitzt, kommt der Status des fachlichen Kommandos getrennt hinzu:
+If the unit also has a project-specific command enum and request contract, the status of the domain-specific command is added separately:
 
 ```iecst
 stOperation : ETAB.ST_ETAB_CommandStatus;
 ```
 
-`stUnit.stCommand` bleibt der Lifecycle-/Unit-Command-Status der Library. `stOperation` gehört dagegen zum projektspezifischen Kommando wie `HomeAll`, `MeasureLength` oder `ParkAll`.
+`stUnit.stCommand` remains the library lifecycle/unit-command status. In contrast, `stOperation` belongs to a project-specific command such as `HomeAll`, `MeasureLength`, or `ParkAll`.
 
-Für die übrigen Node-Arten verwendet der Generator folgende feste Köpfe:
+For the other node kinds, the generator uses the following fixed headers:
 
-| Node-Art | eingebetteter Library-Status |
+| Node Kind | Embedded Library Status |
 |---|---|
 | `commandUnit` | `stCommand : ETAB.ST_ETAB_CommandStatus` |
 | `recipeManager` | `stRecipe : ETAB.ST_ETAB_RecipeStatus` |
 | `machineLink` | `stLink : ETAB.ST_ETAB_MachineLinkStatus` |
 
-Die Namen `stUnit`, `stOperation`, `stCommand`, `stRecipe` und `stLink` sind abhängig von der Node-Art reserviert und dürfen im `statusPayload` nicht erneut vorkommen.
+Depending on the node kind, the names `stUnit`, `stOperation`, `stCommand`, `stRecipe`, and `stLink` are reserved and must not appear again in `statusPayload`.
 
-Beispiel:
+Example:
 
 ```iecst
 TYPE ST_BM_MotionStatus :
@@ -227,20 +227,20 @@ END_STRUCT
 END_TYPE
 ```
 
-Diese Struktur wird im Zielprojekt unter `Generated/` erzeugt. Dafür ist keine Änderung und keine neue Version der `ET_AutomationBase`-Library erforderlich.
+This structure is generated under `Generated/` in the target project. No change or new version of the `ET_AutomationBase` library is required.
 
-### 7.3 Payload-Feld
+### 7.3 Payload Field
 
-Ein Feld enthält:
+A field contains:
 
-- stabile ID,
-- IEC-Name,
-- TwinCAT-Datentyp,
-- optionale Arraydimensionen,
-- optionale Beschreibung,
-- optionalen Initialwert als TwinCAT-Literal.
+- stable ID,
+- IEC name,
+- TwinCAT data type,
+- optional array dimensions,
+- optional description,
+- optional initial value as a TwinCAT literal.
 
-Arrays werden aus Basistyp und `arrayDimensions` aufgebaut. Beispiel:
+Arrays are built from the base type and `arrayDimensions`. Example:
 
 ```json
 {
@@ -250,87 +250,87 @@ Arrays werden aus Basistyp und `arrayDimensions` aufgebaut. Beispiel:
 }
 ```
 
-Generiertes ST:
+Generated ST:
 
 ```iecst
 aBrushSpeed : ARRAY[1..3] OF LREAL;
 ```
 
-## 8. Beziehungen
+## 8. Relationships
 
-Gültige Relationstypen:
+Valid relationship types:
 
-| Typ | Bedeutung |
+| Type | Meaning |
 |---|---|
-| `contains` | hierarchische Master-/Subunit-Zuordnung |
-| `commands` | Quelle erzeugt Requests für Ziel |
-| `observes` | Quelle liest Status des Ziels |
-| `usesRecipe` | Quelle verwendet einen RecipeManager |
-| `usesLink` | Quelle verwendet einen MachineLink |
+| `contains` | hierarchical master/subunit assignment |
+| `commands` | source creates requests for the target |
+| `observes` | source reads the target's status |
+| `usesRecipe` | source uses a RecipeManager |
+| `usesLink` | source uses a MachineLink |
 
-### Semantische Regeln
+### Semantic Rules
 
-- Quelle und Ziel müssen existieren.
-- Selbstbeziehungen sind unzulässig.
-- `contains` darf keine Zyklen bilden.
-- Ein Node besitzt höchstens einen Parent über `contains`.
-- Ziel von `usesRecipe` ist ein `recipeManager`.
-- Ziel von `usesLink` ist ein `machineLink`.
-- Ziel von `commands` ist eine `applicationUnit` oder `commandUnit`.
+- Source and target must exist.
+- Self-relations are not permitted.
+- `contains` must not form cycles.
+- A node has at most one parent through `contains`.
+- The target of `usesRecipe` is a `recipeManager`.
+- The target of `usesLink` is a `machineLink`.
+- The target of `commands` is an `applicationUnit` or `commandUnit`.
 
-Safety- und Kollisionsfreigaben sind kein Relationstyp v0.1.
+Safety and collision enables are not relationship types in v0.1.
 
 ## 9. Layout
 
-Das Layout referenziert Nodes ausschließlich über `nodeId` und speichert:
+The layout references nodes exclusively through `nodeId` and stores:
 
 - `x`, `y`,
-- optionale Breite und Höhe,
-- optionale Gruppierung.
+- optional width and height,
+- optional grouping.
 
-Ein Node darf höchstens einen Layouteintrag besitzen. Fehlendes Layout beeinflusst die Modellgültigkeit nicht; der Editor darf dann automatisch positionieren.
+A node may have at most one layout entry. Missing layout does not affect model validity; in that case, the editor may position the node automatically.
 
-## 10. MTP-Vorbereitung
+## 10. MTP Preparation
 
-Ein Node kann optional einen `mtp`-Block tragen:
+A node may optionally contain an `mtp` block:
 
 - `exposed`,
-- Service-Name,
-- Procedures mit stabiler ID, Procedure-ID und referenzierter Command-ID.
+- service name,
+- procedures with a stable ID, procedure ID, and referenced command ID.
 
-In v0.1 werden diese Angaben gespeichert und validiert, aber noch nicht generiert. Die Zustandsabbildung wird erst in Phase 5 verbindlich implementiert.
+In v0.1, these properties are stored and validated, but not yet generated. State mapping becomes binding only when it is implemented in Phase 5.
 
-## 11. Deterministische Reihenfolge
+## 11. Deterministic Ordering
 
-Der Generator verwendet folgende Sortierung:
+The generator uses the following ordering:
 
-- Nodes: `name`, danach `id`.
-- Commands: `enumValue`, danach `name`, danach `id`.
-- Felder: Reihenfolge im Modell ist SPS-Reihenfolge und damit semantisch.
-- Beziehungen: `kind`, `sourceNodeId`, `targetNodeId`, `id`.
-- Layout ist von der SPS-Generierung ausgeschlossen.
+- Nodes: `name`, then `id`.
+- Commands: `enumValue`, then `name`, then `id`.
+- Fields: model order is PLC order and therefore semantic.
+- Relationships: `kind`, `sourceNodeId`, `targetNodeId`, `id`.
+- Layout is excluded from PLC generation.
 
-## 12. Validierung außerhalb des JSON-Schemas
+## 12. Validation Outside the JSON Schema
 
-Der in Phase 1 implementierte semantische Validator prüft zusätzlich:
+The semantic validator implemented in Phase 1 additionally checks:
 
-- globale Eindeutigkeit aller IDs,
-- referenzielle Integrität,
-- Namenskollisionen generierter Artefakte,
-- Eindeutigkeit stabiler Command-IDs und der `enumValue`-Werte je Node,
-- Arraygrenzen,
-- Relationstypen passend zum Node-Kind,
-- zyklusfreie Hierarchie,
-- gültige Generatoroptionen je Node-Kind,
-- keine Kollision von Status-Payload-Feldern mit den für die Node-Art reservierten Library-Statusfeldern,
-- MTP-Procedure-ID und Command-Referenzen.
+- global uniqueness of all IDs,
+- referential integrity,
+- naming collisions of generated artifacts,
+- uniqueness of stable command IDs and `enumValue` values within each node,
+- array bounds,
+- relationship types appropriate to the node kind,
+- acyclic hierarchy,
+- valid generator options for each node kind,
+- no collision between status-payload fields and library-status fields reserved for the node kind,
+- MTP procedure ID and command references.
 
-## 13. Einwegprinzip des MVP
+## 13. One-Way Principle of the MVP
 
-Im MVP gilt ausschließlich:
+The MVP supports only:
 
 ```text
-.etab.json → generierte TwinCAT-Objekte
+.etab.json → generated TwinCAT objects
 ```
 
-Manuell veränderter SPS-Code wird nicht zurück in das Modell importiert. Ein späterer Import vorhandener Projekte ist eine eigene Funktion und kein Roundtrip des Generators.
+Manually modified PLC code is not imported back into the model. A future import of existing projects is a separate feature, not a generator round trip.

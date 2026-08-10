@@ -1,133 +1,133 @@
-# Phase-1B-Validierungsprotokoll
+# Phase 1B Validation Record
 
-> Dieses Dokument hält den damaligen read-only Zwischenstand 1B fest. Der aktuelle, vollständig abgeschlossene Phase-1-Stand einschließlich Basis-FBs und schreibender Generierung ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
+> This document records the historical read-only 1B interim state. The current, fully completed Phase 1 state, including base FBs and writing generation, is documented in the [Phase 1 completion validation](Phase1_Validation.md).
 
 ## Status
 
-- Phase: 1B – deterministische DUT-Vorschau
-- Ergebnis: abgeschlossen
-- Prüfdatum: 2026-08-10
-- Ausführungsmodus: vollständig im Speicher, ohne Dateischreibzugriffe
+- Phase: 1B – Deterministic DUT Preview
+- Result: completed
+- Validation date: 2026-08-10
+- Execution mode: entirely in memory, without file writes
 
-Phase 1B erweitert den validierten Projektkern um die erste echte Erzeugungsstufe. Sie rendert die geplanten Command-Enums, Request-DUTs und Status-DUTs als vollständige TwinCAT-XML-Inhalte, schreibt diese aber bewusst noch nicht nach `Generated/` und verändert keine `.plcproj`.
+Phase 1B extends the validated project core with the first actual generation stage. It renders the planned command enums, request DUTs, and status DUTs as complete TwinCAT XML content, but deliberately does not yet write them to `Generated/` or modify a `.plcproj` file.
 
-## Umgesetzte Artefakte
+## Implemented Artifacts
 
-Je nach `node.generate` entstehen:
+Depending on `node.generate`, the following are produced:
 
-| Artefaktart | Beispielname | Zielpfad der späteren Generierung |
+| Artifact Kind | Example Name | Target Path for Future Generation |
 |---|---|---|
 | `command-enum` | `E_BM_ProcessCommand` | `Generated/DUTs/Commands/*.TcDUT` |
 | `request-dut` | `ST_BM_ProcessRequest` | `Generated/DUTs/Requests/*.TcDUT` |
 | `status-dut` | `ST_BM_ProcessStatus` | `Generated/DUTs/Status/*.TcDUT` |
 
-Die BrushMachine-Vorschau enthält zehn Artefakte:
+The BrushMachine preview contains ten artifacts:
 
-- drei Command-Enums,
-- drei Request-DUTs,
-- vier Status-DUTs.
+- three command enums,
+- three request DUTs,
+- four status DUTs.
 
-RecipeManager, MachineLink und ProcessCycle erzeugen im Referenzmodell noch keine DUTs, weil ihre jeweiligen Generierungsflags deaktiviert sind.
+RecipeManager, MachineLink, and ProcessCycle do not yet produce DUTs in the reference model because their respective generation flags are disabled.
 
-## Deterministische Regeln
+## Deterministic Rules
 
-- Nodes: `name`, danach stabile `id`.
-- Commands: `enumValue`, danach `name`, danach stabile `id`.
-- Payloadfelder: unveränderte Modellreihenfolge.
-- Layout: vollständig von Artefakten, GUIDs und Hashes ausgeschlossen.
-- Zeilenenden: immer LF, unabhängig vom Betriebssystem.
-- Inhalts-Hash: SHA-256 über den UTF-8-Inhalt ohne BOM.
-- TwinCAT-GUID: UUID v5 mit dem festgelegten Generator-Namespace.
+- Nodes: `name`, then stable `id`.
+- Commands: `enumValue`, then `name`, then stable `id`.
+- Payload fields: unchanged model order.
+- Layout: completely excluded from artifacts, GUIDs, and hashes.
+- Line endings: always LF, regardless of operating system.
+- Content hash: SHA-256 over UTF-8 content without a BOM.
+- TwinCAT GUID: UUID v5 using the defined generator namespace.
 
-Der UUID-v5-Name entspricht dem Phase-0-Vertrag:
+The UUID v5 name follows the Phase 0 contract:
 
 ```text
 <project-id>/<model-id>/<artifact-kind>
 ```
 
-Dadurch bleibt die TwinCAT-GUID bei einer Node-Umbenennung stabil. Eine Änderung von `symbolStem` kann Dateiname und Inhalt ändern, aber nicht die aus der Node-ID abgeleitete Objekt-GUID.
+This keeps the TwinCAT GUID stable when a node is renamed. A change to `symbolStem` may change the file name and content, but not the object GUID derived from the node ID.
 
-## Generierte Verträge
+## Generated Contracts
 
-### Command-Enum
+### Command Enum
 
-- Attribute `qualified_only`, `strict` und `to_string`,
-- feste numerische `enumValue`-Werte,
-- numerisch deterministische Sortierung,
-- Auto-Generated-Marker mit Node-ID und Artefaktart.
+- attributes `qualified_only`, `strict`, and `to_string`,
+- fixed numeric `enumValue` values,
+- deterministic numeric ordering,
+- auto-generated marker containing the node ID and artifact kind.
 
-### Request-DUT
+### Request DUT
 
-Fester Kopf:
+Fixed header:
 
 ```iecst
 bExecute   : BOOL;
-eCommand   : <generiertes Command-Enum>;
+eCommand   : <generated command enum>;
 nCommandID : UDINT;
 ```
 
-Danach folgen die Payloadfelder in Modellreihenfolge. Arraydimensionen werden beispielsweise als `ARRAY[1..3] OF LREAL` gerendert.
+Payload fields follow in model order. Array dimensions are rendered, for example, as `ARRAY[1..3] OF LREAL`.
 
-### Status-DUT
+### Status DUT
 
-Der feste Kopf folgt der Node-Art:
+The fixed header follows the node kind:
 
-| Node-Art | eingebetteter Status |
+| Node Kind | Embedded Status |
 |---|---|
 | `applicationUnit` | `stUnit : ETAB.ST_ETAB_ApplicationUnitStatus` |
-| Application Unit mit Typed Request | zusätzlich `stOperation : ETAB.ST_ETAB_CommandStatus` |
+| Application Unit with Typed Request | additionally `stOperation : ETAB.ST_ETAB_CommandStatus` |
 | `commandUnit` | `stCommand : ETAB.ST_ETAB_CommandStatus` |
 | `recipeManager` | `stRecipe : ETAB.ST_ETAB_RecipeStatus` |
 | `machineLink` | `stLink : ETAB.ST_ETAB_MachineLinkStatus` |
 
-Die Library-DUTs werden nur referenziert. `ET_AutomationBase` wurde nicht verändert.
+The library DUTs are referenced only. `ET_AutomationBase` was not modified.
 
 ## CLI
 
-Kompakte Vorschau:
+Compact preview:
 
 ```powershell
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json
 ```
 
-Vorschau einschließlich vollständiger XML-Inhalte:
+Preview including complete XML content:
 
 ```powershell
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json --content
 ```
 
-Die kompakte Ausgabe enthält je Artefakt:
+For each artifact, the compact output includes:
 
-- Artefaktart,
-- relativen Zielpfad,
-- deterministische TwinCAT-GUID,
-- SHA-256-Inhaltshash.
+- artifact kind,
+- relative target path,
+- deterministic TwinCAT GUID,
+- SHA-256 content hash.
 
-`preview` validiert das Projekt zuerst. Ein ungültiges Modell verwendet weiterhin Exit-Code 1. `--schema <datei>` kann wie bei `validate` ein explizites Schema auswählen.
+`preview` validates the project first. An invalid model continues to use exit code 1. As with `validate`, `--schema <file>` can select an explicit schema.
 
-## Ausgeführte Nachweise
+## Evidence Collected
 
-### Automatisierte Tests
+### Automated Tests
 
 ```text
 dotnet test ETAB.Engineering.sln --no-restore
-Bestanden: 17, Fehler: 0, Übersprungen: 0
+Passed: 17, Failed: 0, Skipped: 0
 ```
 
-Neben den sieben Phase-1A-Tests prüfen die neuen Tests:
+In addition to the seven Phase 1A tests, the new tests verify:
 
-- exakte Artefaktliste der BrushMachine,
-- Golden-Snapshots für Process-Command, -Request und -Status,
-- wohlgeformtes XML für jedes Artefakt,
-- SHA-256 gegen den tatsächlichen UTF-8-Inhalt,
-- ausschließlich LF-Zeilenenden,
-- keine Ausgabeänderung durch Layoutänderungen,
-- keine Ausgabeänderung durch andere Node- oder Command-Eingabereihenfolge,
-- stabile TwinCAT-GUIDs bei Node-Umbenennung,
-- korrekte eingebettete Library-Statusfelder für alle vier Node-Arten,
-- UUID-v5-Implementierung gegen einen bekannten RFC-Testvektor.
+- exact artifact list for BrushMachine,
+- golden snapshots for the Process command, request, and status,
+- well-formed XML for every artifact,
+- SHA-256 against the actual UTF-8 content,
+- LF line endings exclusively,
+- no output change caused by layout changes,
+- no output change caused by a different node or command input order,
+- stable TwinCAT GUIDs when a node is renamed,
+- correct embedded library-status fields for all four node kinds,
+- UUID v5 implementation against a known RFC test vector.
 
-### CLI-Positivfall
+### Positive CLI Case
 
 ```text
 PREVIEW ...\examples\BrushMachine.reference.etab.json
@@ -136,7 +136,7 @@ Artifacts: 10
 PREVIEW_EXIT_CODE=0
 ```
 
-### CLI-Fehlerpfad
+### CLI Error Path
 
 ```text
 INVALID ...\README.md
@@ -144,25 +144,25 @@ INVALID ...\README.md
 INVALID_PREVIEW_EXIT_CODE=1
 ```
 
-### Schreibschutz
+### Write Protection
 
-Vor und nach `preview --content` wurde der erwartete Ausgabeordner geprüft:
+The expected output directory was checked before and after `preview --content`:
 
 ```text
 GENERATED_EXISTS_BEFORE=False
 GENERATED_EXISTS_AFTER=False
 ```
 
-Damit ist für den ausgeführten Referenzlauf nachgewiesen, dass Phase 1B keinen `Generated/`-Ordner angelegt hat.
+This demonstrates that Phase 1B did not create a `Generated/` directory during the reference run.
 
-## Noch nicht nachgewiesen
+## Not Yet Demonstrated
 
-- kein Schreiben der gerenderten `.TcDUT`-Dateien,
-- kein Manifest und kein Vergleich mit bereits vorhandenen Dateien,
-- keine Einstufung als `create`, `update`, `rename`, `delete`, `unchanged` oder `conflict`,
-- keine Basis-FB-, GVL- oder PRG-Erzeugung,
-- keine `.plcproj`-Integration,
-- kein TwinCAT-Compile der Vorschauartefakte,
-- keine Simulation, kein Online-Test und keine Maschinenvalidierung.
+- no writing of rendered `.TcDUT` files,
+- no manifest and no comparison with existing files,
+- no classification as `create`, `update`, `rename`, `delete`, `unchanged`, or `conflict`,
+- no base-FB, GVL, or PRG generation,
+- no `.plcproj` integration,
+- no TwinCAT compile of the preview artifacts,
+- no simulation, online test, or machine validation.
 
-Diese Grenzen sind bewusst: Erst die nächste Phase ergänzt Manifest und sicheren Dateisystemvergleich. Ein schreibender `generate`-Befehl folgt erst danach.
+These boundaries are deliberate: the next phase first adds the manifest and safe filesystem comparison. A writing `generate` command follows only after that.

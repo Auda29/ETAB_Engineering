@@ -1,191 +1,191 @@
-# ETAB Engineering – Plan für einen visuellen SPS-Template-Generator
+# ETAB Engineering – Plan for a Visual PLC Template Generator
 
-## Dokumentstatus
+## Document Status
 
-- Status: Umsetzung; Phase 0 und Phase 1 abgeschlossen, nächster Umsetzungsschritt ist Phase 2
-- Stand: 2026-08-10
-- Arbeitstitel: `ETAB Engineering`
-- Zielumgebung: TwinCAT 3 und `ET_AutomationBase`
-- Referenzprojekt: `AutomationBase Beispiel`
+- Status: implementation; Phase 0 and Phase 1 completed, next implementation step is Phase 2
+- As of: 2026-08-10
+- Working title: `ETAB Engineering`
+- Target environment: TwinCAT 3 and `ET_AutomationBase`
+- Reference project: `AutomationBase Beispiel`
 
-## 1. Ziel
+## 1. Objective
 
-`ETAB Engineering` soll ein visuelles Engineering-Werkzeug werden, mit dem eine Maschine ähnlich wie in einem HMI- oder MTP-Editor aus logischen Bausteinen beschrieben wird.
+`ETAB Engineering` is intended to become a visual engineering tool in which a machine is described using logical components, similar to an HMI or MTP editor.
 
-Aus dem gespeicherten Maschinenmodell soll ein reproduzierbares TwinCAT-SPS-Template auf Basis der `ET_AutomationBase`-Library erzeugt werden. Optional soll später eine MTP-Integrationsschicht für Services und Procedures generiert werden können.
+The stored machine model will be used to generate a reproducible TwinCAT PLC template based on the `ET_AutomationBase` library. An MTP integration layer for services and procedures may optionally be generated at a later stage.
 
-Der Editor beschreibt die Struktur und die öffentlichen Verträge der Maschine. Die eigentliche Maschinen-, Safety-, Bewegungs- und Prozesslogik bleibt handgeschrieben.
+The editor describes the structure and public contracts of the machine. The actual machine, safety, motion, and process logic remains handwritten.
 
-## 2. Leitprinzipien
+## 2. Guiding Principles
 
-1. Das visuelle Maschinenmodell ist die einzige Quelle für generierte Strukturen.
-2. Gleiche Eingaben müssen byte-identische Ausgaben erzeugen.
-3. Generierter Code und handgeschriebener Code werden strikt getrennt.
-4. Handgeschriebene Dateien dürfen niemals automatisch überschrieben werden.
-5. Der Generator muss alle geplanten Änderungen vor dem Schreiben anzeigen können.
-6. Stabile Objekt-IDs müssen Umbenennungen ohne unnötige TwinCAT-GUID-Wechsel erlauben.
-7. Eine strukturelle XML-Prüfung ist kein TwinCAT-Compile-Nachweis.
-8. Safety- und Maschinenverhalten werden nicht aus einem allgemeinen Diagramm abgeleitet.
-9. MTP ist eine optionale Integrationsschicht und keine Voraussetzung für den ETAB-MVP.
+1. The visual machine model is the single source of truth for generated structures.
+2. Identical inputs must produce byte-identical outputs.
+3. Generated code and handwritten code are kept strictly separate.
+4. Handwritten files must never be overwritten automatically.
+5. The generator must be able to display every planned change before writing.
+6. Stable object IDs must allow renaming without unnecessary changes to TwinCAT GUIDs.
+7. Structural XML validation is not evidence of a successful TwinCAT compile.
+8. Safety and machine behavior are not derived from a general-purpose diagram.
+9. MTP is an optional integration layer and not a prerequisite for the ETAB MVP.
 
-## 3. Produktgrenze
+## 3. Product Boundary
 
-### 3.1 Im visuellen Editor beschreibbar
+### 3.1 Describable in the Visual Editor
 
-- Maschinen- und Unit-Hierarchie
-- ETAB-Basistypen
-- Kommandos, stabile Modell-IDs und feste Enum-Werte
-- Request-, Status- und Parameterdaten
-- Eltern-/Kind-Beziehungen zwischen Units
-- logische Abhängigkeiten und Verbindungen
-- Rezepte und Machine Links
-- öffentliche HMI-/Statusstrukturen
-- optionale Freigabe einer Unit als MTP-Service
-- optionale Zuordnung von MTP-Procedures zu ETAB-Kommandos
+- machine and unit hierarchy
+- ETAB base types
+- commands, stable model IDs, and fixed enum values
+- request, status, and parameter data
+- parent-child relationships between units
+- logical dependencies and connections
+- recipes and machine links
+- public HMI/status structures
+- optional exposure of a unit as an MTP service
+- optional mapping of MTP procedures to ETAB commands
 
-### 3.2 Nicht automatisch generiert
+### 3.2 Not Generated Automatically
 
-- Safety-Logik
-- Kollisions- und Freigabeentscheidungen
-- konkrete IO-Adressierung
-- Achs- und Hardwarekonfiguration
-- maschinenspezifische Prozesssequenzen
-- Fehlerreaktionen und sichere Stoppabläufe
-- reale Bewegungs-, Timeout- und Prozessparameter
-- vollständige Bedienbilder für eine Runtime-HMI
+- safety logic
+- collision and enable decisions
+- concrete I/O addressing
+- axis and hardware configuration
+- machine-specific process sequences
+- fault responses and safe-stop sequences
+- real motion, timeout, and process parameters
+- complete operator screens for a runtime HMI
 
-Der visuelle Editor ist damit ein Engineering-Werkzeug mit HMI-artiger Bedienung, aber keine Runtime-HMI und kein allgemeiner Safety- oder Ablaufgenerator.
+The visual editor is therefore an engineering tool with HMI-like operation, but it is neither a runtime HMI nor a general-purpose safety or sequence generator.
 
-## 4. Zielarchitektur
+## 4. Target Architecture
 
 ```text
-Visueller ETAB-Editor
+Visual ETAB Editor
         ↕
-Versionsfähiges Maschinenmodell (*.etab.json)
+Versioned Machine Model (*.etab.json)
         ↓
-Generator-Kern
-        ├─ Validierung
-        ├─ Änderungsvorschau
-        ├─ TwinCAT-SPS-Template
-        ├─ Generierungsmanifest
-        └─ optionaler MTP-Adapter
+Generator Core
+        ├─ Validation
+        ├─ Change Preview
+        ├─ TwinCAT PLC Template
+        ├─ Generation Manifest
+        └─ Optional MTP Adapter
                  ↓
-       Handgeschriebene Maschinenlogik
+       Handwritten Machine Logic
 ```
 
-### 4.1 Komponenten
+### 4.1 Components
 
-#### Visueller Editor
+#### Visual Editor
 
-- Bausteinpalette
-- Maschinen-Canvas
-- Unit-Hierarchie
-- Eigenschaftsinspektor
-- Kommandoeditor
-- Datenstruktur-Editor
-- Verbindungseditor
-- Validierungsanzeige
-- Generierungsvorschau
+- component palette
+- machine canvas
+- unit hierarchy
+- property inspector
+- command editor
+- data-structure editor
+- connection editor
+- validation display
+- generation preview
 
-#### Projektmodell
+#### Project Model
 
-- normales, diffbares JSON
-- versioniertes Schema
-- stabile interne IDs
-- getrennte Layout- und SPS-Daten
-- keine TwinCAT-XML-Details in der Benutzeroberfläche
+- plain, diff-friendly JSON
+- versioned schema
+- stable internal IDs
+- separate layout and PLC data
+- no TwinCAT XML details in the user interface
 
-#### Generator-Kern
+#### Generator Core
 
-- unabhängig von der grafischen Oberfläche nutzbar
-- über CLI und Editor aufrufbar
-- deterministische TwinCAT-XML-Erzeugung
-- sichere Verwaltung der `.plcproj`-Einträge
-- Manifest und Hash-Prüfung
+- usable independently of the graphical user interface
+- callable through the CLI and editor
+- deterministic TwinCAT XML generation
+- safe management of `.plcproj` entries
+- manifest and hash validation
 
-#### TwinCAT-Integration
+#### TwinCAT Integration
 
-- zunächst dateibasiert
-- Automation Interface später optional
-- realer XAE-Compile als gesonderte Validierungsstufe
+- file-based initially
+- Automation Interface optional later
+- real XAE compile as a separate validation level
 
-## 5. Projektmodell v0.1
+## 5. Project Model v0.1
 
-Die erste Projektdatei soll ein normales JSON-Dokument sein, beispielsweise:
+The first project file is a plain JSON document, for example:
 
 ```text
 BrushMachine.etab.json
 ```
 
-### 5.1 Projektweite Angaben
+### 5.1 Project-Wide Properties
 
-- Schema-Version
-- Projektname
-- SPS-Präfix, beispielsweise `BM`
-- Namespace
-- gewünschte ETAB-Version
-- TwinCAT-Zielversion
-- Zielprojekt beziehungsweise Ausgabeverzeichnis
+- schema version
+- project name
+- PLC prefix, for example `BM`
+- namespace
+- requested ETAB version
+- TwinCAT target version
+- target project or output directory
 
 ### 5.2 Unit
 
-Jede Unit erhält mindestens:
+Each unit has at least:
 
-- stabile interne ID
-- Anzeigename
-- SPS-Name
-- ETAB-Basistyp
-- übergeordnete Unit
-- Aktivierungsoptionen
-- Kommandos
-- Request-Felder
-- Status-Felder
-- Parameter
-- optionale Kind-Units
-- optionale MTP-Zuordnung
+- stable internal ID
+- display name
+- PLC name
+- ETAB base type
+- parent unit
+- activation options
+- commands
+- request fields
+- status fields
+- parameters
+- optional child units
+- optional MTP mapping
 
-Vorgesehene ETAB-Bausteintypen für den MVP:
+Planned ETAB component types for the MVP:
 
 - `ApplicationUnit`
 - `CommandUnit`
 - `MachineLink`
 - `RecipeManager`
 
-Projektbezogene Spezialisierungen wie `MotionUnit`, `ProcessUnit` oder `WorkpieceUnit` sind zunächst benannte Ausprägungen einer `ApplicationUnit` beziehungsweise `CommandUnit`.
+Project-specific specializations such as `MotionUnit`, `ProcessUnit`, or `WorkpieceUnit` are initially named variants of an `ApplicationUnit` or `CommandUnit`.
 
-### 5.3 Kommandos
+### 5.3 Commands
 
-Ein Kommando enthält mindestens:
+A command contains at least:
 
-- stabile interne ID
-- SPS-Name
-- numerischer Enum-Wert (`enumValue`)
-- Anzeigename
-- Beschreibung
-- zulässiger Unit-Typ
-- optionaler MTP-Procedure-Bezug
+- stable internal ID
+- PLC name
+- numeric enum value (`enumValue`)
+- display name
+- description
+- permitted unit type
+- optional MTP procedure reference
 
-Stabile Command-Modell-IDs sind global eindeutig. `enumValue`-Werte müssen innerhalb ihres Nodes eindeutig sein.
+Stable command model IDs are globally unique. `enumValue` values must be unique within their node.
 
-### 5.4 Beziehungen
+### 5.4 Relationships
 
-Für die erste Version werden nur klar definierte Beziehungen zugelassen:
+Only clearly defined relationships are allowed in the first version:
 
-- `contains`: Unit enthält Kind-Unit
-- `commands`: Unit sendet Requests an eine andere Unit
-- `observes`: Unit liest Status einer anderen Unit
-- `usesRecipe`: Unit verwendet einen RecipeManager
-- `usesLink`: Unit verwendet einen MachineLink
+- `contains`: a unit contains a child unit
+- `commands`: a unit sends requests to another unit
+- `observes`: a unit reads the status of another unit
+- `usesRecipe`: a unit uses a RecipeManager
+- `usesLink`: a unit uses a MachineLink
 
-Safety- oder Kollisionsfreigaben werden nicht als automatisch ausführbare Beziehung modelliert.
+Safety or collision enables are not modeled as automatically executable relationships.
 
-### 5.5 Layoutdaten
+### 5.5 Layout Data
 
-Position, Größe und Gruppierung eines Bausteins werden separat gespeichert. Änderungen am Canvas-Layout dürfen keinen SPS-Code-Diff verursachen.
+The position, size, and grouping of a component are stored separately. Changes to the canvas layout must not cause a PLC code diff.
 
-## 6. Geplante Generatorausgabe
+## 6. Planned Generator Output
 
-Beispielstruktur:
+Example structure:
 
 ```text
 Generated/
@@ -204,73 +204,73 @@ Application/
 └─ FB_BM_ProcessUnit.TcPOU
 ```
 
-### 6.1 Generierbare TwinCAT-Objekte
+### 6.1 TwinCAT Objects That Can Be Generated
 
-- Command-Enums
-- Request-DUTs
-- Status-DUTs
-- Parameter-DUTs
-- generierte Unit-Basisbausteine
-- Command-Router
-- optionale Interfaces
-- Unit-Instanzen in einer GVL
-- optionale PRG-Aufrufstruktur
-- Ordner- und Compile-Einträge im `.plcproj`
-- erforderliche ETAB-Library-Referenz
-- später MTP-Adapterbausteine
+- command enums
+- request DUTs
+- status DUTs
+- parameter DUTs
+- generated unit base function blocks
+- command routers
+- optional interfaces
+- unit instances in a GVL
+- optional PRG call structure
+- folder and compile entries in the `.plcproj` file
+- required ETAB library reference
+- MTP adapter function blocks at a later stage
 
-### 6.2 Regenerationsgrenze
+### 6.2 Regeneration Boundary
 
-- `Generated/` gehört vollständig dem Generator.
-- `Application/` gehört vollständig dem SPS-Entwickler.
-- User-Dateien dürfen höchstens einmal als Startgerüst angelegt werden.
-- Danach werden sie weder verändert noch gelöscht.
-- Das Manifest enthält Modell-ID, Zielpfad, TwinCAT-GUID und Inhalts-Hash jeder generierten Datei.
-- Manuelle Änderungen in generierten Dateien müssen vor dem Überschreiben erkannt und gemeldet werden.
+- `Generated/` is owned entirely by the generator.
+- `Application/` is owned entirely by the PLC developer.
+- User files may be created as an initial scaffold at most once.
+- They are neither modified nor deleted afterward.
+- The manifest contains the model ID, target path, TwinCAT GUID, and content hash of every generated file.
+- Manual changes to generated files must be detected and reported before they are overwritten.
 
-## 7. Bedienkonzept des Editors
+## 7. Editor Interaction Model
 
-### 7.1 Linke Seite: Bausteinpalette
+### 7.1 Left: Component Palette
 
 - Application Unit
 - Command Unit
 - Machine Link
 - Recipe Manager
-- später MTP Service und MTP Procedure
+- MTP Service and MTP Procedure at a later stage
 
-### 7.2 Mitte: Maschinen-Canvas
+### 7.2 Center: Machine Canvas
 
-- Units platzieren
-- Hierarchie darstellen
-- Beziehungen verbinden
-- Bausteine auswählen
-- Gruppen beziehungsweise Maschinenbereiche bilden
+- place units
+- display the hierarchy
+- connect relationships
+- select components
+- form groups or machine areas
 
-Der MVP benötigt kein vollständig freies HMI-Zeichenprogramm. Ein klarer Node-/Baumeditor ist ausreichend.
+The MVP does not require a completely free-form HMI drawing tool. A clear node/tree editor is sufficient.
 
-### 7.3 Rechte Seite: Eigenschaften
+### 7.3 Right: Properties
 
-- Name und SPS-Bezeichner
-- ETAB-Basistyp
-- Kommandos und IDs
-- Request- und Statusfelder
-- Parameter
-- Kind-Units
-- Generierungsoptionen
-- spätere MTP-Zuordnung
+- name and PLC identifier
+- ETAB base type
+- commands and IDs
+- request and status fields
+- parameters
+- child units
+- generation options
+- MTP mapping at a later stage
 
-### 7.4 Unterer Bereich: Generierung
+### 7.4 Bottom: Generation
 
-- Validierungsergebnisse
-- Liste der zu erzeugenden Dateien
-- neue, geänderte und zu löschende Objekte
-- Diff-Vorschau
-- Warnungen vor manuellen Änderungen
-- Generieren erst nach erfolgreicher Validierung
+- validation results
+- list of files to be generated
+- new, modified, and deleted objects
+- diff preview
+- warnings about manual changes
+- generation only after successful validation
 
-## 8. Geplante CLI
+## 8. Planned CLI
 
-Der Generator-Kern soll auch ohne Editor nutzbar sein:
+The generator core is also intended to be usable without the editor:
 
 ```text
 etab validate BrushMachine.etab.json
@@ -279,221 +279,221 @@ etab generate BrushMachine.etab.json
 etab check    BrushMachine.etab.json
 ```
 
-### Befehle
+### Commands
 
-- `validate`: Schema, Namen, IDs und Beziehungen prüfen
-- `preview`: geplante Änderungen ohne Schreiben anzeigen
-- `generate`: bestätigte Ausgabe erzeugen
-- `check`: prüfen, ob Modell und generierte Dateien synchron sind
+- `validate`: validate schema, names, IDs, and relationships
+- `preview`: display planned changes without writing
+- `generate`: produce the confirmed output
+- `check`: verify that the model and generated files are synchronized
 
-## 9. Technologieempfehlung
+## 9. Technology Recommendation
 
-### Generator-Kern
+### Generator Core
 
-- C#/.NET-Klassenbibliothek
-- separate CLI-Anwendung
-- XML-Erzeugung ohne Text-Ersetzungsfragmente
-- automatisierte Unit- und Snapshot-Tests
+- C#/.NET class library
+- separate CLI application
+- XML generation without text-replacement fragments
+- automated unit and snapshot tests
 
 ### Editor
 
-- lokale Weboberfläche
+- local web interface
 - TypeScript
-- SVG- oder Node-basierter Canvas
-- Generator-Aufruf über einen lokalen .NET-Dienst
-- spätere Verpackung als Desktop-Anwendung möglich
+- SVG- or node-based canvas
+- generator calls through a local .NET service
+- later packaging as a desktop application is possible
 
-### TwinCAT-Anbindung
+### TwinCAT Integration
 
-1. MVP: deterministische Dateierzeugung
-2. danach: sichere `.plcproj`-Integration
-3. optional: TwinCAT Automation Interface für XAE-Integration
+1. MVP: deterministic file generation
+2. afterward: safe `.plcproj` integration
+3. optional: TwinCAT Automation Interface for XAE integration
 
-Die grafische Oberfläche darf keine eigene, abweichende Generatorlogik enthalten. Editor und CLI verwenden denselben Generator-Kern.
+The graphical user interface must not contain separate, divergent generator logic. The editor and CLI use the same generator core.
 
-## 10. Umsetzungsphasen
+## 10. Implementation Phases
 
-### Phase 0 – Spezifikation (abgeschlossen 2026-08-07, Architektur-Nachtrag 2026-08-10)
+### Phase 0 – Specification (completed 2026-08-07, architecture addendum 2026-08-10)
 
-- [x] ETAB-Bausteinkatalog festlegen
-- [x] JSON-Schema v0.1 entwerfen
-- [x] Namens- und ID-Regeln festlegen
-- [x] Generiert/User-Grenze verbindlich definieren
-- [x] aktuelle Beispiel-Units als Referenz klassifizieren
-- [x] Command-Enum-Wert eindeutig als `enumValue` vom Laufzeit-`nCommandID` abgrenzen
-- [x] projektspezifischen Statusvertrag ohne Änderung der Library-DUTs festlegen
-- [x] Vererbungs- und Hook-Muster für generierte Basis-FBs per TwinCAT-Compile-Spike prüfen
+- [x] define the ETAB component catalog
+- [x] design JSON schema v0.1
+- [x] define naming and ID rules
+- [x] establish a binding generated/user boundary
+- [x] classify the current example units as a reference
+- [x] clearly distinguish the command enum value `enumValue` from the runtime `nCommandID`
+- [x] define the project-specific status contract without changing library DUTs
+- [x] verify the inheritance and hook pattern for generated base FBs with a TwinCAT compile spike
 
-Abnahme: Das vorhandene Bürstautomatenmodell kann vollständig beschrieben werden, ohne Prozesscode in das Modell aufzunehmen.
+Acceptance: the existing brush machine model can be described completely without including process code in the model.
 
-Nachweis: `docs/Phase0_Validation.md`, `examples/BrushMachine.reference.etab.json` und `spikes/TwinCAT_BaseFb_Inheritance.md`.
+Evidence: `docs/Phase0_Validation.md`, `examples/BrushMachine.reference.etab.json`, and `spikes/TwinCAT_BaseFb_Inheritance.md`.
 
-### Phase 1 – Headless Generator-Kern (abgeschlossen 2026-08-10)
+### Phase 1 – Headless Generator Core (completed 2026-08-10)
 
-- [x] Projektmodell laden (Phase 1A, 2026-08-10)
-- [x] Schema und Semantik validieren (Phase 1A, 2026-08-10)
-- [x] stabile TwinCAT-GUIDs per UUID v5 ableiten und im Manifest verwalten
-- [x] Command-, Request- und Status-DUTs sowie ApplicationUnit-Basis-FBs erzeugen
-- [x] deterministisches Manifest mit semantischem Modellhash und Artefakthashes zuletzt schreiben
-- [x] CLI mit `validate`, `preview`, `check` und konfliktgesperrtem `generate` vervollständigen
-- [x] Snapshot-, Determinismus-, Änderungsplan-, Schreibgrenzen- und Rollback-Tests umsetzen
+- [x] load the project model (Phase 1A, 2026-08-10)
+- [x] validate schema and semantics (Phase 1A, 2026-08-10)
+- [x] derive stable TwinCAT GUIDs using UUID v5 and manage them in the manifest
+- [x] generate command, request, and status DUTs as well as ApplicationUnit base FBs
+- [x] write a deterministic manifest containing the semantic model hash and artifact hashes last
+- [x] complete the CLI with `validate`, `preview`, `check`, and conflict-protected `generate`
+- [x] implement snapshot, determinism, change-plan, write-boundary, and rollback tests
 
-Nachweise: `docs/Phase1A_Validation.md`, `docs/Phase1B_Validation.md`, `docs/Phase1C_Validation.md` und `docs/Phase1_Validation.md`. `preview` und `check` bleiben read-only; ausschließlich der explizite Befehl `generate` schreibt in den konfigurierten Generatorbereich. `ET_AutomationBase` wird nicht verändert.
+Evidence: `docs/Phase1A_Validation.md`, `docs/Phase1B_Validation.md`, `docs/Phase1C_Validation.md`, and `docs/Phase1_Validation.md`. `preview` and `check` remain read-only; only the explicit `generate` command writes to the configured generator-owned area. `ET_AutomationBase` is not modified.
 
-Abnahme:
+Acceptance:
 
-- gleiche Eingabe erzeugt byte-identische Ausgabe
-- doppelte stabile Command-IDs und doppelte `enumValue`-Werte je Node werden abgewiesen
-- keine Datei außerhalb des Generatorbereichs wird verändert
-- TwinCAT-XML lässt sich strukturell parsen
+- identical input produces byte-identical output
+- duplicate stable command IDs and duplicate `enumValue` values per node are rejected
+- no file outside the generator-owned area is modified
+- TwinCAT XML can be parsed structurally
 
-### Phase 2 – Visueller Editor MVP
+### Phase 2 – Visual Editor MVP
 
-- [ ] Projekt öffnen und speichern
-- [ ] Bausteinpalette
-- [ ] Maschinen-Canvas
-- [ ] Unit-Auswahl und Eigenschaftsinspektor
-- [ ] Kommandoeditor
-- [ ] Request-/Statusfeldeditor
-- [ ] Beziehungen
-- [ ] Live-Validierung
-- [ ] Generierungsvorschau
+- [ ] open and save a project
+- [ ] component palette
+- [ ] machine canvas
+- [ ] unit selection and property inspector
+- [ ] command editor
+- [ ] request/status field editor
+- [ ] relationships
+- [ ] live validation
+- [ ] generation preview
 
-Abnahme: Die BrushMachine kann visuell modelliert, gespeichert, geschlossen und verlustfrei wieder geöffnet werden.
+Acceptance: BrushMachine can be modeled visually, saved, closed, and reopened without data loss.
 
-### Phase 3 – TwinCAT-Projektintegration
+### Phase 3 – TwinCAT Project Integration
 
-- [ ] ETAB-Library-Referenz verwalten
-- [ ] `<Compile Include="…">` verwalten
-- [ ] TwinCAT-Ordnerstruktur erzeugen
-- [ ] GVL-Instanzen erzeugen
-- [ ] optionale PRG-Aufrufstruktur erzeugen
-- [ ] Umbenennen und Löschen generierter Objekte absichern
-- [ ] Integration zunächst ausschließlich in einer Projektkopie testen
+- [ ] manage the ETAB library reference
+- [ ] manage `<Compile Include="…">` entries
+- [ ] create the TwinCAT folder structure
+- [ ] generate GVL instances
+- [ ] generate an optional PRG call structure
+- [ ] safeguard renaming and deletion of generated objects
+- [ ] initially test integration only in a copy of the project
 
-Abnahme:
+Acceptance:
 
-- Projekt öffnet in TwinCAT ohne Strukturfehler
-- wiederholte Generierung erzeugt keinen unnötigen Diff
-- echter TwinCAT-Compile ist erfolgreich
+- the project opens in TwinCAT without structural errors
+- repeated generation produces no unnecessary diff
+- a real TwinCAT compile succeeds
 
 ### Phase 4 – Golden Sample `AutomationBase Beispiel`
 
-- [ ] `FB_BM_Machine` modellieren
-- [ ] `FB_BM_MotionUnit` modellieren
-- [ ] `FB_BM_WorkpieceUnit` modellieren
-- [ ] `FB_BM_ProcessUnit` modellieren
-- [ ] vorhandene Request-, Command- und Status-DUTs vergleichen
-- [ ] Struktur und öffentliche Schnittstellen gegen den handgeschriebenen Stand prüfen
+- [ ] model `FB_BM_Machine`
+- [ ] model `FB_BM_MotionUnit`
+- [ ] model `FB_BM_WorkpieceUnit`
+- [ ] model `FB_BM_ProcessUnit`
+- [ ] compare the existing request, command, and status DUTs
+- [ ] verify the structure and public interfaces against the handwritten state
 
-MVP-Ende: Aus dem visuellen BrushMachine-Modell entsteht ein TwinCAT-kompilierbares ETAB-Grundgerüst, ohne Handcode zu überschreiben.
+MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB scaffold without overwriting handwritten code.
 
-### Phase 5 – Optionale MTP-Erweiterung
+### Phase 5 – Optional MTP Extension
 
-- [ ] Unit als MTP-Service freigeben
-- [ ] Procedures zu ETAB-Kommandos zuordnen
-- [ ] Parameter und ReportValues abbilden
-- [ ] MTP-Zustände auf ETAB-Abläufe abbilden
-- [ ] nicht unterstützte Zustände explizit sperren oder implementieren
-- [ ] Adapter außerhalb der TE8400-generierten Bereiche halten
-- [ ] Regeneration von ETAB- und MTP-Seite testen
+- [ ] expose a unit as an MTP service
+- [ ] map procedures to ETAB commands
+- [ ] map parameters and ReportValues
+- [ ] map MTP states to ETAB sequences
+- [ ] explicitly block or implement unsupported states
+- [ ] keep adapters outside areas generated by TE8400
+- [ ] test regeneration from both the ETAB and MTP sides
 
-### Phase 6 – Produktreife
+### Phase 6 – Product Readiness
 
-- [ ] Undo/Redo
-- [ ] Copy/Paste
-- [ ] wiederverwendbare Unit-Vorlagen
-- [ ] Schema-Migrationen
-- [ ] Import bestehender ETAB-Strukturen
-- [ ] CI-`check`
-- [ ] Installer oder portable Anwendung
-- [ ] Benutzerdokumentation
-- [ ] weitere Beispielprojekte
+- [ ] undo/redo
+- [ ] copy/paste
+- [ ] reusable unit templates
+- [ ] schema migrations
+- [ ] import of existing ETAB structures
+- [ ] CI `check`
+- [ ] installer or portable application
+- [ ] user documentation
+- [ ] additional example projects
 
-## 11. Validierungsstrategie
+## 11. Validation Strategy
 
-### Modelltests
+### Model Tests
 
-- Pflichtfelder
-- Namensregeln
-- eindeutige IDs
-- gültige Beziehungen
-- keine Hierarchiezyklen
-- gültige ETAB-Basistypen
+- required fields
+- naming rules
+- unique IDs
+- valid relationships
+- no hierarchy cycles
+- valid ETAB base types
 
-### Generatortests
+### Generator Tests
 
-- deterministische Ausgabe
-- stabile GUIDs
-- sichere Umbenennung
-- sichere Löschung
-- Schutz vor Änderungen in generierten Dateien
-- keine Änderungen an User-Dateien
+- deterministic output
+- stable GUIDs
+- safe renaming
+- safe deletion
+- protection against changes to generated files
+- no changes to user files
 
-### TwinCAT-Tests
+### TwinCAT Tests
 
-1. XML-Strukturprüfung
-2. Projekt in XAE öffnen
-3. Library-Auflösung prüfen
-4. echter TwinCAT-Compile
-5. optional Simulation des Beispielprojekts
+1. XML structural validation
+2. open the project in XAE
+3. verify library resolution
+4. real TwinCAT compile
+5. optional simulation of the example project
 
-Compile, Simulation und Maschinenvalidierung sind getrennte Nachweise und dürfen nicht gleichgesetzt werden.
+Compile, simulation, and machine validation are separate forms of evidence and must not be treated as equivalent.
 
-## 12. Hauptrisiken
+## 12. Main Risks
 
-### Überschreiben von Handcode
+### Overwriting Handwritten Code
 
-Gegenmaßnahme: harte Verzeichnisgrenze, Manifest, Hash-Prüfung und Vorschaupflicht.
+Mitigation: hard directory boundary, manifest, hash validation, and mandatory preview.
 
-### Instabile TwinCAT-GUIDs
+### Unstable TwinCAT GUIDs
 
-Gegenmaßnahme: persistente Modell-IDs und GUID-Zuordnung im Manifest.
+Mitigation: persistent model IDs and GUID mapping in the manifest.
 
-### Zu große erste Version
+### Excessive Initial Scope
 
-Gegenmaßnahme: MVP auf Unit-Hierarchie, Kommandos, Request/Status und Basisgerüste begrenzen.
+Mitigation: limit the MVP to unit hierarchy, commands, request/status data, and base scaffolds.
 
-### Vermischung von Editor und Generator
+### Mixing Editor and Generator Responsibilities
 
-Gegenmaßnahme: ein gemeinsamer Generator-Kern für CLI und Benutzeroberfläche.
+Mitigation: one shared generator core for the CLI and user interface.
 
-### Unklare Zustandsabbildung zwischen MTP und ETAB
+### Unclear State Mapping Between MTP and ETAB
 
-Gegenmaßnahme: MTP erst nach stabilem ETAB-MVP ergänzen und Zustände explizit mappen.
+Mitigation: add MTP only after the ETAB MVP is stable and map states explicitly.
 
-### Falscher Sicherheitsanspruch
+### False Safety Claim
 
-Gegenmaßnahme: Safety, Kollision und sichere Maschinenreaktionen bleiben außerhalb der automatischen Generierung.
+Mitigation: safety, collision handling, and safe machine responses remain outside automatic generation.
 
-## 13. Umsetzungsentscheidungen
+## 13. Implementation Decisions
 
-Für Phase 1 verbindlich entschieden:
+Binding decisions for Phase 1:
 
-- Arbeitsname und Ablage: `ETAB Engineering` im Workspace-Unterordner `ETAB_Engineering_v0.1.0.0`.
-- Command-Enum-Literal im Modell: `enumValue`; `nCommandID` bleibt ausschließlich die Laufzeit-ID einer Anforderung.
-- Status-DUTs werden projektspezifisch generiert und betten vorhandene Library-Status-DUTs ein; `ET_AutomationBase` wird dafür nicht geändert.
-- Basisbausteine folgen dem compilergeprüften Muster `User-FB -> Generated-Base-FB -> ETAB.FB_ETAB_ApplicationUnit` mit `SUPER^()` auf beiden Ebenen und geschützten Hooks.
-- JSON-Schema, Benennung, ID-Regeln sowie Umbenennen und Löschen sind durch die Phase-0-Verträge festgelegt.
+- Working name and location: `ETAB Engineering` in the `ETAB_Engineering_v0.1.0.0` workspace subdirectory.
+- Command enum literal in the model: `enumValue`; `nCommandID` remains exclusively the runtime ID of a request.
+- Status DUTs are generated per project and embed existing library status DUTs; `ET_AutomationBase` is not changed for this purpose.
+- Base function blocks follow the compiler-verified pattern `User-FB -> Generated-Base-FB -> ETAB.FB_ETAB_ApplicationUnit`, with `SUPER^()` at both levels and protected hooks.
+- The JSON schema, naming and ID rules, and rename/delete behavior are defined by the Phase 0 contracts.
 
-Nicht blockierend und in späteren Phasen zu entscheiden:
+Non-blocking decisions for later phases:
 
-- genauer Umfang automatisch erzeugter GVL- und PRG-Strukturen in Phase 3,
-- Canvas-Komponente in Phase 2,
-- Automation Interface erst nach der dateibasierten Projektintegration,
-- genaue MTP-Zustandsabbildung in Phase 5.
+- exact scope of automatically generated GVL and PRG structures in Phase 3,
+- canvas component in Phase 2,
+- Automation Interface only after file-based project integration,
+- exact MTP state mapping in Phase 5.
 
-## 14. Erster Umsetzungsschnitt (abgeschlossen)
+## 14. First Implementation Slice (Completed)
 
-Der ursprünglich freigegebene Entwicklungsschnitt umfasste:
+The initially approved development slice comprised:
 
-1. JSON-Schema v0.1
-2. C#-Modellklassen
-3. Validierung von Units, stabilen Command-IDs und `enumValue`-Werten
-4. deterministische Erzeugung eines Command-Enums
-5. deterministische Erzeugung eines Request- und Status-DUTs
-6. Manifest mit stabilen IDs und Hashes
-7. CLI-`preview` und CLI-`check`
-8. Tests anhand einer vereinfachten `ProcessUnit`
+1. JSON schema v0.1
+2. C# model classes
+3. validation of units, stable command IDs, and `enumValue` values
+4. deterministic generation of a command enum
+5. deterministic generation of request and status DUTs
+6. manifest with stable IDs and hashes
+7. CLI `preview` and CLI `check`
+8. tests based on a simplified `ProcessUnit`
 
-Phase 1 hat diesen Schnitt vollständig umgesetzt und zusätzlich ApplicationUnit-Basis-FBs, den schreibenden CLI-Befehl `generate`, transaktionale Dateioperationen und Rollback ergänzt. Der Kern ist reproduzierbar und gemäß `docs/Phase1_Validation.md` abgenommen. Als nächster Umsetzungsschritt beginnt Phase 2 mit dem visuellen Editor.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. The next implementation step is Phase 2, beginning with the visual editor.

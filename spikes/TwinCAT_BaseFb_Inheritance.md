@@ -1,8 +1,8 @@
-# TwinCAT-Spike: generierter Basis-FB und Benutzer-FB
+# TwinCAT Spike: Generated Base FB and User FB
 
-## Ziel
+## Objective
 
-Der Spike prüft das geplante Eigentumsmuster für Unit-Bausteine:
+The spike verifies the planned ownership pattern for unit function blocks:
 
 ```text
 FB_ETABENG_UserUnit
@@ -12,29 +12,29 @@ FB_ETABENG_GeneratedUnitBase
 ETAB.FB_ETAB_ApplicationUnit
 ```
 
-Der generierte Basis-FB gehört zu `Generated/`. Der abgeleitete Benutzer-FB gehört zu `Application/` und wird bei einer Regenerierung nicht verändert.
+The generated base FB belongs to `Generated/`. The derived user FB belongs to `Application/` and is not modified during regeneration.
 
-## Compile-Host
+## Compile Host
 
-Die drei Spike-POUs sind im vorhandenen Projekt `AutomationBase_Beispiel.plcproj` unter `POUs/Spikes/ETABEngineering/` eingebunden:
+The three spike POUs are included in the existing `AutomationBase_Beispiel.plcproj` project under `POUs/Spikes/ETABEngineering/`:
 
-- `FB_ETABENG_GeneratedUnitBase`: generatorverwaltete Zwischenschicht mit `SUPER^()` und geschütztem Hook `OnExecuteOperation`.
-- `FB_ETABENG_UserUnit`: benutzerverwaltete Ableitung, die ebenfalls `SUPER^()` aufruft und den Hook überschreibt.
-- `FB_ETABENG_BaseFbInheritanceSpike`: nicht instanziierter Testtreiber mit Zählern für Aufrufkette und Hook-Dispatch.
+- `FB_ETABENG_GeneratedUnitBase`: generator-managed intermediate layer with `SUPER^()` and the protected `OnExecuteOperation` hook.
+- `FB_ETABENG_UserUnit`: user-managed derivative that also calls `SUPER^()` and overrides the hook.
+- `FB_ETABENG_BaseFbInheritanceSpike`: non-instantiated test driver with counters for the call chain and hook dispatch.
 
-Keine Spike-POU ist einer Task zugeordnet oder wird von `MAIN` instanziiert. Der Spike verändert deshalb kein Laufzeitverhalten des BrushMachine-Beispiels.
+None of the spike POUs is assigned to a task or instantiated by `MAIN`. The spike therefore does not alter the runtime behavior of the BrushMachine example.
 
-## Abnahmestufen
+## Acceptance Levels
 
-1. XML-Strukturprüfung aller drei `.TcPOU`-Dateien und der `.plcproj`.
-2. TwinCAT-Compile des vorhandenen Projekts.
-3. Optionaler späterer Online-/Simulationstest durch gezielte Instanziierung des Testtreibers.
+1. XML structural validation of all three `.TcPOU` files and the `.plcproj` file.
+2. TwinCAT compile of the existing project.
+3. Optional later online/simulation test by deliberately instantiating the test driver.
 
-Ein erfolgreicher Compile weist die gültige Vererbung, geerbte Ein-/Ausgänge, die zweistufige `SUPER^()`-Kette und die zulässige Hook-Überschreibung nach. Er beweist noch nicht die Laufzeitwerte der Zähler. Diese werden erst durch den optionalen Online-/Simulationstest nachgewiesen.
+A successful compile demonstrates valid inheritance, inherited inputs and outputs, the two-level `SUPER^()` chain, and a permitted hook override. It does not yet prove the runtime values of the counters. Those values are demonstrated only by the optional online/simulation test.
 
-## Ergebnis
+## Result
 
-Ausgeführt am 2026-08-10 mit der lokal installierten Beckhoff TwinCAT XAE Shell über `TcXaeShell.DTE.15.0`:
+Executed on 2026-08-10 with the locally installed Beckhoff TwinCAT XAE Shell via `TcXaeShell.DTE.15.0`:
 
 ```text
 Solution:      AutomationBase_Beispiel.sln
@@ -43,4 +43,4 @@ LastBuildInfo: 0
 Result:        COMPILE_SUCCESS
 ```
 
-Damit sind die zweistufige `SUPER^()`-Kette, die geerbten Ein-/Ausgänge und die geschützte Hook-Überschreibung compilerseitig bestätigt. Der Testtreiber wurde nicht einer Task zugeordnet; Hook-Dispatch und Zählerwerte wurden deshalb nicht online oder in einer Simulation ausgeführt.
+The two-level `SUPER^()` chain, inherited inputs and outputs, and protected hook override are therefore confirmed at compile time. The test driver was not assigned to a task; hook dispatch and counter values were consequently not executed online or in a simulation.

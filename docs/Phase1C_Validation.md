@@ -1,136 +1,136 @@
-# Phase-1C-Validierungsprotokoll
+# Phase 1C Validation Record
 
-> Dieses Dokument hält den damaligen read-only Zwischenstand 1C fest. Die inzwischen abgeschlossene schreibende Phase 1 einschließlich Basis-FBs, `check`, `generate` und Rollback ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
+> This document records the historical read-only 1C interim state. The now-completed writing Phase 1, including base FBs, `check`, `generate`, and rollback, is documented in the [Phase 1 completion validation](Phase1_Validation.md).
 
 ## Status
 
-- Phase: 1C – Manifest- und Dateisystemplanung
-- Ergebnis: abgeschlossen
-- Prüfdatum: 2026-08-10
-- Ausführungsmodus: read-only außerhalb temporärer automatisierter Tests
+- Phase: 1C – Manifest and Filesystem Planning
+- Result: completed
+- Validation date: 2026-08-10
+- Execution mode: read-only outside temporary automated tests
 
-Phase 1C erweitert die reine Artefaktvorschau um einen sicheren Vergleich mit einem vorhandenen Generatorstand. Der Kern erzeugt ein deterministisches Manifest im Speicher, liest ein gegebenenfalls vorhandenes Manifest und prüft exakt die darin verwalteten Dateien. Es werden weiterhin keine Projekt- oder Generatorausgaben geschrieben, umbenannt oder gelöscht.
+Phase 1C extends the artifact preview with a safe comparison against an existing generated state. The core creates a deterministic manifest in memory, reads an existing manifest if present, and checks exactly the files managed by it. Project or generator outputs are still not written, renamed, or deleted.
 
 ## Manifest v0.1
 
-Der vorgeschlagene Inhalt von `Generated/etab-generation-manifest.json` enthält:
+The proposed content of `Generated/etab-generation-manifest.json` contains:
 
 - `manifestVersion`,
 - `generatorVersion`,
 - `schemaVersion`,
 - `projectId`,
 - `semanticModelHash`,
-- pro Artefakt `sourceModelId`, `kind`, `name`, `twinCatGuid`, `relativePath` und `contentHash`.
+- for each artifact: `sourceModelId`, `kind`, `name`, `twinCatGuid`, `relativePath`, and `contentHash`.
 
-Das Manifest ist deterministisch sortiert, verwendet zwei Leerzeichen Einrückung und ausschließlich LF-Zeilenenden. Es enthält weder Zeitstempel noch Benutzer-, Rechner- oder absolute Pfadangaben.
+The manifest is sorted deterministically, uses two-space indentation and LF line endings exclusively, and contains no timestamps, user names, machine names, or absolute paths.
 
-## Semantischer Modellhash
+## Semantic Model Hash
 
-Der Modellhash ist SHA-256 über eine kanonische JSON-Repräsentation des typisierten Modells.
+The model hash is SHA-256 over a canonical JSON representation of the typed model.
 
-Ausgeschlossen:
+Excluded:
 
-- der vollständige `layout`-Block.
+- the complete `layout` block.
 
-Kanonisch sortiert:
+Canonically sorted:
 
-- Nodes nach `name` und `id`,
-- Commands nach `enumValue`, `name` und `id`,
-- Relationen nach `kind`, `sourceNodeId`, `targetNodeId` und `id`,
-- MTP-Procedures nach `procedureId`, `name` und `id`,
-- JSON-Objekte nach Propertynamen.
+- nodes by `name` and `id`,
+- commands by `enumValue`, `name`, and `id`,
+- relationships by `kind`, `sourceNodeId`, `targetNodeId`, and `id`,
+- MTP procedures by `procedureId`, `name`, and `id`,
+- JSON objects by property name.
 
-Payloadfelder behalten ihre Modellreihenfolge, da diese laut Modellspezifikation SPS-semantisch ist.
+Payload fields retain their model order because the model specification defines that order as PLC-semantic.
 
-## Zielroot und Pfadsicherheit
+## Target Root and Path Safety
 
-Ohne zusätzliche Option verwendet die CLI das Verzeichnis der `.etab.json`-Projektdatei als Projektroot. Für Tests gegen einen anderen Zielstand kann er explizit gesetzt werden:
+Without an additional option, the CLI uses the directory containing the `.etab.json` project file as the project root. For tests against a different target state, it can be set explicitly:
 
 ```powershell
 etab preview BrushMachine.etab.json --root C:\TwinCAT\BrushMachine
 ```
 
-Sicherheitsregeln:
+Safety rules:
 
-- der Projektroot muss als Verzeichnis existieren,
-- `project.generation.generatedRoot` muss relativ sein,
-- der aufgelöste Generatorroot muss ein echtes Unterverzeichnis des Projektroots sein,
-- `.`- und `..`-Segmente sind nicht zulässig,
-- jeder aktuelle und alte Manifestpfad wird absolut aufgelöst und erneut gegen den Generatorroot geprüft,
-- es werden keine rekursiven Dateisystemscans oder Globs verwendet.
+- the project root must exist as a directory,
+- `project.generation.generatedRoot` must be relative,
+- the resolved generator root must be a true subdirectory of the project root,
+- `.` and `..` segments are not permitted,
+- every current and previous manifest path is resolved to an absolute path and revalidated against the generator root,
+- no recursive filesystem scans or globs are used.
 
-## Änderungsarten
+## Change Kinds
 
-| Status | Voraussetzung |
+| Status | Condition |
 |---|---|
-| `create` | kein alter Manifest-Eintrag und Zielpfad frei |
-| `unchanged` | verwaltete Datei entspricht altem und neuem Inhaltshash |
-| `update` | verwaltete Datei entspricht dem alten Hash, der neue Inhalt ist anders |
-| `rename` | gleiche Modell-ID und Artefaktart, stabile GUID, alter Pfad unverändert, neuer Pfad frei |
-| `delete` | alter Manifest-Eintrag ist entfallen und die konkrete Altdatei ist unverändert |
-| `conflict` | sicherer automatischer Folgeschritt ist nicht möglich |
+| `create` | no previous manifest entry and target path is free |
+| `unchanged` | managed file matches both the previous and new content hashes |
+| `update` | managed file matches the previous hash and the new content differs |
+| `rename` | same model ID and artifact kind, stable GUID, unchanged old path, free new path |
+| `delete` | previous manifest entry has been removed and the specific old file is unchanged |
+| `conflict` | a safe automatic next step is not possible |
 
-Mindestens folgende Zustände werden als Konflikt behandelt:
+At least the following conditions are treated as conflicts:
 
-- manifestierte Datei fehlt,
-- manifestierte Datei wurde außerhalb von ETAB Engineering verändert,
-- nicht manifestierte Datei belegt einen Zielpfad,
-- Rename-Ziel ist belegt,
-- Manifest ist syntaktisch oder semantisch ungültig,
-- Manifest gehört zu einer anderen Projekt- oder Schema-ID,
-- alte oder neue Pfade verlassen den Generatorbereich,
-- gespeicherte TwinCAT-GUID stimmt nicht mit der deterministischen UUID v5 überein.
+- manifested file is missing,
+- manifested file was modified outside ETAB Engineering,
+- an unmanifested file occupies a target path,
+- rename target is occupied,
+- manifest is syntactically or semantically invalid,
+- manifest belongs to a different project or schema ID,
+- previous or new paths leave the generator-owned area,
+- stored TwinCAT GUID does not match the deterministic UUID v5.
 
-Bei einem Artefaktkonflikt wird auch der Manifeststatus als `conflict` ausgegeben. Ein späterer `generate`-Befehl darf dann nicht schreiben.
+When an artifact conflict exists, the manifest status is also reported as `conflict`. A future `generate` command must not write in that case.
 
 ## CLI
 
-Read-only Vergleich gegen den Standardroot neben der Projektdatei:
+Read-only comparison against the default root beside the project file:
 
 ```powershell
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json
 ```
 
-Vergleich gegen einen expliziten Projektroot und Ausgabe aller geplanten Inhalte:
+Comparison against an explicit project root with all planned content displayed:
 
 ```powershell
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json --root . --content
 ```
 
-`--content` zeigt zusätzlich sämtliche geplanten `.TcDUT`-Inhalte und den vollständigen vorgeschlagenen Manifestinhalt. Es schreibt diese Inhalte nicht.
+`--content` additionally displays all planned `.TcDUT` content and the complete proposed manifest content. It does not write this content.
 
-Exit-Codes:
+Exit codes:
 
-- 0: Vorschau erfolgreich und konfliktfrei,
-- 1: Projektvalidierung fehlgeschlagen oder Vorschau enthält Konflikte,
-- 2: ungültige CLI-Argumente,
-- 3: unerwarteter Ausführungsfehler.
+- 0: preview successful and conflict-free,
+- 1: project validation failed or preview contains conflicts,
+- 2: invalid CLI arguments,
+- 3: unexpected execution error.
 
-## Automatisierte Nachweise
+## Automated Evidence
 
 ```text
 dotnet test ETAB.Engineering.sln --no-restore
-Bestanden: 27, Fehler: 0, Übersprungen: 0
+Passed: 27, Failed: 0, Skipped: 0
 ```
 
-Die zehn neuen Phase-1C-Tests prüfen:
+The ten new Phase 1C tests verify:
 
-- leerer Root ergibt zehn `create`-Artefakte und Manifest `create`,
-- vollständig materialisierter, unveränderter Stand ergibt ausschließlich `unchanged`,
-- fachliche Payloadänderung aktualisiert nur das betroffene DUT,
-- `symbolStem`-Änderung ergibt drei `rename`-Operationen bei stabilen GUIDs,
-- deaktiviertes Artefakt ergibt ein sicheres `delete`,
-- manuell veränderte verwaltete Datei ergibt `conflict`,
-- nicht manifestierter belegter Zielpfad ergibt `conflict`,
-- ungültiges Manifest blockiert den Vergleich,
-- ausbrechender Generatorroot wird vor dem Vergleich abgewiesen,
-- Modellhash bleibt bei Layout- und nicht-semantischen Eingabereihenfolgen identisch.
+- an empty root produces ten `create` artifacts and a `create` manifest,
+- a fully materialized, unchanged state produces only `unchanged`,
+- a domain payload change updates only the affected DUT,
+- a `symbolStem` change produces three `rename` operations with stable GUIDs,
+- a disabled artifact produces a safe `delete`,
+- a manually modified managed file produces `conflict`,
+- an occupied unmanifested target path produces `conflict`,
+- an invalid manifest blocks comparison,
+- a generator root that escapes the project root is rejected before comparison,
+- the model hash remains identical across layout and non-semantic input-order changes.
 
-Die Tests materialisieren Vergleichszustände nur in UUID-basierten Unterordnern von `%TEMP%\etab-engineering-tests`. Vor dem rekursiven Entfernen wird der aufgelöste Pfad erneut gegen genau diesen Testroot geprüft.
+The tests materialize comparison states only in UUID-based subdirectories of `%TEMP%\etab-engineering-tests`. Before recursive removal, the resolved path is revalidated against this exact test root.
 
-## Referenzlauf BrushMachine
+## BrushMachine Reference Run
 
-Ohne vorhandenen Generatorstand:
+Without an existing generated state:
 
 ```text
 Project: BrushMachine
@@ -140,16 +140,16 @@ Manifest: [create] Generated/etab-generation-manifest.json
 PREVIEW_EXIT_CODE=0
 ```
 
-Vor und nach der CLI-Vorschau wurden sowohl der Standardroot als auch der explizite Root auf einen neu angelegten `Generated/`-Ordner geprüft. Die Vorschau legt keinen solchen Ordner an.
+Before and after the CLI preview, both the default root and explicit root were checked for a newly created `Generated/` directory. The preview does not create such a directory.
 
-## Noch nicht nachgewiesen
+## Not Yet Demonstrated
 
-- kein produktives Schreiben des Manifests oder der DUT-Dateien,
-- keine produktiven Rename- oder Delete-Operationen,
-- kein transaktionaler Schreibablauf oder Rollback,
-- kein CLI-`generate` und kein CLI-`check`,
-- keine Basis-FB-, GVL-, PRG- oder `.plcproj`-Erzeugung,
-- kein TwinCAT-Compile der Vorschauartefakte,
-- keine Simulation, kein Online-Test und keine Maschinenvalidierung.
+- no production writing of the manifest or DUT files,
+- no production rename or delete operations,
+- no transactional write flow or rollback,
+- no CLI `generate` or CLI `check`,
+- no base-FB, GVL, PRG, or `.plcproj` generation,
+- no TwinCAT compile of the preview artifacts,
+- no simulation, online test, or machine validation.
 
-Der nächste sichere Schnitt ist ein `check`-Befehl, der denselben Plan als CI-Prüfung auswertet. Erst danach sollte ein schreibender, konfliktgesperrter `generate`-Befehl umgesetzt werden.
+The next safe slice is a `check` command that evaluates the same plan as a CI check. Only after that should a writing, conflict-protected `generate` command be implemented.

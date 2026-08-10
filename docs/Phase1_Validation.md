@@ -1,30 +1,30 @@
-# Phase-1-Abschlussvalidierung
+# Phase 1 Completion Validation
 
 ## Status
 
-- Phase: 1 – Headless Generator-Kern
-- Ergebnis: abgeschlossen
-- Prüfdatum: 2026-08-10
-- Referenzmodell: `examples/BrushMachine.reference.etab.json`
+- Phase: 1 – Headless Generator Core
+- Result: completed
+- Validation date: 2026-08-10
+- Reference model: `examples/BrushMachine.reference.etab.json`
 
-Phase 1 stellt einen deterministischen, dateibasierten Generator-Kern bereit. Er validiert das Projektmodell, plant alle Änderungen read-only und schreibt erst nach dem expliziten CLI-Befehl `generate`. Die visuelle Modellierung beginnt in Phase 2; die Einbindung in eine `.plcproj` und der Compile der tatsächlich generierten Projektartefakte folgen in Phase 3.
+Phase 1 provides a deterministic, file-based generator core. It validates the project model, plans all changes read-only, and writes only after the explicit CLI command `generate`. Visual modeling begins in Phase 2; integration into a `.plcproj` file and compilation of the actually generated project artifacts follow in Phase 3.
 
-## Umgesetzter Umfang
+## Implemented Scope
 
-Der BrushMachine-Referenzlauf erzeugt 14 SPS-Artefakte:
+The BrushMachine reference run produces 14 PLC artifacts:
 
-- drei Command-Enums,
-- drei Request-DUTs,
-- vier projektspezifische Status-DUTs,
-- vier ApplicationUnit-Basis-FBs.
+- three command enums,
+- three request DUTs,
+- four project-specific status DUTs,
+- four ApplicationUnit base FBs.
 
-Hinzu kommt `Generated/etab-generation-manifest.json`. Das Manifest enthält Projekt- und Schemaversion, semantischen Modellhash sowie je Artefakt Modell-ID, Art, Name, stabile TwinCAT-GUID, relativen Pfad und SHA-256-Inhaltshash.
+It also produces `Generated/etab-generation-manifest.json`. The manifest contains the project and schema versions, semantic model hash, and for each artifact its model ID, kind, name, stable TwinCAT GUID, relative path, and SHA-256 content hash.
 
-Die Basis-FBs erweitern `ETAB.FB_ETAB_ApplicationUnit`, rufen `SUPER^()` und anschließend den geschützten Hook `OnExecuteOperation()` auf. Der generierte Hook bleibt absichtlich leer. Safety-, Bewegungs- und Prozesslogik wird nicht generiert.
+The base FBs extend `ETAB.FB_ETAB_ApplicationUnit`, call `SUPER^()`, and then call the protected `OnExecuteOperation()` hook. The generated hook deliberately remains empty. Safety, motion, and process logic is not generated.
 
 ## CLI
 
-Verfügbar sind:
+The following commands are available:
 
 ```text
 etab validate <project-file> [--schema <schema-file>]
@@ -33,62 +33,62 @@ etab check    <project-file> [--schema <schema-file>] [--root <directory>]
 etab generate <project-file> [--schema <schema-file>] [--root <directory>]
 ```
 
-`preview` und `check` schreiben nicht. `check` liefert Exit-Code 0 nur für einen vollständig synchronen Stand und Exit-Code 1 für einen konfliktfreien, aber veralteten Stand oder einen Konflikt. `generate` führt nur einen konfliktfreien Plan aus.
+`preview` and `check` do not write. `check` returns exit code 0 only for a fully synchronized state, and exit code 1 for either a conflict-free but outdated state or a conflict. `generate` executes only a conflict-free plan.
 
-## Schreib- und Konfliktsicherheit
+## Write and Conflict Safety
 
-Vor dem ersten Schreibzugriff werden Zielroot, relative Pfade, Reparse Points, Zielbelegung und die seit der Planung erwarteten Hashes erneut geprüft. Der Schreibablauf:
+Before the first write, the target root, relative paths, reparse points, target occupancy, and hashes expected since planning are revalidated. The write process:
 
-1. neue Inhalte in einem UUID-basierten Staging-Verzeichnis unter `Generated/` vorbereiten,
-2. geänderte oder zu löschende verwaltete Dateien in ein separates Backup-Verzeichnis verschieben,
-3. `create`, `update`, `rename` und `delete` anwenden,
-4. das neue Manifest zuletzt schreiben,
-5. Transaktionsverzeichnisse nur nach erneuter Pfad- und Reparse-Point-Prüfung entfernen.
+1. prepares new content in a UUID-based staging directory under `Generated/`,
+2. moves modified or to-be-deleted managed files to a separate backup directory,
+3. applies `create`, `update`, `rename`, and `delete`,
+4. writes the new manifest last,
+5. removes transaction directories only after another path and reparse-point validation.
 
-Bei einem Fehler werden bereits geschriebene Ziele entfernt und Backups einzeln zurückgesichert. Scheitert eine Rücksicherung, bleibt das betreffende Backup zur manuellen Wiederherstellung erhalten und der Lauf wird als fehlgeschlagen gemeldet. Konflikte blockieren den gesamten Schreibablauf vor der Transaktion.
+On failure, already written targets are removed and backups are restored individually. If restoration fails, the affected backup remains available for manual recovery and the run is reported as failed. Conflicts block the entire write process before the transaction starts.
 
-## Automatisierte Nachweise
+## Automated Evidence
 
 ```text
 dotnet test ETAB.Engineering.sln --configuration Release --no-restore
-Bestanden: 35, Fehler: 0, Übersprungen: 0
+Passed: 35, Failed: 0, Skipped: 0
 ```
 
-Abgedeckt sind unter anderem:
+Coverage includes:
 
-- Schema- und Semantikvalidierung einschließlich doppelter stabiler Command-IDs und `enumValue`-Werte,
-- Snapshot- und Determinismusprüfung aller Artefaktarten,
-- stabile UUID-v5-TwinCAT-GUIDs,
-- Manifest- und semantischer Modellhash,
-- `create`, `update`, `rename`, `delete`, `unchanged` und `conflict`,
-- Erkennung manuell veränderter oder nach der Vorschau belegter Dateien,
-- vollständiger No-op bei unveränderter Regeneration,
-- byte-identische Ausgabe bei gleicher Eingabe,
-- Transaktionsrollback nach künstlichem Fehler mitten in einer Update-/Rename-Folge,
-- unveränderte Benutzerdatei außerhalb von `Generated/`,
-- UTF-8 ohne BOM, LF-Zeilenenden und passende Manifest-Inhaltshashes,
-- strukturelles Parsen aller tatsächlich geschriebenen `.TcDUT`- und `.TcPOU`-Dateien,
-- global eindeutige TwinCAT-XML-`Id`-Attribute im Referenzlauf.
+- schema and semantic validation, including duplicate stable command IDs and `enumValue` values,
+- snapshot and determinism validation for every artifact kind,
+- stable UUID v5 TwinCAT GUIDs,
+- manifest and semantic model hash,
+- `create`, `update`, `rename`, `delete`, `unchanged`, and `conflict`,
+- detection of files modified manually or occupied after preview,
+- complete no-op for unchanged regeneration,
+- byte-identical output for identical input,
+- transaction rollback after an injected failure midway through an update/rename sequence,
+- unchanged user file outside `Generated/`,
+- UTF-8 without BOM, LF line endings, and matching manifest content hashes,
+- structural parsing of every actually written `.TcDUT` and `.TcPOU` file,
+- globally unique TwinCAT XML `Id` attributes in the reference run.
 
-## Isolierter CLI-End-to-End-Lauf
+## Isolated CLI End-to-End Run
 
-Der Release-Build wurde gegen einen frisch erzeugten UUID-Unterordner von `%TEMP%\etab-engineering-cli-verification` ausgeführt. Das Verzeichnis wurde vor der Bereinigung auf Pfadgrenze und Reparse Points geprüft.
+The Release build was run against a freshly created UUID subdirectory of `%TEMP%\etab-engineering-cli-verification`. Before cleanup, the directory was checked for path boundaries and reparse points.
 
 ```text
 CLI_VERIFY check-before=1 generate-first=0 check-after=0 generate-second=0 files=15 byte-identical=true outside-generated-files=0
 ```
 
-Damit sind der erwartete Out-of-date-Status vor der Generierung, das erste Schreiben, der synchrone Folgestand, die No-op-Regeneration und die Schreibgrenze praktisch nachgewiesen.
+This demonstrates the expected out-of-date status before generation, the first write, the subsequent synchronized state, no-op regeneration, and the write boundary.
 
-## Phase-1-Abnahmekriterien
+## Phase 1 Acceptance Criteria
 
-- [x] Gleiche Eingabe erzeugt byte-identische Ausgabe.
-- [x] Doppelte stabile Command-IDs und doppelte `enumValue`-Werte je Node werden abgewiesen.
-- [x] Keine Datei außerhalb des Generatorbereichs wird verändert.
-- [x] Geschriebene TwinCAT-XML-Artefakte lassen sich strukturell parsen.
+- [x] Identical input produces byte-identical output.
+- [x] Duplicate stable command IDs and duplicate `enumValue` values within a node are rejected.
+- [x] No file outside the generator-owned area is modified.
+- [x] Written TwinCAT XML artifacts can be parsed structurally.
 
-## Bewusste Abgrenzung
+## Deliberate Boundary
 
-Phase 1 verändert weder `ET_AutomationBase` noch eine `.plcproj`. Der Phase-0-Spike hat das verwendete Vererbungs- und Hook-Muster bereits mit TwinCAT XAE erfolgreich kompiliert. Die 14 durch diesen Generator erzeugten Dateien sind strukturell validiert, aber noch nicht in ein Projekt eingebunden und daher noch nicht selbst durch XAE kompiliert. Dieser stärkere Nachweis gehört zusammen mit `<Compile Include="…">`, GVL-/PRG-Strukturen und Projektkopie ausdrücklich zu Phase 3.
+Phase 1 modifies neither `ET_AutomationBase` nor a `.plcproj` file. The Phase 0 spike already compiled the inheritance and hook pattern used here successfully with TwinCAT XAE. The 14 files produced by this generator are structurally validated, but have not yet been included in a project and therefore have not themselves been compiled by XAE. This stronger evidence, together with `<Compile Include="…">` entries, GVL/PRG structures, and the project copy, explicitly belongs to Phase 3.
 
-Nicht nachgewiesen sind außerdem Simulation, Online-Test und Maschinenverhalten.
+Simulation, online testing, and machine behavior have not been demonstrated either.

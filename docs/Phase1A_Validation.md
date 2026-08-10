@@ -1,18 +1,18 @@
-# Phase-1A-Validierungsprotokoll
+# Phase 1A Validation Record
 
-> Dieses Dokument hält den damaligen Zwischenstand 1A fest. Der aktuelle, vollständig abgeschlossene Phase-1-Stand ist in der [Phase-1-Abschlussvalidierung](Phase1_Validation.md) dokumentiert.
+> This document records the historical 1A interim state. The current, fully completed Phase 1 state is documented in the [Phase 1 completion validation](Phase1_Validation.md).
 
 ## Status
 
-- Phase: 1A – Modell- und Validierungskern
-- Ergebnis: abgeschlossen
-- Prüfdatum: 2026-08-10
-- Zielruntime: .NET 10
-- Gepinntes SDK: 10.0.302 über `global.json`
+- Phase: 1A – Model and Validation Core
+- Result: completed
+- Validation date: 2026-08-10
+- Target runtime: .NET 10
+- Pinned SDK: 10.0.302 through `global.json`
 
-Phase 1A ist ein rein lesender Entwicklungsschnitt. Er erzeugt noch keine TwinCAT-Objekte, schreibt kein Manifest und verändert weder ein TwinCAT-Projekt noch `ET_AutomationBase`.
+Phase 1A is a read-only development slice. It does not yet produce TwinCAT objects, write a manifest, or modify either a TwinCAT project or `ET_AutomationBase`.
 
-## Umgesetzte Struktur
+## Implemented Structure
 
 ```text
 ETAB.Engineering.sln
@@ -23,90 +23,90 @@ ETAB.Engineering.sln
 └─ tests/ETAB.Engineering.Core.Tests
 ```
 
-- `ETAB.Engineering.Core`: typisiertes Projektmodell sowie Schema- und Semantikvalidierung
-- `ETAB.Engineering.Cli`: Headless-Einstiegspunkt mit dem Befehl `validate`
-- `ETAB.Engineering.Core.Tests`: Positiv- und Negativtests gegen das BrushMachine-Referenzmodell
-- `JsonSchema.Net` 9.4.0: Auswertung des vorhandenen Schemas als JSON Schema Draft 2020-12
+- `ETAB.Engineering.Core`: typed project model and schema/semantic validation
+- `ETAB.Engineering.Cli`: headless entry point with the `validate` command
+- `ETAB.Engineering.Core.Tests`: positive and negative tests against the BrushMachine reference model
+- `JsonSchema.Net` 9.4.0: evaluates the existing schema as JSON Schema Draft 2020-12
 
-## Validierungskette
+## Validation Chain
 
-Ein Projekt durchläuft vier Stufen:
+A project passes through four stages:
 
-1. JSON-Syntax parsen
-2. Dokument gegen `schemas/etab-project.schema.json` prüfen
-3. in das typisierte C#-Projektmodell deserialisieren
-4. projektübergreifende Semantikregeln prüfen
+1. parse JSON syntax
+2. validate the document against `schemas/etab-project.schema.json`
+3. deserialize into the typed C# project model
+4. validate cross-project semantic rules
 
-Semantisch geprüft werden:
+Semantic validation covers:
 
-- globale Eindeutigkeit aller stabilen `id`-Werte,
-- Node-, Command- und Payload-Namen ohne IEC-Groß-/Kleinschreibungsduplikate,
-- eindeutige `enumValue`-Werte je Node,
-- genau ein `NoAction` mit `enumValue = 0` bei generierten Command-Enums,
-- gültige Arraygrenzen,
-- Kopplung von Request-DUT und Command-Enum,
-- Schutz der impliziten Request- und eingebetteten Library-Statusfelder,
-- MTP-Procedure-IDs und lokale Command-Referenzen,
-- vorhandene Relation-Endpunkte, keine Selbstbeziehungen und passende Zieltypen,
-- höchstens ein `contains`-Parent und keine Hierarchiezyklen,
-- gültige und eindeutige Layoutreferenzen,
-- kollisionsfreie generierte TwinCAT-Artefaktnamen.
+- global uniqueness of all stable `id` values,
+- node, command, and payload names without IEC case-insensitive duplicates,
+- unique `enumValue` values within each node,
+- exactly one `NoAction` with `enumValue = 0` for generated command enums,
+- valid array bounds,
+- coupling between request DUT and command enum,
+- protection of implicit request fields and embedded library-status fields,
+- MTP procedure IDs and local command references,
+- existing relationship endpoints, no self-relations, and appropriate target types,
+- at most one `contains` parent and no hierarchy cycles,
+- valid and unique layout references,
+- collision-free generated TwinCAT artifact names.
 
 ## CLI
 
-Aufruf aus diesem Ordner:
+Run from this directory:
 
 ```powershell
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- validate .\examples\BrushMachine.reference.etab.json
 ```
 
-Alternativ akzeptiert `validate` mit `--schema <datei>` einen expliziten Schemapfad. Ohne diese Option verwendet die CLI das mitkopierte Schema.
+Alternatively, `validate` accepts an explicit schema path through `--schema <file>`. Without this option, the CLI uses the copied schema.
 
-Exit-Codes:
+Exit codes:
 
-| Code | Bedeutung |
+| Code | Meaning |
 |---:|---|
-| 0 | Projekt gültig |
-| 1 | Validierung fehlgeschlagen |
-| 2 | ungültige CLI-Argumente |
-| 3 | unerwarteter Ausführungsfehler |
+| 0 | Project valid |
+| 1 | Validation failed |
+| 2 | Invalid CLI arguments |
+| 3 | Unexpected execution error |
 
-Jeder Validierungsfehler enthält einen stabilen Fehlercode, einen JSON-Pfad und eine Beschreibung, zum Beispiel:
+Each validation error includes a stable error code, a JSON path, and a description, for example:
 
 ```text
 [JSON_PARSE] line 1, byte 1: '#' is an invalid start of a value.
 ```
 
-## Ausgeführte Nachweise
+## Evidence Collected
 
-### Restore und Build
+### Restore and Build
 
 ```text
 dotnet restore ETAB.Engineering.sln
-Restore erfolgreich für 3 Projekte.
+Restore succeeded for 3 projects.
 
 dotnet build ETAB.Engineering.sln --no-restore
-0 Warnungen, 0 Fehler
+0 warnings, 0 errors
 ```
 
-### Automatisierte Tests
+### Automated Tests
 
 ```text
 dotnet test ETAB.Engineering.sln --no-build --no-restore
-Bestanden: 7, Fehler: 0, Übersprungen: 0
+Passed: 7, Failed: 0, Skipped: 0
 ```
 
-Abgedeckte Fälle:
+Covered cases:
 
-- gültiges BrushMachine-Referenzmodell,
-- veraltetes Command-Feld `value` statt `enumValue`,
-- doppelte stabile ID,
-- doppelter `enumValue`,
-- Kollision mit einem reservierten Library-Statusfeld,
-- unbekannter Relation-Endpunkt,
-- invertierte Arraygrenze.
+- valid BrushMachine reference model,
+- obsolete command field `value` instead of `enumValue`,
+- duplicate stable ID,
+- duplicate `enumValue`,
+- collision with a reserved library-status field,
+- unknown relationship endpoint,
+- inverted array bound.
 
-### CLI-Positivfall
+### Positive CLI Case
 
 ```text
 VALID ...\examples\BrushMachine.reference.etab.json
@@ -115,9 +115,9 @@ Nodes: 7
 Relations: 12
 ```
 
-### CLI-Fehlerpfad
+### CLI Error Path
 
-Eine Nicht-JSON-Datei wurde absichtlich als Projekt übergeben:
+A non-JSON file was deliberately supplied as the project:
 
 ```text
 INVALID ...\README.md
@@ -125,13 +125,13 @@ INVALID ...\README.md
 CLI_EXIT_CODE=1
 ```
 
-## Noch nicht nachgewiesen
+## Not Yet Demonstrated
 
-- keine Erzeugung von `.TcDUT`, `.TcPOU`, `.TcGVL` oder `.plcproj`-Einträgen,
-- keine GUID- oder Manifestverwaltung,
-- keine `preview`-, `generate`- oder `check`-Befehle,
-- keine Snapshot- oder Determinismusprüfung generierter Dateien,
-- kein neuer TwinCAT-Compile in Phase 1A,
-- keine Simulation, kein Online-Test und keine Maschinenvalidierung.
+- no generation of `.TcDUT`, `.TcPOU`, `.TcGVL`, or `.plcproj` entries,
+- no GUID or manifest management,
+- no `preview`, `generate`, or `check` commands,
+- no snapshot or determinism validation of generated files,
+- no new TwinCAT compile in Phase 1A,
+- no simulation, online test, or machine validation.
 
-Diese Punkte gehören zu den folgenden Schnitten von Phase 1 beziehungsweise zu Phase 3.
+These items belong to the subsequent Phase 1 slices or to Phase 3.
