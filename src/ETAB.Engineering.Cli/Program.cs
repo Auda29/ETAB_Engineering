@@ -1,6 +1,7 @@
 using ETAB.Engineering.Core.Execution;
 using ETAB.Engineering.Core.Generation;
 using ETAB.Engineering.Core.Planning;
+using ETAB.Engineering.Core.ProjectIntegration;
 using ETAB.Engineering.Core.Validation;
 
 namespace ETAB.Engineering.Cli;
@@ -52,6 +53,13 @@ internal static class Program
             var preview = new ArtifactPreviewGenerator().Generate(result.Project!);
             var projectRoot = options.ProjectRoot ?? Path.GetDirectoryName(fullProjectPath)!;
             var plan = new GenerationPlanBuilder().Build(projectRoot, result.Project!, preview);
+            if (options.IntegrateProject)
+            {
+                plan = new TwinCatProjectIntegrationPlanBuilder().Build(
+                    plan,
+                    result.Project!,
+                    preview);
+            }
 
             switch (options.Command)
             {
@@ -118,6 +126,10 @@ internal static class Program
     private static bool IsSynchronized(GenerationPlan plan) =>
         !plan.HasConflicts &&
         plan.Manifest.ChangeKind == GenerationChangeKind.Unchanged &&
+        (plan.ProjectFile is null ||
+         plan.ProjectFile.ChangeKind == GenerationChangeKind.Unchanged) &&
+        (plan.ProjectIntegrationManifest is null ||
+         plan.ProjectIntegrationManifest.ChangeKind == GenerationChangeKind.Unchanged) &&
         plan.Changes.All(change => change.ChangeKind == GenerationChangeKind.Unchanged);
 
     private static void PrintPlan(
@@ -133,6 +145,23 @@ internal static class Program
         Console.WriteLine($"Artifacts: {preview.Artifacts.Count}");
         Console.WriteLine(
             $"Manifest: [{plan.Manifest.ChangeKind.ToContractName()}] {plan.Manifest.RelativePath}");
+        if (plan.ProjectFile is not null)
+        {
+            Console.WriteLine(
+                $"PLC project: [{plan.ProjectFile.ChangeKind.ToContractName()}] " +
+                plan.ProjectFile.RelativePath);
+            if (!string.IsNullOrWhiteSpace(plan.ProjectFile.Message))
+            {
+                Console.WriteLine($"  {plan.ProjectFile.Message}");
+            }
+        }
+        if (plan.ProjectIntegrationManifest is not null)
+        {
+            Console.WriteLine(
+                $"Project integration manifest: " +
+                $"[{plan.ProjectIntegrationManifest.ChangeKind.ToContractName()}] " +
+                plan.ProjectIntegrationManifest.RelativePath);
+        }
 
         foreach (var issue in plan.Issues)
         {
@@ -175,6 +204,18 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine($"--- {plan.Manifest.RelativePath} ---");
         Console.Write(plan.Manifest.ProposedContent);
+        if (plan.ProjectFile is not null)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- {plan.ProjectFile.RelativePath} ---");
+            Console.Write(plan.ProjectFile.ProposedContent);
+        }
+        if (plan.ProjectIntegrationManifest is not null)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- {plan.ProjectIntegrationManifest.RelativePath} ---");
+            Console.Write(plan.ProjectIntegrationManifest.ProposedContent);
+        }
     }
 
     private static bool TryParseCommand(
@@ -209,6 +250,7 @@ internal static class Program
         var schemaPath = Path.Combine(AppContext.BaseDirectory, "schemas", "etab-project.schema.json");
         var showContent = false;
         string? projectRoot = null;
+        var integrateProject = false;
 
         for (var index = 1; index < args.Length; index++)
         {
@@ -255,6 +297,18 @@ internal static class Program
                 continue;
             }
 
+            if (string.Equals(argument, "--integrate-project", StringComparison.OrdinalIgnoreCase))
+            {
+                if (command == CliCommand.Validate)
+                {
+                    error = "Option '--integrate-project' is valid only for preview, check and generate.";
+                    return false;
+                }
+
+                integrateProject = true;
+                continue;
+            }
+
             if (argument.StartsWith('-'))
             {
                 error = $"Unknown option '{argument}'.";
@@ -276,7 +330,19 @@ internal static class Program
             return false;
         }
 
-        options = new CliOptions(command.Value, projectPath, schemaPath, showContent, projectRoot);
+        if (integrateProject && string.IsNullOrWhiteSpace(projectRoot))
+        {
+            error = "Option '--integrate-project' requires an explicit '--root' TwinCAT project directory.";
+            return false;
+        }
+
+        options = new CliOptions(
+            command.Value,
+            projectPath,
+            schemaPath,
+            showContent,
+            projectRoot,
+            integrateProject);
         return true;
     }
 
@@ -289,15 +355,18 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  etab validate <project-file> [--schema <schema-file>]");
-        Console.WriteLine("  etab preview  <project-file> [--schema <schema-file>] [--root <directory>] [--content]");
-        Console.WriteLine("  etab check    <project-file> [--schema <schema-file>] [--root <directory>]");
-        Console.WriteLine("  etab generate <project-file> [--schema <schema-file>] [--root <directory>]");
+        Console.WriteLine("  etab preview  <project-file> [--schema <schema-file>] [--root <directory>] [--integrate-project] [--content]");
+        Console.WriteLine("  etab check    <project-file> [--schema <schema-file>] [--root <directory>] [--integrate-project]");
+        Console.WriteLine("  etab generate <project-file> [--schema <schema-file>] [--root <directory>] [--integrate-project]");
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  validate  Validate schema and project semantics");
         Console.WriteLine("  preview   Compare planned DUT artifacts and manifest without writing files");
         Console.WriteLine("  check     Exit successfully only when generated files are synchronized");
         Console.WriteLine("  generate  Apply a conflict-free plan and write the manifest last");
+        Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --integrate-project  Manage generated Compile/Folder entries and the ETAB library reference in the configured .plcproj");
         Console.WriteLine();
         Console.WriteLine("Exit codes:");
         Console.WriteLine("  0  Command completed successfully");
@@ -319,5 +388,6 @@ internal static class Program
         string ProjectPath,
         string SchemaPath,
         bool ShowContent,
-        string? ProjectRoot);
+        string? ProjectRoot,
+        bool IntegrateProject);
 }

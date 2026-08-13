@@ -2,8 +2,8 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0, Phase 1, and Phase 2 completed, next implementation step is Phase 3
-- As of: 2026-08-10
+- Status: implementation; Phase 0, Phase 1, Phase 2, and the structural Phase 3A project integration completed; Phase 3 acceptance remains open
+- As of: 2026-08-13
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
 - Reference project: `AutomationBase Beispiel`
@@ -365,19 +365,21 @@ Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETA
 
 ### Phase 3 – TwinCAT Project Integration
 
-- [ ] manage the ETAB library reference
-- [ ] manage `<Compile Include="…">` entries
-- [ ] create the TwinCAT folder structure
+- [x] manage the ETAB library reference (Phase 3A, 2026-08-13)
+- [x] manage `<Compile Include="…">` entries (Phase 3A, 2026-08-13)
+- [x] create the TwinCAT folder structure (Phase 3A, 2026-08-13)
 - [ ] generate GVL instances
 - [ ] generate an optional PRG call structure
-- [ ] safeguard renaming and deletion of generated objects
-- [ ] initially test integration only in a copy of the project
+- [x] safeguard renaming and deletion of generated project entries (Phase 3A, 2026-08-13)
+- [x] initially test integration only in a copy of the project (Phase 3A, 2026-08-13)
 
 Acceptance:
 
 - the project opens in TwinCAT without structural errors
 - repeated generation produces no unnecessary diff
 - a real TwinCAT compile succeeds
+
+Phase 3A evidence: `docs/Phase3A_Validation.md`. The opt-in CLI integration updates only ETAB-owned project entries, preserves compatible unmanaged entries, participates in the generation transaction, and was idempotently exercised against a temporary copy of `AutomationBase_Beispiel.plcproj`. XAE open and compile evidence remain outstanding.
 
 ### Phase 4 – Golden Sample `AutomationBase Beispiel`
 
@@ -495,6 +497,15 @@ Binding decisions for desktop packaging:
 - The installer uses Inno Setup, defaults to per-user installation, includes the Microsoft WebView2 Evergreen bootstrapper for missing-runtime systems, and must pass a silent install/application-smoke/uninstall test before publication.
 - Tags matching `v*` create GitHub Releases containing the portable ZIP, installer, and both SHA-256 files through `.github/workflows/desktop-release.yml`.
 
+Binding decisions for Phase 3A:
+
+- TwinCAT project integration is an explicit CLI opt-in through `--integrate-project` and requires an explicitly selected `--root`.
+- The configured `.plcproj` must currently be a direct child of that root; project roots and project files reached through reparse points are rejected.
+- Project entries added by ETAB Engineering are tracked separately in `Generated/etab-project-integration-manifest.json`; compatible pre-existing entries remain unmanaged.
+- Generated artifacts, both manifests, and the `.plcproj` update share one preflight, staging, backup, and rollback transaction.
+- Project XML is changed through targeted element edits and parsed before and after modification so unrelated lines and existing mixed line endings remain unchanged.
+- TwinCAT XAE open and compile validation remain separate acceptance evidence and are not inferred from structural XML validation.
+
 Non-blocking decisions for later phases:
 
 - exact scope of automatically generated GVL and PRG structures in Phase 3,
@@ -514,4 +525,4 @@ The initially approved development slice comprised:
 7. CLI `preview` and CLI `check`
 8. tests based on a simplified `ProcessUnit`
 
-Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. The next implementation step is Phase 3, beginning with safe TwinCAT project integration.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration. The next implementation slice is Phase 3B: generated GVL instances and the optional PRG call structure, followed by an editor-side target selection and confirmed write action. TwinCAT XAE open and real compile evidence remain required before Phase 3 is accepted.

@@ -15,6 +15,9 @@ public sealed class GenerationExecutor
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: true);
 
+    private const string StagedProjectFileName = ".etab-project/plc-project.staged";
+    private const string BackedUpProjectFileName = ".etab-project/plc-project.backup";
+
     private readonly Action<int>? _afterArtifactOperation;
 
     public GenerationExecutor()
@@ -39,7 +42,11 @@ public sealed class GenerationExecutor
 
         var requiresWrite = plan.Changes.Any(
                                 change => change.ChangeKind != GenerationChangeKind.Unchanged) ||
-                            plan.Manifest.ChangeKind != GenerationChangeKind.Unchanged;
+                            plan.Manifest.ChangeKind != GenerationChangeKind.Unchanged ||
+                            (plan.ProjectFile is not null &&
+                             plan.ProjectFile.ChangeKind != GenerationChangeKind.Unchanged) ||
+                            (plan.ProjectIntegrationManifest is not null &&
+                             plan.ProjectIntegrationManifest.ChangeKind != GenerationChangeKind.Unchanged);
         if (!requiresWrite)
         {
             return new GenerationExecutionResult(true, 0, 0, 0, 0, []);
@@ -80,7 +87,24 @@ public sealed class GenerationExecutor
                 }
             }
 
+            ApplyProjectFileChange(
+                plan,
+                stagingRoot,
+                backupRoot,
+                backups,
+                writtenTargets);
+            if (plan.ProjectFile?.ChangeKind == GenerationChangeKind.Update)
+            {
+                _afterArtifactOperation?.Invoke(++appliedArtifactOperations);
+            }
+
             ApplyManifestChange(
+                plan,
+                stagingRoot,
+                backupRoot,
+                backups,
+                writtenTargets);
+            ApplyProjectIntegrationManifestChange(
                 plan,
                 stagingRoot,
                 backupRoot,
@@ -139,6 +163,14 @@ public sealed class GenerationExecutor
             return issues;
         }
 
+        if (File.GetAttributes(plan.ProjectRoot).HasFlag(FileAttributes.ReparsePoint))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "REPARSE_POINT_BLOCKED",
+                "The selected project root is a symbolic link, junction or other reparse point."));
+            return issues;
+        }
+
         if (!IsStrictDescendant(plan.GeneratedRoot, plan.ProjectRoot))
         {
             issues.Add(new GenerationExecutionIssue(
@@ -168,8 +200,62 @@ public sealed class GenerationExecutor
             ValidateArtifactChange(plan, change, issues);
         }
 
+        ValidateProjectFileChange(plan, issues);
         ValidateManifestChange(plan, issues);
+        ValidateProjectIntegrationManifestChange(plan, issues);
         return issues;
+    }
+
+    private static void ValidateProjectFileChange(
+        GenerationPlan plan,
+        ICollection<GenerationExecutionIssue> issues)
+    {
+        if (plan.ProjectFile is null)
+        {
+            return;
+        }
+
+        if (!TryResolveProjectFilePath(plan, out var expectedPath, out var pathError) ||
+            !string.Equals(
+                expectedPath,
+                plan.ProjectFile.AbsolutePath,
+                PathComparison))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "PLC_PROJECT_PATH_INVALID",
+                pathError ?? "The planned PLC project path does not match the project root."));
+            return;
+        }
+
+        if (ContainsReparsePointBelowRoot(plan.ProjectRoot, expectedPath!))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "REPARSE_POINT_BLOCKED",
+                $"PLC project path '{plan.ProjectFile.RelativePath}' traverses a reparse point."));
+            return;
+        }
+
+        switch (plan.ProjectFile.ChangeKind)
+        {
+            case GenerationChangeKind.Update:
+            case GenerationChangeKind.Unchanged:
+                VerifyExistingFile(
+                    expectedPath!,
+                    plan.ProjectFile.ExpectedExistingHash,
+                    plan.ProjectFile.RelativePath,
+                    issues);
+                break;
+            case GenerationChangeKind.Conflict:
+                issues.Add(new GenerationExecutionIssue(
+                    "GENERATION_CONFLICT",
+                    "The TwinCAT PLC project is in conflict."));
+                break;
+            default:
+                issues.Add(new GenerationExecutionIssue(
+                    "PLC_PROJECT_CHANGE_INVALID",
+                    $"Unsupported PLC project change '{plan.ProjectFile.ChangeKind}'."));
+                break;
+        }
     }
 
     private static void ValidateArtifactChange(
@@ -292,6 +378,56 @@ public sealed class GenerationExecutor
         }
     }
 
+    private static void ValidateProjectIntegrationManifestChange(
+        GenerationPlan plan,
+        ICollection<GenerationExecutionIssue> issues)
+    {
+        if (plan.ProjectIntegrationManifest is null)
+        {
+            return;
+        }
+
+        if (!TryResolveGeneratedPath(
+                plan,
+                plan.ProjectIntegrationManifest.RelativePath,
+                out var manifestPath,
+                out var pathError))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "PROJECT_INTEGRATION_MANIFEST_PATH_INVALID",
+                pathError!));
+            return;
+        }
+
+        switch (plan.ProjectIntegrationManifest.ChangeKind)
+        {
+            case GenerationChangeKind.Create:
+                EnsureUnoccupied(
+                    manifestPath!,
+                    plan.ProjectIntegrationManifest.RelativePath,
+                    issues);
+                break;
+            case GenerationChangeKind.Update:
+            case GenerationChangeKind.Unchanged:
+                VerifyExistingFile(
+                    manifestPath!,
+                    plan.ProjectIntegrationManifest.ExpectedExistingHash,
+                    plan.ProjectIntegrationManifest.RelativePath,
+                    issues);
+                break;
+            case GenerationChangeKind.Conflict:
+                issues.Add(new GenerationExecutionIssue(
+                    "GENERATION_CONFLICT",
+                    "The project integration manifest is in conflict."));
+                break;
+            default:
+                issues.Add(new GenerationExecutionIssue(
+                    "PROJECT_INTEGRATION_MANIFEST_CHANGE_INVALID",
+                    $"Unsupported project integration manifest change '{plan.ProjectIntegrationManifest.ChangeKind}'."));
+                break;
+        }
+    }
+
     private static void EnsurePlannedContent(
         PlannedArtifactChange change,
         ICollection<GenerationExecutionIssue> issues)
@@ -387,6 +523,76 @@ public sealed class GenerationExecutor
                 plan.Manifest.ProposedContent,
                 Utf8WithoutBom);
         }
+
+        if (plan.ProjectFile?.ChangeKind == GenerationChangeKind.Update)
+        {
+            var stagedProjectFile = Path.GetFullPath(
+                StagedProjectFileName.Replace('/', Path.DirectorySeparatorChar),
+                stagingRoot);
+            EnsureStrictDescendant(stagedProjectFile, stagingRoot);
+            Directory.CreateDirectory(Path.GetDirectoryName(stagedProjectFile)!);
+            File.WriteAllText(
+                stagedProjectFile,
+                plan.ProjectFile.ProposedContent,
+                Utf8WithoutBom);
+            if (!string.Equals(
+                    ComputeFileHash(stagedProjectFile),
+                    plan.ProjectFile.ProposedHash,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new IOException("Staged TwinCAT project content hash mismatch.");
+            }
+        }
+
+        if (plan.ProjectIntegrationManifest?.ChangeKind is
+            GenerationChangeKind.Create or GenerationChangeKind.Update)
+        {
+            var stagedIntegrationManifest = ResolveTransactionPath(
+                plan,
+                stagingRoot,
+                plan.ProjectIntegrationManifest.RelativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(stagedIntegrationManifest)!);
+            File.WriteAllText(
+                stagedIntegrationManifest,
+                plan.ProjectIntegrationManifest.ProposedContent,
+                Utf8WithoutBom);
+        }
+    }
+
+    private static void ApplyProjectFileChange(
+        GenerationPlan plan,
+        string stagingRoot,
+        string backupRoot,
+        ICollection<(string BackupPath, string OriginalPath)> backups,
+        ICollection<string> writtenTargets)
+    {
+        if (plan.ProjectFile is null ||
+            plan.ProjectFile.ChangeKind == GenerationChangeKind.Unchanged)
+        {
+            return;
+        }
+        if (plan.ProjectFile.ChangeKind != GenerationChangeKind.Update)
+        {
+            throw new InvalidOperationException(
+                $"Cannot execute PLC project change '{plan.ProjectFile.ChangeKind}'.");
+        }
+
+        var targetPath = plan.ProjectFile.AbsolutePath;
+        EnsureProjectFileTarget(plan, targetPath);
+        var backupPath = Path.GetFullPath(
+            BackedUpProjectFileName.Replace('/', Path.DirectorySeparatorChar),
+            backupRoot);
+        EnsureStrictDescendant(backupPath, backupRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+        File.Move(targetPath, backupPath);
+        backups.Add((backupPath, targetPath));
+
+        var stagedPath = Path.GetFullPath(
+            StagedProjectFileName.Replace('/', Path.DirectorySeparatorChar),
+            stagingRoot);
+        EnsureStrictDescendant(stagedPath, stagingRoot);
+        File.Move(stagedPath, targetPath);
+        writtenTargets.Add(targetPath);
     }
 
     private static void ApplyArtifactChange(
@@ -468,6 +674,48 @@ public sealed class GenerationExecutor
         }
     }
 
+    private static void ApplyProjectIntegrationManifestChange(
+        GenerationPlan plan,
+        string stagingRoot,
+        string backupRoot,
+        ICollection<(string BackupPath, string OriginalPath)> backups,
+        ICollection<string> writtenTargets)
+    {
+        if (plan.ProjectIntegrationManifest is null)
+        {
+            return;
+        }
+
+        var manifestPath = ResolveGeneratedPath(
+            plan,
+            plan.ProjectIntegrationManifest.RelativePath);
+        switch (plan.ProjectIntegrationManifest.ChangeKind)
+        {
+            case GenerationChangeKind.Create:
+                MoveStaged(
+                    plan,
+                    stagingRoot,
+                    plan.ProjectIntegrationManifest.RelativePath,
+                    manifestPath,
+                    writtenTargets);
+                break;
+            case GenerationChangeKind.Update:
+                BackupExisting(plan, manifestPath, backupRoot, backups);
+                MoveStaged(
+                    plan,
+                    stagingRoot,
+                    plan.ProjectIntegrationManifest.RelativePath,
+                    manifestPath,
+                    writtenTargets);
+                break;
+            case GenerationChangeKind.Unchanged:
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Cannot execute project integration manifest change '{plan.ProjectIntegrationManifest.ChangeKind}'.");
+        }
+    }
+
     private static void BackupExisting(
         GenerationPlan plan,
         string originalPath,
@@ -511,7 +759,7 @@ public sealed class GenerationExecutor
             try
             {
                 var target = writtenTargets[index];
-                EnsureStrictDescendant(target, plan.GeneratedRoot);
+                EnsureRollbackTarget(plan, target);
                 if (File.Exists(target))
                 {
                     File.Delete(target);
@@ -681,6 +929,81 @@ public sealed class GenerationExecutor
         TryResolveGeneratedPath(plan, relativePath, out var path, out var error)
             ? path!
             : throw new InvalidOperationException(error);
+
+    private static bool TryResolveProjectFilePath(
+        GenerationPlan plan,
+        out string? path,
+        out string? error)
+    {
+        path = null;
+        error = null;
+        if (plan.ProjectFile is null)
+        {
+            error = "The generation plan contains no PLC project change.";
+            return false;
+        }
+
+        try
+        {
+            var platformPath = plan.ProjectFile.RelativePath
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+            if (Path.IsPathRooted(platformPath) || ContainsTraversalSegment(platformPath))
+            {
+                error = "The PLC project path must be a safe relative path.";
+                return false;
+            }
+
+            var candidate = Path.GetFullPath(platformPath, plan.ProjectRoot);
+            if (!string.Equals(
+                    Path.GetDirectoryName(candidate),
+                    Path.GetFullPath(plan.ProjectRoot).TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar),
+                    PathComparison))
+            {
+                error = "The PLC project must be directly inside the selected project root.";
+                return false;
+            }
+
+            path = candidate;
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    private static void EnsureProjectFileTarget(GenerationPlan plan, string path)
+    {
+        if (!TryResolveProjectFilePath(plan, out var expected, out var error) ||
+            !string.Equals(expected, path, PathComparison))
+        {
+            throw new InvalidOperationException(
+                error ?? $"Unexpected PLC project target '{path}'.");
+        }
+    }
+
+    private static void EnsureRollbackTarget(GenerationPlan plan, string target)
+    {
+        if (IsStrictDescendant(target, plan.GeneratedRoot))
+        {
+            return;
+        }
+
+        if (plan.ProjectFile is not null &&
+            string.Equals(target, plan.ProjectFile.AbsolutePath, PathComparison))
+        {
+            EnsureProjectFileTarget(plan, target);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Rollback target '{target}' is outside the managed transaction boundary.");
+    }
 
     private static string ResolveTransactionPath(
         GenerationPlan plan,

@@ -4,7 +4,7 @@ Visual engineering tool for describing a logical machine and subsequently genera
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration through the CLI: completed structurally on 2026-08-13. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
@@ -14,7 +14,7 @@ The TypeScript visual editor and its loopback .NET service are implemented. The 
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
-GVL/PRG generation and `.plcproj` integration are not yet included. A real compile of the generated project artifacts is therefore part of Phase 3; the underlying base-FB inheritance and hook pattern was already compiled successfully in TwinCAT during Phase 0.
+The opt-in CLI project integration manages generated `Compile` and `Folder` entries plus the ETAB placeholder reference without taking ownership of compatible existing entries. GVL/PRG generation and the editor-side confirmed write action are not yet included. A real compile of the complete generated project remains part of Phase 3; the underlying base-FB inheritance and hook pattern was already compiled successfully in TwinCAT during Phase 0.
 
 ## Quick Start
 
@@ -29,7 +29,17 @@ dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- g
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root .
 ```
 
-`generate` is the explicit write command. It aborts on conflicts before performing any write and does not modify files outside the generator-owned area configured in the model.
+`generate` is the explicit write command. It aborts on conflicts before performing any write. Without `--integrate-project`, it does not modify files outside the generator-owned area configured in the model.
+
+To include the configured TwinCAT `.plcproj` in the same preview/check/generate transaction, select the actual PLC project directory explicitly:
+
+```powershell
+dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- preview .\examples\BrushMachine.reference.etab.json --root "C:\Path\To\PLC" --integrate-project
+dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- generate .\examples\BrushMachine.reference.etab.json --root "C:\Path\To\PLC" --integrate-project
+dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root "C:\Path\To\PLC" --integrate-project
+```
+
+`--integrate-project` requires `--root` and is deliberately opt-in. The configured `.plcproj` must currently be directly inside that root. ETAB Engineering records only entries it adds in `Generated/etab-project-integration-manifest.json`; compatible pre-existing entries remain unmanaged and untouched.
 
 ### Visual Editor
 
@@ -84,6 +94,7 @@ The GitHub Actions workflow `Desktop release` runs the complete installer script
 - [Phase 1C Validation Record](docs/Phase1C_Validation.md)
 - [Phase 1 Completion Validation](docs/Phase1_Validation.md)
 - [Phase 2 Visual Editor Validation](docs/Phase2_Validation.md)
+- [Phase 3A TwinCAT Project Integration Validation](docs/Phase3A_Validation.md)
 - [Windows Desktop Release](docs/Desktop_Release.md)
 - [TwinCAT Base-FB Inheritance Spike](spikes/TwinCAT_BaseFb_Inheritance.md)
 - [JSON Schema v0.1](schemas/etab-project.schema.json)

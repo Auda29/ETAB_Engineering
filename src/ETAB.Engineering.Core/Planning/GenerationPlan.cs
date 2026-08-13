@@ -21,6 +21,22 @@ public sealed record PlannedManifestChange(
     string? ExpectedExistingHash,
     string? Message);
 
+public sealed record PlannedProjectFileChange(
+    GenerationChangeKind ChangeKind,
+    string RelativePath,
+    string AbsolutePath,
+    string ProposedContent,
+    string ProposedHash,
+    string? ExpectedExistingHash,
+    string? Message);
+
+public sealed record PlannedProjectIntegrationManifestChange(
+    GenerationChangeKind ChangeKind,
+    string RelativePath,
+    string ProposedContent,
+    string? ExpectedExistingHash,
+    string? Message);
+
 public sealed class GenerationPlan
 {
     public GenerationPlan(
@@ -28,13 +44,17 @@ public sealed class GenerationPlan
         string generatedRoot,
         IReadOnlyList<PlannedArtifactChange> changes,
         PlannedManifestChange manifest,
-        IReadOnlyList<GenerationPlanIssue> issues)
+        IReadOnlyList<GenerationPlanIssue> issues,
+        PlannedProjectFileChange? projectFile = null,
+        PlannedProjectIntegrationManifestChange? projectIntegrationManifest = null)
     {
         ProjectRoot = projectRoot;
         GeneratedRoot = generatedRoot;
         Changes = changes;
         Manifest = manifest;
         Issues = issues;
+        ProjectFile = projectFile;
+        ProjectIntegrationManifest = projectIntegrationManifest;
     }
 
     public string ProjectRoot { get; }
@@ -47,8 +67,14 @@ public sealed class GenerationPlan
 
     public IReadOnlyList<GenerationPlanIssue> Issues { get; }
 
+    public PlannedProjectFileChange? ProjectFile { get; }
+
+    public PlannedProjectIntegrationManifestChange? ProjectIntegrationManifest { get; }
+
     public bool HasConflicts =>
         Issues.Count > 0 ||
         Manifest.ChangeKind == GenerationChangeKind.Conflict ||
+        ProjectFile?.ChangeKind == GenerationChangeKind.Conflict ||
+        ProjectIntegrationManifest?.ChangeKind == GenerationChangeKind.Conflict ||
         Changes.Any(change => change.ChangeKind == GenerationChangeKind.Conflict);
 }
