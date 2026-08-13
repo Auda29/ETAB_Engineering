@@ -301,7 +301,7 @@ etab check    BrushMachine.etab.json
 - SVG-based node canvas
 - generator calls through a local .NET service
 - WPF/WebView2 desktop host with the service running in the same process
-- self-contained portable Windows x64 release bundle
+- self-contained portable Windows x64 release bundle and guided installer
 
 ### TwinCAT Integration
 
@@ -408,7 +408,7 @@ MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB
 - [ ] schema migrations
 - [ ] import of existing ETAB structures
 - [ ] CI `check`
-- [x] portable Windows x64 application (2026-08-10)
+- [x] portable Windows x64 application (2026-08-10) and installer (2026-08-13)
 - [ ] user documentation
 - [ ] additional example projects
 
@@ -491,8 +491,9 @@ Binding decisions for desktop packaging:
 - The production React build is shipped in the portable bundle and served by the in-process loopback service.
 - WPF hosts the editor through Microsoft WebView2 and permits navigation only to the service origin allocated for the current process.
 - The `win-x64` package is self-contained for .NET; Microsoft Edge WebView2 Runtime remains a target-system prerequisite.
-- `publish-win-x64.ps1` is the single local and CI packaging entry point and must run the published executable smoke test before creating the ZIP and checksum.
-- Tags matching `v*` create GitHub Releases through `.github/workflows/desktop-release.yml`.
+- `publish-win-x64.ps1` builds the verified portable ZIP, while `publish-installer-win-x64.ps1` is the complete local and CI release entry point.
+- The installer uses Inno Setup, defaults to per-user installation, includes the Microsoft WebView2 Evergreen bootstrapper for missing-runtime systems, and must pass a silent install/application-smoke/uninstall test before publication.
+- Tags matching `v*` create GitHub Releases containing the portable ZIP, installer, and both SHA-256 files through `.github/workflows/desktop-release.yml`.
 
 Non-blocking decisions for later phases:
 

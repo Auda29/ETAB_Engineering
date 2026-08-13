@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   build-desktop:
-    name: Build Windows desktop bundle
+    name: Build Windows desktop release
     runs-on: windows-latest
 
     steps:
@@ -38,7 +38,45 @@ jobs:
           cache: npm
           cache-dependency-path: src/ETAB.Engineering.Editor/package-lock.json
 
-      - name: Build and verify portable bundle
+      - name: Install verified Inno Setup 7 compiler
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup-7.0.2-x64.exe'
+          Invoke-WebRequest `
+            -UseBasicParsing `
+            -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-7_0_2/innosetup-7.0.2-x64.exe' `
+            -OutFile $installer
+
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          $subject = if ($null -eq $signature.SignerCertificate) {
+            '<no signer certificate>'
+          } else {
+            $signature.SignerCertificate.Subject
+          }
+          if ($signature.Status -ne 'Valid' -or $subject -notmatch 'O=Pyrsys B\.V\.(?:,|$)') {
+            throw "Inno Setup signature validation failed: status=$($signature.Status), subject=$subject"
+          }
+
+          $process = Start-Process `
+            -FilePath $installer `
+            -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-') `
+            -WindowStyle Hidden `
+            -Wait `
+            -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Inno Setup installation failed with exit code $($process.ExitCode)."
+          }
+
+          $compilerCandidates = @(
+            (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 7\ISCC.exe'),
+            'C:\Program Files\Inno Setup 7\ISCC.exe',
+            'C:\Program Files (x86)\Inno Setup 7\ISCC.exe'
+          )
+          if (-not ($compilerCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })) {
+            throw 'The verified Inno Setup installation did not provide ISCC.exe.'
+          }
+
+      - name: Build and verify portable bundle and installer
         shell: pwsh
         run: |
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
@@ -50,7 +88,7 @@ jobs:
             $version = '${{ inputs.version }}'
           }
 
-          .\publish-win-x64.ps1 -Version $version
+          .\publish-installer-win-x64.ps1 -Version $version
           if ($LASTEXITCODE -ne 0) {
             throw "Desktop publish script failed with exit code $LASTEXITCODE."
           }
@@ -62,11 +100,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $assets = Get-ChildItem -LiteralPath .\artifacts -File |
-            Where-Object { $_.Extension -in '.zip', '.sha256' } |
-            ForEach-Object { $_.FullName }
-          if ($assets.Count -ne 2) {
-            throw "Expected one ZIP and one SHA256 file, found $($assets.Count)."
+          $packageName = "ETAB-Engineering-v$env:RELEASE_VERSION-win-x64"
+          $assets = @(
+            (Join-Path $PWD "artifacts\$packageName.zip"),
+            (Join-Path $PWD "artifacts\$packageName.zip.sha256"),
+            (Join-Path $PWD "artifacts\$packageName-setup.exe"),
+            (Join-Path $PWD "artifacts\$packageName-setup.exe.sha256")
+          )
+          $missingAssets = @($assets | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+          if ($missingAssets.Count -ne 0) {
+            throw "Expected release assets are missing: $($missingAssets -join ', ')"
           }
 
           gh release view $env:GITHUB_REF_NAME *> $null
@@ -86,9 +129,10 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: ETAB-Engineering-v${{ env.RELEASE_VERSION }}-win-x64
+          name: ETAB-Engineering-v${{ env.RELEASE_VERSION }}-windows-release
           path: |
             artifacts/*.zip
+            artifacts/*.exe
             artifacts/*.sha256
           if-no-files-found: error
           compression-level: 0

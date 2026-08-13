@@ -2,7 +2,7 @@
 
 ## Scope
 
-ETAB Engineering is packaged as a portable, self-contained Windows x64 application. The bundle contains:
+ETAB Engineering is packaged both as a guided Windows x64 installer and as a portable, self-contained ZIP. The application payload contains:
 
 - the WPF desktop host,
 - Microsoft WebView2 Loader components,
@@ -14,17 +14,17 @@ ETAB Engineering is packaged as a portable, self-contained Windows x64 applicati
 
 The desktop host starts the service in the same process on a random HTTP loopback port and opens that origin in WebView2. Navigation to any other scheme, host, or port is blocked. Closing the desktop window stops the service.
 
-Microsoft Edge WebView2 Runtime remains a target-system prerequisite. The package does not require the .NET SDK, Node.js, a terminal, or a separately started backend.
+Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup detects the runtime and, only if it is missing, invokes the included Microsoft Evergreen bootstrapper. The portable ZIP expects the runtime to be installed already. Neither distribution requires the .NET SDK, Node.js, a terminal, or a separately started backend.
 
 ## Local Build
 
-Run this command from the repository root:
+Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-win-x64.ps1 -Version 0.1.0.0
+.\publish-installer-win-x64.ps1 -Version 0.1.0.0
 ```
 
-The script performs these checks before producing the release archive:
+The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
 
 1. deterministic frontend dependency installation with `npm ci`,
 2. the TypeScript check,
@@ -32,7 +32,12 @@ The script performs these checks before producing the release archive:
 4. self-contained `win-x64` publish,
 5. bundle-completeness checks,
 6. a smoke test executed through the published `ETAB Engineering.exe`,
-7. ZIP creation and SHA-256 generation.
+7. ZIP creation and SHA-256 generation,
+8. download and Authenticode verification of Microsoft's WebView2 Evergreen bootstrapper,
+9. Inno Setup compilation,
+10. isolated silent installation,
+11. smoke testing through the installed executable,
+12. silent uninstallation plus file and registration cleanup checks.
 
 The smoke test verifies that the packaged executable:
 
@@ -48,17 +53,30 @@ The output files are:
 ```text
 artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip
 artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
 
+## Installer Behavior
+
+- Setup defaults to a per-user installation and therefore normally needs no administrator elevation.
+- An administrator can select an all-users installation through the standard privilege override.
+- A Start menu shortcut is installed; a desktop shortcut is optional and unchecked by default.
+- The application is registered in Windows Apps and Features and can be removed completely through its uninstaller.
+- Setup installs WebView2 Runtime only when registry detection reports that it is missing.
+- Silent installation uses the standard Inno Setup flags, for example `setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`.
+
+The release Setup EXE is not currently Authenticode-signed. Windows can therefore show an unknown-publisher or SmartScreen warning until a release code-signing certificate is configured. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
+
 ## GitHub Release Workflow
 
-`.github/workflows/desktop-release.yml` runs on Windows and calls the same `publish-win-x64.ps1` script used locally.
+`.github/workflows/desktop-release.yml` runs on Windows and calls the same `publish-installer-win-x64.ps1` script used locally. The workflow installs a pinned official Inno Setup compiler only after validating its publisher signature.
 
-- `workflow_dispatch` builds and verifies the ZIP and checksum without creating a Release.
-- A pushed `v*` tag derives the package version from the tag, builds and verifies the bundle, and creates or updates the corresponding GitHub Release with the ZIP and checksum attached directly.
-- The workflow additionally attempts to retain the two files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
+- `workflow_dispatch` builds and verifies the four files without creating a Release.
+- A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
+- The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
 For version `0.1.0.0`, publish with:
 
@@ -71,12 +89,20 @@ Create the tag only after the release commit has been pushed and the local packa
 
 ## Validation Record for v0.1.0.0
 
-Local validation on 2026-08-10 produced a 76,249,798-byte ZIP with 564 archive entries. All required bundle entries were present under one root directory. The generated SHA-256 value was:
+Local validation on 2026-08-13 produced a 76,249,815-byte ZIP with 564 archive entries. All required bundle entries were present under one root directory. The generated ZIP SHA-256 value was:
 
 ```text
-70aaab1ed2636de7dbbad9d845b66314dcf749aac474afd05cb9811de330a9e5
+3c68250dae4aef96cc19b57889a2d3eca34c98ecdbf550de723e7c477e8e21e4
 ```
 
 The published executable smoke test passed with 14 preview artifacts and a lossless save/reopen round trip. The extracted WPF application also started successfully and visibly rendered the complete BrushMachine editor with 7 nodes, 12 relationships, and a valid model.
+
+The installer build produced a 55,798,857-byte Setup EXE with this SHA-256 value:
+
+```text
+71bbe356e6a50c198ea96b2569bced081bbe76d279b52ec37284951715216270
+```
+
+The installer smoke test installed the application into an isolated per-user temporary directory, ran the same packaged desktop smoke test successfully, and uninstalled it again. The application directory and all checked per-user and per-machine uninstall registrations were absent afterward. No interactive editor window or Playwright test was used.
 
 This evidence proves the local packaging and application boundary. It does not prove a TwinCAT XAE open, PLC compile, PLC simulation, or machine test.

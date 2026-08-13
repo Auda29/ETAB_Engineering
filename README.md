@@ -4,7 +4,7 @@ Visual engineering tool for describing a logical machine and subsequently genera
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. A portable Windows x64 desktop bundle is also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
@@ -48,24 +48,28 @@ npm.cmd --prefix .\src\ETAB.Engineering.Editor run dev
 
 Open `http://127.0.0.1:5173/`. The editor initially loads the BrushMachine reference model and talks only to the loopback service at `http://127.0.0.1:5079/`.
 
-### Windows Desktop Bundle
+### Windows Desktop Release
 
-Create the verified portable Windows x64 ZIP from the repository root:
+Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-win-x64.ps1 -Version 0.1.0.0
+.\publish-installer-win-x64.ps1 -Version 0.1.0.0
 ```
 
-The script installs the locked frontend dependencies, checks TypeScript, restores and tests the .NET solution, publishes a self-contained desktop application, runs the packaged executable smoke test, and creates:
+Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
 artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip
 artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe.sha256
 ```
 
-Extract the complete ZIP and start `ETAB Engineering.exe`. Microsoft Edge WebView2 Runtime is required; it is already present on Windows 11 and most supported Windows 10 systems. No terminal or separately started service is required.
+For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.
 
-The GitHub Actions workflow `Desktop release` runs the same script. A tag such as `v0.1.0.0` attaches the ZIP and checksum directly to a GitHub Release. The workflow also attempts to retain a copy as a workflow artifact, but an exhausted Actions storage quota does not block the Release. A manual run builds and verifies the bundle without creating a Release.
+As a portable alternative, extract the complete ZIP and start `ETAB Engineering.exe`. WebView2 Runtime must already be present when using the ZIP directly. Neither distribution requires the .NET SDK, Node.js, a terminal, or a separately started service on the target computer.
+
+The GitHub Actions workflow `Desktop release` runs the complete installer script. A `v*` tag attaches the ZIP, Setup EXE, and both checksums directly to a GitHub Release. A manual workflow run builds and verifies all four files without creating a Release. The Setup EXE is not currently code-signed, so Windows may display an unknown-publisher warning until release signing is configured.
 
 ## Documents
 
