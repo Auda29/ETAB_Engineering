@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0, Phase 1, Phase 2, and structural Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis completed; ownership reconciliation and Phase 3 XAE acceptance remain open
+- Status: implementation; Phase 0, Phase 1, Phase 2, and structural Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; XAE open, compile, and runtime acceptance remain open
 - As of: 2026-08-13
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
@@ -396,11 +396,17 @@ Task policy: ETAB Engineering v0.1 does not modify `.TcTTO` task objects. A gene
 - [x] model `FB_BM_WorkpieceUnit`
 - [x] model `FB_BM_ProcessUnit`
 - [x] compare the existing request, command, and status DUTs (Phase 4A, 2026-08-13)
-- [ ] verify the structure and public interfaces against the handwritten state
+- [x] define external ownership for the seven existing DUTs in a dedicated integration model (Phase 4B, 2026-08-13)
+- [x] preview the integration model read-only against the real project (Phase 4B, 2026-08-13)
+- [x] generate into a separate project copy and prove byte-identical regeneration (Phase 4B, 2026-08-13)
+- [ ] open and compile the generated copy in XAE
+- [ ] run the existing simulation/FAT regression sequence
 
 MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB scaffold without overwriting handwritten code.
 
 Phase 4A evidence: `docs/Phase4A_Reconciliation.md`. The three existing command enums and three existing request DUTs match the model semantically. The existing `ST_BM_MachineStatus` is a 42-field project aggregate and is intentionally incompatible with the lean generated six-field contract. Project-aware preview now blocks all seven duplicate IEC names before writes. The next decision is whether these seven objects remain externally owned in a golden-sample integration model or the matching command/request types are migrated into the generated ownership boundary; the existing machine status must remain external or be renamed.
+
+Phase 4B evidence: `docs/Phase4B_CopyGeneration.md`. The approved external-ownership decision is represented by `examples/BrushMachine.integration.etab.json`. It produces eight owned artifacts without colliding with existing DUTs. The first copy generation created eight artifacts and both manifests; the second run was byte-identical and `check` reported synchronized. The original project remained unchanged. XAE open and compile are assigned to the user and are not claimed as completed evidence.
 
 ### Phase 5 – Optional MTP Extension
 
@@ -551,4 +557,4 @@ The initially approved development slice comprised:
 7. CLI `preview` and CLI `check`
 8. tests based on a simplified `ProcessUnit`
 
-Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration, Phase 3B added the instance GVL and optional selected PRG calls, and Phase 3C added target selection plus confirmed generation to the editor. Phase 4A then added compiled IEC-name collision detection and identified the golden-sample ownership conflicts. Resolving those seven ownership decisions, XAE open, and real compile evidence are required before Phase 3 is accepted.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration, Phase 3B added the instance GVL and optional selected PRG calls, and Phase 3C added target selection plus confirmed generation to the editor. Phase 4A added compiled IEC-name collision detection, and Phase 4B resolved the seven golden-sample ownership conflicts through a dedicated integration model and idempotent project-copy generation. XAE open and real compile evidence are still required before Phase 3 is accepted.

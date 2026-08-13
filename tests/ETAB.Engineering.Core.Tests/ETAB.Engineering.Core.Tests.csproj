@@ -19,6 +19,9 @@
     <None Include="..\..\examples\BrushMachine.reference.etab.json"
           Link="Fixtures\BrushMachine.reference.etab.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\examples\BrushMachine.integration.etab.json"
+          Link="Fixtures\BrushMachine.integration.etab.json"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="Snapshots\**\*.snap"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

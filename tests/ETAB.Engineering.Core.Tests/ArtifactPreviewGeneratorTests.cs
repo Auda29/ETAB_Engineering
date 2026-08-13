@@ -24,6 +24,9 @@ public sealed class ArtifactPreviewGeneratorTests
     private static readonly string ValidProjectJson =
         File.ReadAllText(Path.Combine(FixtureDirectory, "BrushMachine.reference.etab.json"));
 
+    private static readonly string IntegrationProjectJson =
+        File.ReadAllText(Path.Combine(FixtureDirectory, "BrushMachine.integration.etab.json"));
+
     private readonly ProjectValidator _validator = new();
     private readonly ArtifactPreviewGenerator _generator = new();
 
@@ -67,6 +70,25 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains("fbProcessCycle : FB_BM_ProcessCycle;", artifact.Content);
         Assert.Contains("fbRecipeManager : FB_BM_RecipeService;", artifact.Content);
         Assert.Contains("fbCellLink : FB_BM_CellInterface;", artifact.Content);
+    }
+
+    [Fact]
+    public void IntegrationProject_KeepsExistingDutsExternalAndGeneratesEightArtifacts()
+    {
+        var preview = Generate(ParseIntegrationProject());
+
+        Assert.Equal(8, preview.Artifacts.Count);
+        Assert.DoesNotContain(
+            preview.Artifacts,
+            artifact => artifact.Kind is GeneratedArtifactKind.CommandEnum or
+                GeneratedArtifactKind.RequestDut || artifact.Name == "ST_BM_MachineStatus");
+        Assert.Contains(
+            "stOperation : ETAB.ST_ETAB_CommandStatus;",
+            preview.Artifacts.Single(
+                artifact => artifact.Name == "ST_BM_MotionStatus").Content);
+        Assert.Contains(
+            preview.Artifacts,
+            artifact => artifact.Name == "GVL_BM_Units");
     }
 
     [Fact]
@@ -253,6 +275,9 @@ public sealed class ArtifactPreviewGeneratorTests
 
     private static JsonObject ParseProject() =>
         JsonNode.Parse(ValidProjectJson)!.AsObject();
+
+    private static JsonObject ParseIntegrationProject() =>
+        JsonNode.Parse(IntegrationProjectJson)!.AsObject();
 
     private static string[] Signatures(GenerationPreview preview) =>
         preview.Artifacts

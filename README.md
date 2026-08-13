@@ -4,7 +4,7 @@ Visual engineering tool for describing a logical machine and subsequently genera
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 4A now blocks duplicate IEC object names and records the remaining BrushMachine ownership decision. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. XAE open and compile remain intentionally outstanding. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
@@ -60,6 +60,8 @@ Open `http://127.0.0.1:5173/`. The editor initially loads the BrushMachine refer
 
 To generate from the editor, save the ETAB model first, open **Generation preview**, enter the PLC project directory under **Target**, optionally enable **.plcproj**, and select **Refresh preview**. Inspect the complete conflict-protected plan and then select **Generate**. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
 
+Use `examples/BrushMachine.reference.etab.json` to exercise the complete 15-artifact generator output. For integration with the existing `AutomationBase Beispiel`, open `examples/BrushMachine.integration.etab.json`; it keeps the three existing command enums, three request DUTs, and aggregate machine-status DUT externally owned and proposes eight non-conflicting generated artifacts.
+
 ### Windows Desktop Release
 
 Create the complete Windows x64 release from the repository root:
@@ -100,10 +102,12 @@ The GitHub Actions workflow `Desktop release` runs the complete installer script
 - [Phase 3B Instance and PRG Validation](docs/Phase3B_Validation.md)
 - [Phase 3C Editor Generation Validation](docs/Phase3C_Validation.md)
 - [Phase 4A Golden-Sample Reconciliation](docs/Phase4A_Reconciliation.md)
+- [Phase 4B Project-Copy Generation](docs/Phase4B_CopyGeneration.md)
 - [Windows Desktop Release](docs/Desktop_Release.md)
 - [TwinCAT Base-FB Inheritance Spike](spikes/TwinCAT_BaseFb_Inheritance.md)
 - [JSON Schema v0.1](schemas/etab-project.schema.json)
 - [BrushMachine Reference Model](examples/BrushMachine.reference.etab.json)
+- [BrushMachine Integration Model](examples/BrushMachine.integration.etab.json)
 
 ## Phase 0 Acceptance
 

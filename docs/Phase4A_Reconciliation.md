@@ -38,12 +38,12 @@ The existing `PlcTask.TcTTO` calls only `MAIN`, and `MAIN` calls the handwritten
 
 ETAB Engineering v0.1 does not edit `.TcTTO` objects. If a generated PRG is enabled for another project, the PLC engineer must select exactly one cyclic entry path: call it once from an existing program or assign it manually to one task. Assigning and calling it simultaneously would execute the generated instances twice.
 
-## Required Ownership Decision
+## Applied Ownership Decision
 
-The recommended next step is to keep all seven existing DUTs externally owned in a dedicated golden-sample integration model by disabling their corresponding generation flags. This preserves the existing GUIDs, paths, consumers, and aggregate machine-status contract. The alternative is to migrate the six semantically matching command/request types into `Generated/`, which changes file and GUID ownership and requires an explicit PLC migration. The existing machine-status DUT must remain external or the generated status must receive a distinct name.
+All seven existing DUTs remain externally owned in the dedicated `examples/BrushMachine.integration.etab.json` model. Their corresponding generation flags are disabled. This preserves the existing GUIDs, paths, consumers, and aggregate machine-status contract while the complete 15-artifact reference model remains available independently for generator validation.
 
-No ownership switch has been applied yet because these alternatives materially change the golden sample. After that decision, the next validation sequence is: read-only preview, generation into a copy, repeated no-op generation, XAE open, full PLC compile, and the existing simulation/FAT regression.
+The integration model proposes eight owned artifacts: four generated ApplicationUnit base FBs, three unit-status DUTs, and one qualified instance GVL. Its real-project preview is conflict-free. Copy generation and repeated no-op evidence are recorded in `docs/Phase4B_CopyGeneration.md`. XAE open, full PLC compile, and the existing simulation/FAT regression remain outstanding.
 
 ## Automated Evidence
 
-The integration test suite includes a case-insensitive duplicate IEC-name collision and verifies that the complete transaction is rejected without writes. Current automated result: 52 core tests and 7 service tests passed. Structural XML and automated file tests are not TwinCAT compile, simulation, or machine evidence.
+The integration test suite includes a case-insensitive duplicate IEC-name collision and verifies that the complete transaction is rejected without writes. A second test proves that an external DUT remains unchanged and unmanaged while the eight owned integration artifacts are generated. Current automated result: 54 core tests and 7 service tests passed. Structural XML and automated file tests are not TwinCAT compile, simulation, or machine evidence.

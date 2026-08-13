@@ -78,7 +78,7 @@ internal static class TwinCatDutRenderer
         {
             case "applicationUnit":
                 declaration.AppendLine("    stUnit : ETAB.ST_ETAB_ApplicationUnitStatus;");
-                if (node.Generate.CommandEnum && node.Generate.RequestType)
+                if (node.Commands.Count > 0)
                 {
                     declaration.AppendLine("    stOperation : ETAB.ST_ETAB_CommandStatus;");
                 }

@@ -34,7 +34,7 @@ The Phase 3B tests cover:
 7. invalid instance-type and PRG-call combinations,
 8. manifest round-trip and project integration for both new artifact kinds.
 
-Current result: 52 core tests and 7 service tests passed. The complete Release build finished with 0 warnings and 0 errors, the TypeScript and format checks passed, and the embedded desktop-service smoke test completed successfully with the 15-artifact preview and lossless save/reopen flow. No Playwright test was run.
+Current result: 54 core tests and 7 service tests passed. The complete Release build finished with 0 warnings and 0 errors, the TypeScript and format checks passed, and the embedded desktop-service smoke test completed successfully with the 15-artifact preview and lossless save/reopen flow. No Playwright test was run.
 
 ## Real Reference-Project Preview
 

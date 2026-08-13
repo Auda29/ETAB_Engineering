@@ -124,6 +124,8 @@ Each node explicitly defines:
 
 Invalid combinations are rejected semantically. For example, a `recipeManager` does not generate a project-specific command enum in the MVP.
 
+A disabled artifact flag means that ETAB Engineering does not own or emit that artifact. This supports integration with existing PLC contracts: `examples/BrushMachine.integration.etab.json` disables the three command enums, three request DUTs, and aggregate machine-status DUT that are already compiled from handwritten project paths. The full reference model remains available separately as the complete generator example.
+
 Phase 3B collects all enabled instances in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB when available; otherwise the matching ETAB library FB is used. The project-wide `programCallStructure` option creates `PRG_<prefix>_Generated`, which invokes only nodes selected with `callInProgram`. This does not assign the PRG to a TwinCAT task.
 
 ### 5.2 `applicationUnit`

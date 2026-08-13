@@ -27,6 +27,9 @@ public sealed class TwinCatProjectIntegrationTests
     private static readonly string ValidProjectJson =
         File.ReadAllText(Path.Combine(FixtureDirectory, "BrushMachine.reference.etab.json"));
 
+    private static readonly string IntegrationProjectJson =
+        File.ReadAllText(Path.Combine(FixtureDirectory, "BrushMachine.integration.etab.json"));
+
     private readonly ProjectValidator _validator = new();
     private readonly ArtifactPreviewGenerator _generator = new();
     private readonly GenerationPlanBuilder _artifactPlanner = new();
@@ -184,6 +187,46 @@ public sealed class TwinCatProjectIntegrationTests
         Assert.Contains("E_BM_MotionCommand", issue.Message, StringComparison.Ordinal);
         Assert.False(execution.Success);
         Assert.Equal(before, SnapshotFiles(temporary.Path));
+    }
+
+    [Fact]
+    public void IntegrationModel_PreservesExternalDutAndGeneratesOnlyOwnedArtifacts()
+    {
+        using var temporary = new TemporaryDirectory();
+        const string existingInclude = "DUTs\\Commands\\E_BM_MotionCommand.TcDUT";
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(additionalCompileInclude: existingInclude));
+        var existingPath = Path.Combine(
+            temporary.Path,
+            existingInclude.Replace('\\', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+        File.WriteAllText(
+            existingPath,
+            """
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="E_BM_MotionCommand" Id="{12345678-1234-4123-8123-123456789abc}">
+    <Declaration><![CDATA[TYPE E_BM_MotionCommand : (NoAction := 0); END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>
+""",
+            new UTF8Encoding(false));
+        var project = Validate(JsonNode.Parse(IntegrationProjectJson)!.AsObject());
+
+        var plan = BuildPlan(temporary.Path, project);
+        var execution = _executor.Execute(plan);
+
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        Assert.Equal(8, plan.Changes.Count);
+        Assert.True(execution.Success, FormatIssues(execution));
+        Assert.Equal(8, execution.Created);
+        Assert.Equal(
+            "E_BM_MotionCommand",
+            XDocument.Load(existingPath).Descendants("DUT").Single().Attribute("Name")?.Value);
+        Assert.DoesNotContain(
+            existingInclude,
+            ReadIntegrationManifest(temporary.Path).ManagedCompileIncludes);
     }
 
     [Fact]

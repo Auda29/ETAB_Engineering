@@ -37,7 +37,7 @@ The service tests verify that:
 - an unsaved editor model is rejected without writes,
 - optional project integration writes exactly the previewed `.plcproj` and integration manifest.
 
-Current result: 52 core tests and 7 service tests passed. The complete Release build finished with 0 warnings and 0 errors, the TypeScript check and format verification passed, and the embedded desktop-service smoke test completed successfully with a 15-artifact read-only preview and lossless save/reopen flow. No Playwright test was run.
+Current result: 54 core tests and 7 service tests passed. The complete Release build finished with 0 warnings and 0 errors, the TypeScript check and format verification passed, and the embedded desktop-service smoke test completed successfully with a 15-artifact read-only preview and lossless save/reopen flow. No Playwright test was run.
 
 ## Acceptance Boundary
 
