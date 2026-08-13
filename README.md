@@ -1,20 +1,20 @@
-# ETAB Engineering v0.1.0.1
+# ETAB Engineering v0.1.0.2
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. XAE open and compile remain intentionally outstanding. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. The generated copy was subsequently opened and built successfully in TwinCAT XAE by the user. Runtime and machine acceptance remain separate. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
 The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, and a qualified project instance GVL. An optional generated PRG can call explicitly selected instances. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
 
-The TypeScript visual editor and its loopback .NET service are implemented. The editor opens and saves complete `*.etab.json` documents, provides a component palette, hierarchy, property and contract editors, relationships, a draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
+The TypeScript visual editor and its loopback .NET service are implemented. The desktop starts with an explicit New/Open choice instead of loading a fixed example. New projects use a Core-validated minimal machine template; native Windows dialogs provide Open, first Save, and Save As without manual path entry. The editor otherwise provides a component palette, hierarchy, property and contract editors, relationships, a draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
-The opt-in project integration manages generated `Compile` and `Folder` entries plus the ETAB placeholder reference without taking ownership of compatible existing entries. Before planning additions it scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The editor exposes instance type, PRG-call selection, the project-wide PRG option, target-root selection, optional `.plcproj` integration, preview, and confirmed generation. A real compile of the complete generated project remains part of Phase 3; the underlying base-FB inheritance and hook pattern was already compiled successfully in TwinCAT during Phase 0.
+The opt-in project integration manages generated `Compile` and `Folder` entries plus the ETAB placeholder reference without taking ownership of compatible existing entries. Before planning additions it scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The editor exposes instance type, PRG-call selection, the project-wide PRG option, target-root selection, optional `.plcproj` integration, preview, and confirmed generation. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
 
 ## Quick Start
 
@@ -56,7 +56,9 @@ npm.cmd --prefix .\src\ETAB.Engineering.Editor install
 npm.cmd --prefix .\src\ETAB.Engineering.Editor run dev
 ```
 
-Open `http://127.0.0.1:5173/`. The editor initially loads the BrushMachine reference model and talks only to the loopback service at `http://127.0.0.1:5079/`.
+Open `http://127.0.0.1:5173/`. The editor starts with New/Open choices and talks only to the loopback service at `http://127.0.0.1:5079/`. Native Windows file dialogs are available in `ETAB Engineering.exe`; the development-browser fallback accepts a manually entered project path. The BrushMachine reference remains an explicit example action, not the default document.
+
+**New Project** creates a valid minimal logical machine with fresh stable IDs, ETAB `0.1.0.3`, and one generatable Application Unit. The first **Save** opens Save As in the desktop application. The top bar then offers **New**, **Open**, **Save**, and **Save As** throughout the editing session.
 
 To generate from the editor, save the ETAB model first, open **Generation preview**, enter the PLC project directory under **Target**, optionally enable **.plcproj**, and select **Refresh preview**. Inspect the complete conflict-protected plan and then select **Generate**. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
 
@@ -67,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 15-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.1
+.\publish-installer-win-x64.ps1 -Version 0.1.0.2
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.

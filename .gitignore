@@ -6,5 +6,5 @@ TestResults/
 **/dist/
 **/*.tsbuildinfo
 .playwright-cli/
-output/playwright/
+/output/
 artifacts/

@@ -26,6 +26,8 @@ internal static class DesktopSmokeTest
             "/api/session",
             cancellationToken)
             ?? throw new InvalidOperationException("The desktop session response was empty.");
+        Require(session.SupportsNativeFileDialogs,
+            "The packaged desktop session did not expose native project file dialogs.");
         var opened = await PostAsync<OpenProjectRequest, OpenProjectResponse>(
             client,
             "/api/projects/open",

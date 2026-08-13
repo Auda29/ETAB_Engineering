@@ -22,6 +22,31 @@ public sealed class EditorProjectServiceTests : IDisposable
     }
 
     [Fact]
+    public void CreateNew_ReturnsValidMinimalMachineTemplateWithFreshStableIds()
+    {
+        var first = service.CreateNew();
+        var second = service.CreateNew();
+
+        Assert.True(first.Validation.IsValid);
+        Assert.Equal("NewProject", first.Document["project"]!["name"]!.GetValue<string>());
+        Assert.Equal("NEW", first.Document["project"]!["prefix"]!.GetValue<string>());
+        Assert.Equal("0.1.0.3", first.Document["project"]!["etabLibrary"]!["version"]!.GetValue<string>());
+        Assert.Single(first.Document["nodes"]!.AsArray());
+        Assert.Equal("applicationUnit", first.Document["nodes"]![0]!["kind"]!.GetValue<string>());
+        Assert.Equal(5, first.Document["nodes"]![0]!["commands"]!.AsArray().Count);
+        var preview = service.Preview(first.Document, projectPath: null, testRoot);
+        Assert.True(preview.Validation.IsValid);
+        Assert.Equal(5, preview.Artifacts.Count);
+        Assert.All(preview.Changes, change => Assert.Equal("create", change.ChangeKind));
+        Assert.NotEqual(
+            first.Document["project"]!["id"]!.GetValue<string>(),
+            second.Document["project"]!["id"]!.GetValue<string>());
+        Assert.NotEqual(
+            first.Document["nodes"]![0]!["id"]!.GetValue<string>(),
+            second.Document["nodes"]![0]!["id"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task OpenAsync_LoadsCompleteReferenceDocumentAndValidation()
     {
         var projectPath = CopyReferenceProject("BrushMachine.etab.json");

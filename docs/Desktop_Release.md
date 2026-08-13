@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.1
+.\publish-installer-win-x64.ps1 -Version 0.1.0.2
 ```
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
@@ -51,10 +51,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -78,11 +78,11 @@ The release Setup EXE is not currently Authenticode-signed. Windows can therefor
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.1`, publish with:
+For version `0.1.0.2`, publish with:
 
 ```powershell
-git tag -a v0.1.0.1 -m "ETAB Engineering v0.1.0.1"
-git push origin v0.1.0.1
+git tag -a v0.1.0.2 -m "ETAB Engineering v0.1.0.2"
+git push origin v0.1.0.2
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -124,3 +124,21 @@ The installer build produced a 55,831,231-byte Setup EXE with this SHA-256 value
 Both checksum sidecars match their release files. The installer smoke test installed the application into an isolated per-user temporary directory, executed the packaged desktop smoke test successfully, and removed the installed application and checked registrations again. The release staging directories were empty afterward. The Setup EXE remains intentionally unsigned as documented above.
 
 No interactive editor, Playwright, or TwinCAT XAE process was started for this validation. XAE open, PLC compile, simulation, and machine acceptance remain explicitly assigned to the manual engineering test.
+
+## Validation Record for v0.1.0.2
+
+Local validation on 2026-08-13 passed the TypeScript check, all 54 core tests, all 8 editor-service tests, the complete Release publish, and the packaged desktop smoke test. The service tests cover the Core-validated minimal New Project template with fresh stable IDs. The desktop smoke test additionally verifies that native file-dialog support is registered in the packaged host.
+
+The portable bundle contains 565 archive entries. The 76,287,455-byte ZIP has this SHA-256 value:
+
+```text
+24d3525567d572d8f3cc0d6d80986fc469f969dae97eff16546e7187b38d0e7c
+```
+
+The installer build produced a 55,834,848-byte Setup EXE with this SHA-256 value:
+
+```text
+ed868602e79b3994aa8423cb1a02b930e5fb95965e7f0c889d31042004a0fa96
+```
+
+Both checksum sidecars match their release files. The isolated installer test installed the application into a temporary per-user directory, ran the packaged desktop smoke test, uninstalled the application, and verified cleanup. No interactive editor window, browser, or Playwright test was used. Interactive acceptance of the native New, Open, Save, and Save As workflow remains a separate UI-validation step.

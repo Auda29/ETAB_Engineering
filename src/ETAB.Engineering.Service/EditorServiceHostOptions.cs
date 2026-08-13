@@ -13,4 +13,6 @@ public sealed class EditorServiceHostOptions
     public IFileProvider? FrontendFiles { get; init; }
 
     public bool EnableDevelopmentCors { get; init; }
+
+    public IProjectFileDialogService? ProjectFileDialogs { get; init; }
 }

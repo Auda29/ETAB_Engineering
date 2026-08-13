@@ -62,4 +62,4 @@ A complete before/after hash comparison of the copied PLC root was byte-identica
 
 Automated result: 54 core tests and 7 service tests passed, the Release build completed with 0 warnings and 0 errors, TypeScript and format checks passed, and the embedded desktop smoke test passed without Playwright.
 
-The copy has not been opened or compiled in TwinCAT XAE. That manual validation step belongs to the user. No PLC simulation or machine test is claimed.
+On 2026-08-13, the user confirmed that the generated copy opens and builds successfully in TwinCAT XAE with ETAB `0.1.0.3` resolved. This completes the manual structural compile handoff. No PLC simulation or machine test is claimed.

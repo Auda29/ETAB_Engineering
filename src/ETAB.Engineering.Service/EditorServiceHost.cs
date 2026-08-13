@@ -46,7 +46,7 @@ public static class EditorServiceHost
             app.UseCors(DevelopmentCorsPolicy);
         }
 
-        MapApi(app);
+        MapApi(app, options.ProjectFileDialogs);
         if (options.FrontendFiles is not null)
         {
             MapFrontend(app, options.FrontendFiles);
@@ -55,10 +55,42 @@ public static class EditorServiceHost
         return app;
     }
 
-    private static void MapApi(WebApplication app)
+    private static void MapApi(
+        WebApplication app,
+        IProjectFileDialogService? projectFileDialogs)
     {
         app.MapGet("/api/session", (EditorProjectService service) =>
-            Results.Ok(new SessionResponse(service.WorkspaceRoot, service.ExampleProjectPath)));
+            Results.Ok(new SessionResponse(
+                service.WorkspaceRoot,
+                service.ExampleProjectPath,
+                projectFileDialogs is not null)));
+
+        app.MapPost("/api/dialogs/open-project", async (
+            CancellationToken cancellationToken) =>
+            await HandleAsync(async () =>
+            {
+                var dialogs = RequireProjectFileDialogs(projectFileDialogs);
+                var path = await dialogs.SelectOpenProjectAsync(cancellationToken);
+                return new ProjectFileDialogResponse(path is null, path);
+            }));
+
+        app.MapPost("/api/dialogs/save-project", async (
+            SaveProjectDialogRequest request,
+            CancellationToken cancellationToken) =>
+            await HandleAsync(async () =>
+            {
+                var dialogs = RequireProjectFileDialogs(projectFileDialogs);
+                var suggestedFileName = string.IsNullOrWhiteSpace(request.SuggestedFileName)
+                    ? "NewProject.etab.json"
+                    : request.SuggestedFileName.Trim();
+                var path = await dialogs.SelectSaveProjectAsync(
+                    suggestedFileName,
+                    cancellationToken);
+                return new ProjectFileDialogResponse(path is null, path);
+            }));
+
+        app.MapPost("/api/projects/new", (EditorProjectService service) =>
+            Results.Ok(service.CreateNew()));
 
         app.MapPost("/api/projects/open", async (
             OpenProjectRequest request,
@@ -156,4 +188,10 @@ public static class EditorServiceHost
             return Results.BadRequest(new ApiErrorResponse(exception.Code, exception.Message));
         }
     }
+
+    private static IProjectFileDialogService RequireProjectFileDialogs(
+        IProjectFileDialogService? projectFileDialogs) =>
+        projectFileDialogs ?? throw new EditorRequestException(
+            "native-file-dialog-unavailable",
+            "Native project file dialogs are available only in the Windows desktop application.");
 }

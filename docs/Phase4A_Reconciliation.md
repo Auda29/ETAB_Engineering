@@ -42,7 +42,7 @@ ETAB Engineering v0.1 does not edit `.TcTTO` objects. If a generated PRG is enab
 
 All seven existing DUTs remain externally owned in the dedicated `examples/BrushMachine.integration.etab.json` model. Their corresponding generation flags are disabled. This preserves the existing GUIDs, paths, consumers, and aggregate machine-status contract while the complete 15-artifact reference model remains available independently for generator validation.
 
-The integration model proposes eight owned artifacts: four generated ApplicationUnit base FBs, three unit-status DUTs, and one qualified instance GVL. Its real-project preview is conflict-free. Copy generation and repeated no-op evidence are recorded in `docs/Phase4B_CopyGeneration.md`. XAE open, full PLC compile, and the existing simulation/FAT regression remain outstanding.
+The integration model proposes eight owned artifacts: four generated ApplicationUnit base FBs, three unit-status DUTs, and one qualified instance GVL. Its real-project preview is conflict-free. Copy generation, repeated no-op evidence, and the subsequent user-confirmed successful XAE build are recorded in `docs/Phase4B_CopyGeneration.md`. The existing simulation/FAT regression remains outstanding.
 
 ## Automated Evidence
 

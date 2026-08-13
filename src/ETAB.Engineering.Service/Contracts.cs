@@ -10,7 +10,16 @@ public sealed record ValidationResponse(
 
 public sealed record SessionResponse(
     string WorkspaceRoot,
-    string ExampleProjectPath);
+    string ExampleProjectPath,
+    bool SupportsNativeFileDialogs);
+
+public sealed record SaveProjectDialogRequest(string? SuggestedFileName);
+
+public sealed record ProjectFileDialogResponse(bool Canceled, string? Path);
+
+public sealed record NewProjectResponse(
+    JsonNode Document,
+    ValidationResponse Validation);
 
 public sealed record OpenProjectRequest(string Path);
 

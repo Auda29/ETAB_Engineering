@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0, Phase 1, Phase 2, and structural Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; XAE open, compile, and runtime acceptance remain open
+- Status: implementation; Phase 0, Phase 1, Phase 2, and Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; the generated copy opens and builds successfully in XAE; runtime acceptance remains open
 - As of: 2026-08-13
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
@@ -349,7 +349,7 @@ Acceptance:
 
 ### Phase 2 – Visual Editor MVP (completed 2026-08-10)
 
-- [x] open and save a project
+- [x] create a valid project from a minimal template and use native Open/Save As dialogs in the desktop application (follow-up 2026-08-13)
 - [x] component palette
 - [x] machine canvas
 - [x] unit selection and property inspector
@@ -381,11 +381,11 @@ Acceptance:
 - repeated generation produces no unnecessary diff
 - a real TwinCAT compile succeeds
 
-Phase 3A evidence: `docs/Phase3A_Validation.md`. The opt-in CLI integration updates only ETAB-owned project entries, preserves compatible unmanaged entries, participates in the generation transaction, and was idempotently exercised against a temporary copy of `AutomationBase_Beispiel.plcproj`. XAE open and compile evidence remain outstanding.
+Phase 3A evidence: `docs/Phase3A_Validation.md`. The opt-in CLI integration updates only ETAB-owned project entries, preserves compatible unmanaged entries, participates in the generation transaction, and was idempotently exercised against a temporary copy of `AutomationBase_Beispiel.plcproj`. The completed integration copy later opened and built successfully in XAE.
 
-Phase 3B evidence: `docs/Phase3B_Validation.md`. The generator now creates one qualified instance GVL for nodes with `instance = true`. A project-wide opt-in creates a PRG that calls only instances explicitly selected with `callInProgram`; an explicit `instanceType` binds project-specific FBs while safe ETAB/generated defaults remain available. The reference model proposes 15 artifacts, including the GVL. Current project-aware preview additionally detects seven pre-existing IEC-name conflicts in the golden sample. XAE open and compile evidence remain outstanding.
+Phase 3B evidence: `docs/Phase3B_Validation.md`. The generator now creates one qualified instance GVL for nodes with `instance = true`. A project-wide opt-in creates a PRG that calls only instances explicitly selected with `callInProgram`; an explicit `instanceType` binds project-specific FBs while safe ETAB/generated defaults remain available. The reference model proposes 15 artifacts, including the GVL. Current project-aware preview additionally detects seven pre-existing IEC-name conflicts in the golden sample. The non-conflicting integration copy later opened and built successfully in XAE.
 
-Phase 3C evidence: `docs/Phase3C_Validation.md`. The editor now exposes the exact target root, optional `.plcproj` integration, the complete shared-core plan, and a separate Generate action. Generation requires a saved model, a conflict-free current preview, an exact confirmation token, and a final user confirmation. No live reference project was written during automated validation; XAE open and compile evidence remain outstanding.
+Phase 3C evidence: `docs/Phase3C_Validation.md`. The editor exposes the exact target root, optional `.plcproj` integration, the complete shared-core plan, and a separate Generate action. Generation requires a saved model, a conflict-free current preview, an exact confirmation token, and a final user confirmation. The later Phase 4B integration-copy workflow supplied the user-confirmed successful XAE build evidence without writing the original project.
 
 Task policy: ETAB Engineering v0.1 does not modify `.TcTTO` task objects. A generated PRG must be invoked either once from an existing cyclic program or assigned manually to exactly one task, never both. The BrushMachine reference keeps `programCallStructure = false`; its existing `PlcTask.TcTTO` calls only `MAIN`, which calls the handwritten application FB.
 
@@ -399,14 +399,14 @@ Task policy: ETAB Engineering v0.1 does not modify `.TcTTO` task objects. A gene
 - [x] define external ownership for the seven existing DUTs in a dedicated integration model (Phase 4B, 2026-08-13)
 - [x] preview the integration model read-only against the real project (Phase 4B, 2026-08-13)
 - [x] generate into a separate project copy and prove byte-identical regeneration (Phase 4B, 2026-08-13)
-- [ ] open and compile the generated copy in XAE
+- [x] open and compile the generated copy in XAE (user-confirmed 2026-08-13)
 - [ ] run the existing simulation/FAT regression sequence
 
 MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB scaffold without overwriting handwritten code.
 
 Phase 4A evidence: `docs/Phase4A_Reconciliation.md`. The three existing command enums and three existing request DUTs match the model semantically. The existing `ST_BM_MachineStatus` is a 42-field project aggregate and is intentionally incompatible with the lean generated six-field contract. Project-aware preview now blocks all seven duplicate IEC names before writes. The next decision is whether these seven objects remain externally owned in a golden-sample integration model or the matching command/request types are migrated into the generated ownership boundary; the existing machine status must remain external or be renamed.
 
-Phase 4B evidence: `docs/Phase4B_CopyGeneration.md`. The approved external-ownership decision is represented by `examples/BrushMachine.integration.etab.json`. It produces eight owned artifacts without colliding with existing DUTs. The first copy generation created eight artifacts and both manifests; the second run was byte-identical and `check` reported synchronized. The original project remained unchanged. XAE open and compile are assigned to the user and are not claimed as completed evidence.
+Phase 4B evidence: `docs/Phase4B_CopyGeneration.md`. The approved external-ownership decision is represented by `examples/BrushMachine.integration.etab.json`. It produces eight owned artifacts without colliding with existing DUTs. The first copy generation created eight artifacts and both manifests; the second run was byte-identical and `check` reported synchronized. The original project remained unchanged. The user subsequently confirmed that the generated copy opens and builds successfully in TwinCAT XAE with ETAB `0.1.0.3` resolved.
 
 ### Phase 5 – Optional MTP Extension
 
@@ -557,4 +557,4 @@ The initially approved development slice comprised:
 7. CLI `preview` and CLI `check`
 8. tests based on a simplified `ProcessUnit`
 
-Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration, Phase 3B added the instance GVL and optional selected PRG calls, and Phase 3C added target selection plus confirmed generation to the editor. Phase 4A added compiled IEC-name collision detection, and Phase 4B resolved the seven golden-sample ownership conflicts through a dedicated integration model and idempotent project-copy generation. XAE open and real compile evidence are still required before Phase 3 is accepted.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration, Phase 3B added the instance GVL and optional selected PRG calls, and Phase 3C added target selection plus confirmed generation to the editor. Phase 4A added compiled IEC-name collision detection, and Phase 4B resolved the seven golden-sample ownership conflicts through a dedicated integration model and idempotent project-copy generation. The generated integration copy now has user-confirmed XAE open and compile evidence; runtime acceptance remains separate.

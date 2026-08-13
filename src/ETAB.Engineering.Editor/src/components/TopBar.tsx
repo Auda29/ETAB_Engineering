@@ -3,8 +3,11 @@ import type { ValidationResponse } from "../model";
 interface Props {
   path: string;
   onPathChange: (path: string) => void;
+  onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
+  supportsNativeFileDialogs: boolean;
   busy: boolean;
   dirty: boolean;
   projectName?: string;
@@ -14,8 +17,11 @@ interface Props {
 export function TopBar({
   path,
   onPathChange,
+  onNew,
   onOpen,
   onSave,
+  onSaveAs,
+  supportsNativeFileDialogs,
   busy,
   dirty,
   projectName,
@@ -39,14 +45,22 @@ export function TopBar({
           className="filebar__path"
           value={path}
           onChange={(event) => onPathChange(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && onOpen()}
+          onKeyDown={(event) => !supportsNativeFileDialogs && event.key === "Enter" && onOpen()}
+          placeholder="No project file selected"
+          readOnly={supportsNativeFileDialogs}
           spellCheck={false}
         />
+        <button className="button button--secondary" onClick={onNew} disabled={busy}>
+          New
+        </button>
         <button data-testid="open-project" className="button button--secondary" onClick={onOpen} disabled={busy}>
           Open
         </button>
         <button data-testid="save-project" className="button button--primary" onClick={onSave} disabled={busy || !projectName}>
           Save
+        </button>
+        <button className="button button--secondary" onClick={onSaveAs} disabled={busy || !projectName}>
+          Save As
         </button>
       </div>
 

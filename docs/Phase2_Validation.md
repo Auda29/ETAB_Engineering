@@ -11,7 +11,7 @@
 
 The editor is a TypeScript/React application in `src/ETAB.Engineering.Editor`. It communicates with the reusable loopback ASP.NET service in `src/ETAB.Engineering.Service`; `src/ETAB.Engineering.Service.Host` is the development executable, while the WPF desktop application hosts the same service in process.
 
-The service is a facade over `ETAB.Engineering.Core` and exposes project session, open, save, validate, and preview operations. Validation uses `ProjectValidator`; preview uses `ArtifactPreviewGenerator` and `GenerationPlanBuilder`. The CLI and editor therefore share one model, validator, planner, and generator implementation.
+The service is a facade over `ETAB.Engineering.Core` and exposes project session, new, open, save, validate, and preview operations. Validation uses `ProjectValidator`; preview uses `ArtifactPreviewGenerator` and `GenerationPlanBuilder`. The CLI and editor therefore share one model, validator, planner, and generator implementation.
 
 The service transports the complete JSON document rather than a reduced editor DTO. This preserves schema-valid fields that are not presented by the current inspector, including later-phase MTP procedure mappings. Save operations enforce the `.etab.json` extension and write UTF-8 without BOM with LF line endings through a temporary-file replacement.
 
@@ -19,7 +19,10 @@ The service transports the complete JSON document rather than a reduced editor D
 
 The implemented editor provides:
 
-- project open, save, dirty-state protection, `Ctrl+S`, and save validation feedback;
+- explicit startup actions without an implicitly opened example;
+- a Core-validated minimal New Project template with fresh stable IDs;
+- native Windows Open, first-Save, and Save As dialogs in the desktop application, plus manual-path fallback for development browsers;
+- project save, dirty-state protection, `Ctrl+S`, and save validation feedback;
 - a palette for Application Unit, Command Unit, Recipe Manager, and Machine Link nodes;
 - a searchable hierarchy and a draggable machine canvas with SVG relationship paths;
 - project and node property inspection;
@@ -59,6 +62,12 @@ A real browser acceptance flow was executed against the running local service an
 10. A fresh browser session reported zero console errors and zero warnings.
 
 The original BrushMachine reference file was not modified by this acceptance flow.
+
+## File Workflow Follow-up – 2026-08-13
+
+The first independent UI-validation pass identified that the editor always opened the same bundled BrushMachine path, required manual path editing, and offered neither New Project nor Save As. The desktop workflow now starts without a loaded document and provides explicit **New Project**, **Open Project**, and optional **Open BrushMachine example** actions. The top bar provides **New**, **Open**, **Save**, and **Save As**. Desktop file selection is implemented through native Windows dialogs; no arbitrary path must be typed.
+
+The minimal template is produced by the .NET service and validated through the shared Core before it reaches the editor. Its automated test proves a valid single-machine model, fresh project and node IDs on every creation, ETAB `0.1.0.3`, five standard commands, and a conflict-free five-artifact preview. The service suite now contains 8 passing tests. TypeScript checking and the complete Release build pass with zero warnings and zero errors. Interactive dialog acceptance remains assigned to the user's UI-validation session; no Playwright test was used.
 
 ## Acceptance Conclusion
 

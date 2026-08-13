@@ -31,6 +31,97 @@ public sealed class EditorProjectService
     public string ExampleProjectPath =>
         Path.Combine(WorkspaceRoot, "examples", "BrushMachine.reference.etab.json");
 
+    public NewProjectResponse CreateNew()
+    {
+        static string NewId() => Guid.NewGuid().ToString("D");
+
+        var projectId = NewId();
+        var machineId = NewId();
+        var document = JsonNode.Parse(
+            $$"""
+            {
+              "schemaVersion": "0.1",
+              "project": {
+                "id": "{{projectId}}",
+                "name": "NewProject",
+                "displayName": "New Project",
+                "description": "Logical machine model created with ETAB Engineering.",
+                "prefix": "NEW",
+                "namespace": "NewProject",
+                "etabLibrary": {
+                  "placeholder": "ETAB",
+                  "version": "0.1.0.3"
+                },
+                "twinCAT": {
+                  "version": "3.1.4024.74"
+                },
+                "generation": {
+                  "generatedRoot": "Generated",
+                  "applicationRoot": "Application",
+                  "createUserStubs": false,
+                  "programCallStructure": false
+                }
+              },
+              "nodes": [
+                {
+                  "id": "{{machineId}}",
+                  "kind": "applicationUnit",
+                  "name": "Machine",
+                  "symbolStem": "Machine",
+                  "displayName": "Machine",
+                  "description": "Root application unit for the logical machine.",
+                  "role": "machine",
+                  "generate": {
+                    "commandEnum": true,
+                    "requestType": true,
+                    "statusType": true,
+                    "baseFunctionBlock": true,
+                    "instance": true,
+                    "callInProgram": false
+                  },
+                  "commands": [
+                    { "id": "{{NewId()}}", "name": "NoAction", "displayName": "No Action", "enumValue": 0, "etabCommand": "NoAction" },
+                    { "id": "{{NewId()}}", "name": "Reset", "displayName": "Reset", "enumValue": 10, "etabCommand": "Reset" },
+                    { "id": "{{NewId()}}", "name": "Start", "displayName": "Start", "enumValue": 20, "etabCommand": "Start" },
+                    { "id": "{{NewId()}}", "name": "Stop", "displayName": "Stop", "enumValue": 30, "etabCommand": "Stop" },
+                    { "id": "{{NewId()}}", "name": "Abort", "displayName": "Abort", "enumValue": 40, "etabCommand": "Abort" }
+                  ],
+                  "requestPayload": [],
+                  "statusPayload": [],
+                  "applicationUnit": {
+                    "startMode": "ET.eMODE.AUTO",
+                    "homingMode": "ET.eMODE.INIT",
+                    "stopMode": "ET.eMODE.IDLE",
+                    "keepRemoteControl": false,
+                    "setMachineErrorOnCommandError": true,
+                    "command": {
+                      "startState": 10,
+                      "resetErrorOnStart": true
+                    }
+                  },
+                  "mtp": {
+                    "exposed": false,
+                    "procedures": []
+                  }
+                }
+              ],
+              "relations": [],
+              "layout": {
+                "nodes": [
+                  { "nodeId": "{{machineId}}", "x": 120, "y": 90 }
+                ]
+              }
+            }
+            """) ?? throw new InvalidOperationException("The default project template could not be created.");
+        var validation = Validate(document);
+        if (!validation.IsValid)
+        {
+            throw new InvalidOperationException("The default project template is invalid.");
+        }
+
+        return new NewProjectResponse(document, validation);
+    }
+
     public async Task<OpenProjectResponse> OpenAsync(
         string path,
         CancellationToken cancellationToken = default)

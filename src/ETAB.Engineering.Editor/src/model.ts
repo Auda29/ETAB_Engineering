@@ -134,7 +134,21 @@ export interface NodeLayout {
 export interface ValidationIssue { code: string; path: string; message: string }
 export interface ValidationResponse { isValid: boolean; issues: ValidationIssue[] }
 
-export interface SessionResponse { workspaceRoot: string; exampleProjectPath: string }
+export interface SessionResponse {
+  workspaceRoot: string;
+  exampleProjectPath: string;
+  supportsNativeFileDialogs: boolean;
+}
+
+export interface ProjectFileDialogResponse {
+  canceled: boolean;
+  path?: string;
+}
+
+export interface NewProjectResponse {
+  document: EtabProjectDocument;
+  validation: ValidationResponse;
+}
 
 export interface OpenProjectResponse {
   path: string;

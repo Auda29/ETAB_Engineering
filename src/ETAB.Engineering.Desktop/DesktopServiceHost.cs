@@ -47,7 +47,8 @@ public sealed class DesktopServiceHost : IAsyncDisposable
                 WorkspaceRoot = workspaceRoot,
                 SchemaPath = schemaPath,
                 ListenUrls = [DesktopRuntimeOptions.ResolveListenUrl()],
-                FrontendFiles = frontendFiles
+                FrontendFiles = frontendFiles,
+                ProjectFileDialogs = new DesktopProjectFileDialogs()
             });
 
         await application.StartAsync(cancellationToken);

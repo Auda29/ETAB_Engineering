@@ -1,7 +1,9 @@
 import type {
   EtabProjectDocument,
   GenerateProjectResponse,
+  NewProjectResponse,
   OpenProjectResponse,
+  ProjectFileDialogResponse,
   PreviewResponse,
   SaveProjectResponse,
   SessionResponse,
@@ -24,6 +26,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const editorApi = {
   session: (signal?: AbortSignal) => request<SessionResponse>("/api/session", { signal }),
+  createNew: () => request<NewProjectResponse>("/api/projects/new", {
+    method: "POST",
+  }),
+  chooseOpenProject: () => request<ProjectFileDialogResponse>("/api/dialogs/open-project", {
+    method: "POST",
+  }),
+  chooseSaveProject: (suggestedFileName: string) =>
+    request<ProjectFileDialogResponse>("/api/dialogs/save-project", {
+      method: "POST",
+      body: JSON.stringify({ suggestedFileName }),
+    }),
   open: (path: string) => request<OpenProjectResponse>("/api/projects/open", {
     method: "POST",
     body: JSON.stringify({ path }),
