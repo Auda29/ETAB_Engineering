@@ -9,7 +9,7 @@ ETAB Engineering is packaged both as a guided Windows x64 installer and as a por
 - the production React editor under `wwwroot`,
 - the reusable ASP.NET editor service,
 - `ETAB.Engineering.Core`,
-- the JSON schema and BrushMachine reference project,
+- the JSON schema plus the BrushMachine reference and external-ownership integration projects,
 - the .NET runtime required by the application.
 
 The desktop host starts the service in the same process on a random HTTP loopback port and opens that origin in WebView2. Navigation to any other scheme, host, or port is blocked. Closing the desktop window stops the service.
@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.0
+.\publish-installer-win-x64.ps1 -Version 0.1.0.1
 ```
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
@@ -51,10 +51,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.0-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.0-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.1-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.1-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -78,11 +78,11 @@ The release Setup EXE is not currently Authenticode-signed. Windows can therefor
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.0`, publish with:
+For version `0.1.0.1`, publish with:
 
 ```powershell
-git tag -a v0.1.0.0 -m "ETAB Engineering v0.1.0.0"
-git push origin v0.1.0.0
+git tag -a v0.1.0.1 -m "ETAB Engineering v0.1.0.1"
+git push origin v0.1.0.1
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -106,3 +106,21 @@ The installer build produced a 55,798,857-byte Setup EXE with this SHA-256 value
 The installer smoke test installed the application into an isolated per-user temporary directory, ran the same packaged desktop smoke test successfully, and uninstalled it again. The application directory and all checked per-user and per-machine uninstall registrations were absent afterward. No interactive editor window or Playwright test was used.
 
 This evidence proves the local packaging and application boundary. It does not prove a TwinCAT XAE open, PLC compile, PLC simulation, or machine test.
+
+## Validation Record for v0.1.0.1
+
+Local validation on 2026-08-13 passed all 54 core tests, all 7 editor-service tests, the TypeScript check, the complete Release build, and the published desktop smoke test. The final portable bundle contains 565 archive entries, including both BrushMachine example models and the generated integration workflow inputs. The 76,280,735-byte ZIP has this SHA-256 value:
+
+```text
+36411060bbedadb65ffbd6e1de90e098ef2972871dae6a6000a265756df0c66b
+```
+
+The installer build produced a 55,831,231-byte Setup EXE with this SHA-256 value:
+
+```text
+5b3290d096ac3bd5b405cbd93cdcb16d790bdbefad49f86e738f940f103b928c
+```
+
+Both checksum sidecars match their release files. The installer smoke test installed the application into an isolated per-user temporary directory, executed the packaged desktop smoke test successfully, and removed the installed application and checked registrations again. The release staging directories were empty afterward. The Setup EXE remains intentionally unsigned as documented above.
+
+No interactive editor, Playwright, or TwinCAT XAE process was started for this validation. XAE open, PLC compile, simulation, and machine acceptance remain explicitly assigned to the manual engineering test.

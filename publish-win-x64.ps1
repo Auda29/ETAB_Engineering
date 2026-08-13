@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.1.0.0',
+    [string]$Version = '0.1.0.1',
 
     [string]$OutputDirectory = '',
 
@@ -132,6 +132,7 @@ try {
         (Join-Path $bundleDirectory 'wwwroot\index.html'),
         (Join-Path $bundleDirectory 'schemas\etab-project.schema.json'),
         (Join-Path $bundleDirectory 'examples\BrushMachine.reference.etab.json'),
+        (Join-Path $bundleDirectory 'examples\BrushMachine.integration.etab.json'),
         (Join-Path $bundleDirectory 'WebView2Loader.dll')
     )
     foreach ($requiredFile in $requiredFiles) {

@@ -6,7 +6,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>ETAB Engineering</AssemblyName>
     <RootNamespace>ETAB.Engineering.Desktop</RootNamespace>
-    <Version>0.1.0.0</Version>
+    <Version>0.1.0.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -28,6 +28,10 @@
              CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\examples\BrushMachine.reference.etab.json"
              Link="examples\BrushMachine.reference.etab.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\examples\BrushMachine.integration.etab.json"
+             Link="examples\BrushMachine.integration.etab.json"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
