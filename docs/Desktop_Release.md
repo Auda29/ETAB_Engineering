@@ -44,7 +44,7 @@ The smoke test verifies that the packaged executable:
 - serves the bundled React entry point,
 - opens the bundled BrushMachine project,
 - validates it through the shared core,
-- produces a read-only preview containing 14 artifacts,
+- produces a read-only preview containing 15 artifacts,
 - saves and reopens a temporary project without data loss,
 - shuts down its loopback service cleanly.
 
@@ -95,7 +95,7 @@ Local validation on 2026-08-13 produced a 76,249,815-byte ZIP with 564 archive e
 3c68250dae4aef96cc19b57889a2d3eca34c98ecdbf550de723e7c477e8e21e4
 ```
 
-The published executable smoke test passed with 14 preview artifacts and a lossless save/reopen round trip. The extracted WPF application also started successfully and visibly rendered the complete BrushMachine editor with 7 nodes, 12 relationships, and a valid model.
+The current executable smoke test passes with 15 preview artifacts, including the generated instance GVL, and a lossless save/reopen round trip. The previously extracted WPF application also started successfully and visibly rendered the complete BrushMachine editor with 7 nodes, 12 relationships, and a valid model.
 
 The installer build produced a 55,798,857-byte Setup EXE with this SHA-256 value:
 

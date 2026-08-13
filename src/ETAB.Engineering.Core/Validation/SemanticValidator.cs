@@ -15,6 +15,7 @@ internal sealed class SemanticValidator
 
         ValidateStableIds(rawProject, issues);
         ValidateNodes(project, issues);
+        ValidateProgramCallStructure(project, issues);
         ValidateRelations(project, issues);
         ValidateLayout(project, issues);
         ValidateGeneratedArtifactNames(project, issues);
@@ -104,6 +105,7 @@ internal sealed class SemanticValidator
             ValidateRequestContract(node, nodePath, issues);
             ValidateStatusContract(node, nodePath, issues);
             ValidateBaseFunctionBlockContract(node, nodePath, issues);
+            ValidateInstanceContract(node, nodePath, issues);
             ValidateMtp(node, nodePath, issues);
         }
     }
@@ -267,6 +269,41 @@ internal sealed class SemanticValidator
                 "BASE_FB_NODE_KIND",
                 $"{nodePath}/generate/baseFunctionBlock",
                 "Generated base function blocks are supported only for applicationUnit nodes in model v0.1."));
+        }
+    }
+
+    private static void ValidateInstanceContract(
+        EtabNode node,
+        string nodePath,
+        ICollection<ValidationIssue> issues)
+    {
+        if (!node.Generate.Instance && !string.IsNullOrWhiteSpace(node.Generate.InstanceType))
+        {
+            issues.Add(new ValidationIssue(
+                "INSTANCE_TYPE_WITHOUT_INSTANCE",
+                $"{nodePath}/generate/instanceType",
+                "An explicit instanceType is valid only when instance generation is enabled."));
+        }
+        if (!node.Generate.Instance && node.Generate.CallInProgram)
+        {
+            issues.Add(new ValidationIssue(
+                "PROGRAM_CALL_WITHOUT_INSTANCE",
+                $"{nodePath}/generate/callInProgram",
+                "A node can be called by the generated PRG only when instance generation is enabled."));
+        }
+    }
+
+    private static void ValidateProgramCallStructure(
+        EtabProjectDocument project,
+        ICollection<ValidationIssue> issues)
+    {
+        if (project.Project.Generation.ProgramCallStructure &&
+            !project.Nodes.Any(node => node.Generate.Instance && node.Generate.CallInProgram))
+        {
+            issues.Add(new ValidationIssue(
+                "PROGRAM_WITHOUT_INSTANCES",
+                "/project/generation/programCallStructure",
+                "The generated PRG call structure requires at least one instance selected with callInProgram."));
         }
     }
 

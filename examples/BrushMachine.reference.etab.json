@@ -15,10 +15,11 @@
       "version": "3.1.4024.74",
       "plcProject": "AutomationBase_Beispiel.plcproj"
     },
-    "generation": {
-      "generatedRoot": "Generated",
-      "applicationRoot": "Application",
-      "createUserStubs": false
+      "generation": {
+        "generatedRoot": "Generated",
+        "applicationRoot": "Application",
+        "createUserStubs": false,
+        "programCallStructure": false
     }
   },
   "nodes": [
@@ -35,7 +36,9 @@
         "requestType": false,
         "statusType": true,
         "baseFunctionBlock": true,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_Machine",
+        "callInProgram": true
       },
       "commands": [
         {
@@ -147,7 +150,9 @@
         "requestType": true,
         "statusType": true,
         "baseFunctionBlock": true,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_MotionUnit",
+        "callInProgram": true
       },
       "commands": [
         {
@@ -333,7 +338,9 @@
         "requestType": true,
         "statusType": true,
         "baseFunctionBlock": true,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_WorkpieceUnit",
+        "callInProgram": true
       },
       "commands": [
         {
@@ -484,7 +491,9 @@
         "requestType": true,
         "statusType": true,
         "baseFunctionBlock": true,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_ProcessUnit",
+        "callInProgram": true
       },
       "commands": [
         {
@@ -623,7 +632,9 @@
         "requestType": false,
         "statusType": false,
         "baseFunctionBlock": false,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_ProcessCycle",
+        "callInProgram": true
       },
       "commands": [
         {
@@ -730,7 +741,8 @@
         "requestType": false,
         "statusType": false,
         "baseFunctionBlock": false,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_RecipeService"
       },
       "commands": [],
       "requestPayload": [],
@@ -758,7 +770,9 @@
         "requestType": false,
         "statusType": false,
         "baseFunctionBlock": false,
-        "instance": true
+        "instance": true,
+        "instanceType": "FB_BM_CellInterface",
+        "callInProgram": true
       },
       "commands": [],
       "requestPayload": [],

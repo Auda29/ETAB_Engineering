@@ -19,6 +19,9 @@ export default function App() {
   const [preview, setPreview] = useState<PreviewResponse>();
   const [busy, setBusy] = useState(false);
   const [previewBusy, setPreviewBusy] = useState(false);
+  const [generateBusy, setGenerateBusy] = useState(false);
+  const [generationRoot, setGenerationRoot] = useState("");
+  const [integrateProject, setIntegrateProject] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [notice, setNotice] = useState<Notice>();
 
@@ -31,6 +34,8 @@ export default function App() {
       const result = await editorApi.open(requestedPath);
       setDocument(result.document);
       setPath(result.path);
+      setGenerationRoot(result.projectRoot);
+      setIntegrateProject(false);
       setValidation(result.validation);
       setSelectedNodeId(result.document.nodes[0]?.id);
       setPreview(undefined);
@@ -92,6 +97,7 @@ export default function App() {
       setPath(result.path);
       setValidation(result.validation);
       setDirty(false);
+      setPreview(undefined);
       setNotice({ tone: result.validation.isValid ? "success" : "info", text: result.validation.isValid ? "Project saved and validated" : `Draft saved with ${result.validation.issues.length} validation issues` });
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
@@ -171,7 +177,12 @@ export default function App() {
     if (!document) return;
     setPreviewBusy(true);
     try {
-      const result = await editorApi.preview(document, path);
+      const result = await editorApi.preview(
+        document,
+        path,
+        generationRoot,
+        integrateProject,
+      );
       setPreview(result);
       setValidation(result.validation);
       setNotice({ tone: result.hasConflicts ? "error" : "success", text: result.hasConflicts ? "Preview contains conflicts" : `Preview planned ${result.artifacts.length} artifacts without writing` });
@@ -180,7 +191,62 @@ export default function App() {
     } finally {
       setPreviewBusy(false);
     }
-  }, [document, path]);
+  }, [document, generationRoot, integrateProject, path]);
+
+  const changeGenerationRoot = useCallback((value: string) => {
+    setGenerationRoot(value);
+    setPreview(undefined);
+  }, []);
+
+  const changeIntegrateProject = useCallback((value: boolean) => {
+    setIntegrateProject(value);
+    setPreview(undefined);
+  }, []);
+
+  const generateProject = useCallback(async () => {
+    if (!document || !preview?.confirmationToken) return;
+    if (dirty) {
+      setNotice({ tone: "error", text: "Save the ETAB model before generating PLC files" });
+      return;
+    }
+    const changedArtifacts = preview.changes.filter((change) => change.changeKind !== "unchanged").length;
+    const projectNote = integrateProject ? " The configured .plcproj is included." : "";
+    if (!window.confirm(
+      `Write ${changedArtifacts} planned artifact changes to:\n${generationRoot}\n\n${projectNote} This operation uses the displayed conflict-protected plan.`,
+    )) return;
+
+    setGenerateBusy(true);
+    setNotice({ tone: "info", text: "Generating PLC files…" });
+    try {
+      const result = await editorApi.generate(
+        document,
+        path,
+        generationRoot,
+        integrateProject,
+        preview.confirmationToken,
+      );
+      if (!result.success) {
+        throw new Error(result.issues.map((issue) => `[${issue.code}] ${issue.message}`).join("\n") || "Generation failed");
+      }
+      const refreshed = await editorApi.preview(
+        document,
+        path,
+        generationRoot,
+        integrateProject,
+      );
+      setPreview(refreshed);
+      setValidation(refreshed.validation);
+      setNotice({
+        tone: "success",
+        text: `Generation completed: ${result.created} created, ${result.updated} updated, ${result.renamed} renamed, ${result.deleted} deleted`,
+      });
+    } catch (error) {
+      setPreview(undefined);
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setGenerateBusy(false);
+    }
+  }, [dirty, document, generationRoot, integrateProject, path, preview]);
 
   const selectIssue = useCallback((issuePath: string) => {
     const match = /^\/nodes\/(\d+)/.exec(issuePath);
@@ -202,7 +268,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TopBar path={path} onPathChange={setPath} onOpen={() => openProject()} onSave={saveProject} busy={busy} dirty={dirty} projectName={document.project.displayName} validation={validation} />
+      <TopBar path={path} onPathChange={(value) => { setPath(value); setPreview(undefined); }} onOpen={() => openProject()} onSave={saveProject} busy={busy} dirty={dirty} projectName={document.project.displayName} validation={validation} />
       <div className="workspace">
         <aside className="sidebar">
           <Palette onAdd={addNode} />
@@ -211,7 +277,7 @@ export default function App() {
         <MachineCanvas document={document} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} onMoveNode={moveNode} />
         <Inspector document={document} selectedNodeId={selectedNodeId} updateDocument={updateDocument} updateNode={updateNode} deleteNode={deleteNode} />
       </div>
-      <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} onPreview={refreshPreview} onIssueSelect={selectIssue} />
+      <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} generateBusy={generateBusy} generationRoot={generationRoot} integrateProject={integrateProject} dirty={dirty} onGenerationRootChange={changeGenerationRoot} onIntegrateProjectChange={changeIntegrateProject} onPreview={refreshPreview} onGenerate={generateProject} onIssueSelect={selectIssue} />
       {notice && <button className={`notice notice--${notice.tone}`} onClick={() => setNotice(undefined)}>{notice.text}<span>×</span></button>}
     </div>
   );

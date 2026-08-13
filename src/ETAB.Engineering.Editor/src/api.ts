@@ -1,5 +1,6 @@
 import type {
   EtabProjectDocument,
+  GenerateProjectResponse,
   OpenProjectResponse,
   PreviewResponse,
   SaveProjectResponse,
@@ -38,9 +39,32 @@ export const editorApi = {
       body: JSON.stringify({ document }),
       signal,
     }),
-  preview: (document: EtabProjectDocument, projectPath: string) =>
+  preview: (
+    document: EtabProjectDocument,
+    projectPath: string,
+    projectRoot: string,
+    integrateProject: boolean,
+  ) =>
     request<PreviewResponse>("/api/projects/preview", {
       method: "POST",
-      body: JSON.stringify({ document, projectPath }),
+      body: JSON.stringify({ document, projectPath, projectRoot, integrateProject }),
+    }),
+  generate: (
+    document: EtabProjectDocument,
+    projectPath: string,
+    projectRoot: string,
+    integrateProject: boolean,
+    confirmationToken: string,
+  ) =>
+    request<GenerateProjectResponse>("/api/projects/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        document,
+        projectPath,
+        projectRoot,
+        integrateProject,
+        confirmationToken,
+        confirmed: true,
+      }),
     }),
 };

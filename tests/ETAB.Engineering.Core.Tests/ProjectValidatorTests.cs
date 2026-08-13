@@ -127,6 +127,49 @@ public sealed class ProjectValidatorTests
         Assert.Contains(result.Issues, issue => issue.Code == "BASE_FB_NODE_KIND");
     }
 
+    [Fact]
+    public void InstanceTypeWithoutEnabledInstance_IsRejectedSemantically()
+    {
+        var project = ParseProject();
+        project["nodes"]![0]!["generate"]!["instance"] = false;
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "INSTANCE_TYPE_WITHOUT_INSTANCE");
+    }
+
+    [Fact]
+    public void ProgramCallStructureWithoutInstances_IsRejectedSemantically()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["programCallStructure"] = true;
+        foreach (var node in project["nodes"]!.AsArray())
+        {
+            node!["generate"]!["instance"] = false;
+            node["generate"]!.AsObject().Remove("instanceType");
+        }
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "PROGRAM_WITHOUT_INSTANCES");
+    }
+
+    [Fact]
+    public void ProgramCallSelectionWithoutInstance_IsRejectedSemantically()
+    {
+        var project = ParseProject();
+        project["nodes"]![0]!["generate"]!["instance"] = false;
+        project["nodes"]![0]!["generate"]!["callInProgram"] = true;
+        project["nodes"]![0]!["generate"]!.AsObject().Remove("instanceType");
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "PROGRAM_CALL_WITHOUT_INSTANCE");
+    }
+
     private static JsonObject ParseProject() =>
         JsonNode.Parse(ValidProjectJson)!.AsObject();
 

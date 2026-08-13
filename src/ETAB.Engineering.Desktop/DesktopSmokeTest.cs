@@ -36,11 +36,15 @@ internal static class DesktopSmokeTest
         var preview = await PostAsync<PreviewProjectRequest, PreviewResponse>(
             client,
             "/api/projects/preview",
-            new PreviewProjectRequest(opened.Document, opened.Path, opened.ProjectRoot),
+            new PreviewProjectRequest(
+                opened.Document,
+                opened.Path,
+                opened.ProjectRoot,
+                IntegrateProject: false),
             cancellationToken);
         Require(preview.Validation.IsValid, "The bundled BrushMachine preview is invalid.");
-        Require(preview.Artifacts.Count == 14,
-            $"Expected 14 preview artifacts, received {preview.Artifacts.Count}.");
+        Require(preview.Artifacts.Count == 15,
+            $"Expected 15 preview artifacts, received {preview.Artifacts.Count}.");
 
         var temporaryRoot = Path.Combine(
             Path.GetTempPath(),

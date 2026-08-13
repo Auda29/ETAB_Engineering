@@ -68,6 +68,8 @@ export function createNode(kind: NodeKind, document: EtabProjectDocument): EtabN
 
 export function applyKindDefaults(node: EtabNode, kind: NodeKind): void {
   node.kind = kind;
+  delete node.generate.instanceType;
+  node.generate.callInProgram = false;
   delete node.applicationUnit;
   delete node.commandUnit;
   delete node.recipeManager;

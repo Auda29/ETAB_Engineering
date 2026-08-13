@@ -2,8 +2,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ETAB.Engineering.Core.Execution;
 using ETAB.Engineering.Core.Generation;
+using ETAB.Engineering.Core.Model;
 using ETAB.Engineering.Core.Planning;
+using ETAB.Engineering.Core.ProjectIntegration;
 using ETAB.Engineering.Core.Validation;
 
 namespace ETAB.Engineering.Service;
@@ -114,7 +117,8 @@ public sealed class EditorProjectService
     public PreviewResponse Preview(
         JsonNode document,
         string? projectPath,
-        string? projectRoot)
+        string? projectRoot,
+        bool integrateProject = false)
     {
         var validationResult = new ProjectValidator().Validate(
             document.ToJsonString(),
@@ -132,15 +136,20 @@ public sealed class EditorProjectService
                 [],
                 [],
                 null,
+                null,
+                null,
+                null,
+                integrateProject,
                 []);
         }
 
         var resolvedRoot = ResolveProjectRoot(projectRoot, projectPath);
         var preview = new ArtifactPreviewGenerator().Generate(validationResult.Project);
-        var plan = new GenerationPlanBuilder().Build(
+        var plan = BuildPlan(
             resolvedRoot,
             validationResult.Project,
-            preview);
+            preview,
+            integrateProject);
 
         return new PreviewResponse(
             validation,
@@ -169,10 +178,208 @@ public sealed class EditorProjectService
                 plan.Manifest.RelativePath,
                 plan.Manifest.Message,
                 plan.Manifest.ProposedContent),
+            plan.ProjectFile is null
+                ? null
+                : new ManifestPreviewResponse(
+                    plan.ProjectFile.ChangeKind.ToContractName(),
+                    plan.ProjectFile.RelativePath,
+                    plan.ProjectFile.Message,
+                    plan.ProjectFile.ProposedContent),
+            plan.ProjectIntegrationManifest is null
+                ? null
+                : new ManifestPreviewResponse(
+                    plan.ProjectIntegrationManifest.ChangeKind.ToContractName(),
+                    plan.ProjectIntegrationManifest.RelativePath,
+                    plan.ProjectIntegrationManifest.Message,
+                    plan.ProjectIntegrationManifest.ProposedContent),
+            plan.HasConflicts ? null : ComputeConfirmationToken(plan),
+            integrateProject,
             plan.Issues.Select(issue => new GenerationPlanIssueResponse(
                 issue.Code,
                 issue.Path,
                 issue.Message)).ToArray());
+    }
+
+    public GenerateProjectResponse Generate(
+        JsonNode document,
+        string projectPath,
+        string projectRoot,
+        bool integrateProject,
+        string confirmationToken,
+        bool confirmed)
+    {
+        if (!confirmed)
+        {
+            throw new EditorRequestException(
+                "GENERATION_CONFIRMATION_REQUIRED",
+                "Generation requires explicit confirmation.");
+        }
+        if (string.IsNullOrWhiteSpace(confirmationToken))
+        {
+            throw new EditorRequestException(
+                "GENERATION_PREVIEW_REQUIRED",
+                "Refresh the generation preview before writing.");
+        }
+
+        EnsureSavedDocumentMatches(projectPath, document);
+        var validationResult = new ProjectValidator().Validate(
+            document.ToJsonString(),
+            schemaJson);
+        if (!validationResult.IsValid || validationResult.Project is null)
+        {
+            throw new EditorRequestException(
+                "GENERATION_MODEL_INVALID",
+                "The project model must pass schema and semantic validation before generation.");
+        }
+
+        var resolvedRoot = ResolveProjectRoot(projectRoot, projectPath);
+        var preview = new ArtifactPreviewGenerator().Generate(validationResult.Project);
+        var plan = BuildPlan(
+            resolvedRoot,
+            validationResult.Project,
+            preview,
+            integrateProject);
+        if (plan.HasConflicts)
+        {
+            var details = string.Join(
+                Environment.NewLine,
+                plan.Issues.Select(issue => $"[{issue.Code}] {issue.Path}: {issue.Message}"));
+            throw new EditorRequestException(
+                "GENERATION_CONFLICT",
+                string.IsNullOrWhiteSpace(details)
+                    ? "The current generation plan contains conflicts."
+                    : details);
+        }
+
+        var currentToken = ComputeConfirmationToken(plan);
+        if (!string.Equals(
+                currentToken,
+                confirmationToken,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new EditorRequestException(
+                "GENERATION_PREVIEW_STALE",
+                "The target or generation plan changed after preview. Refresh and confirm the new plan.");
+        }
+
+        var projectFileChanged = plan.ProjectFile is not null &&
+                                 plan.ProjectFile.ChangeKind != GenerationChangeKind.Unchanged;
+        var manifestChanged = plan.Manifest.ChangeKind != GenerationChangeKind.Unchanged ||
+                              (plan.ProjectIntegrationManifest is not null &&
+                               plan.ProjectIntegrationManifest.ChangeKind != GenerationChangeKind.Unchanged);
+        var result = new GenerationExecutor().Execute(plan);
+        return new GenerateProjectResponse(
+            result.Success,
+            plan.ProjectRoot,
+            result.Created,
+            result.Updated,
+            result.Renamed,
+            result.Deleted,
+            projectFileChanged,
+            manifestChanged,
+            result.Issues.Select(issue => new GenerationExecutionIssueResponse(
+                issue.Code,
+                issue.Message)).ToArray());
+    }
+
+    private static GenerationPlan BuildPlan(
+        string projectRoot,
+        EtabProjectDocument project,
+        GenerationPreview preview,
+        bool integrateProject)
+    {
+        var plan = new GenerationPlanBuilder().Build(projectRoot, project, preview);
+        return integrateProject
+            ? new TwinCatProjectIntegrationPlanBuilder().Build(plan, project, preview)
+            : plan;
+    }
+
+    private void EnsureSavedDocumentMatches(string projectPath, JsonNode document)
+    {
+        var fullPath = ResolveProjectPath(projectPath);
+        if (!File.Exists(fullPath))
+        {
+            throw new EditorRequestException(
+                "PROJECT_NOT_FOUND",
+                $"The project file does not exist: {fullPath}");
+        }
+        RejectReparsePoint(fullPath);
+
+        JsonNode savedDocument;
+        try
+        {
+            savedDocument = ParseDocument(File.ReadAllText(fullPath, Encoding.UTF8));
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            throw new EditorRequestException("PROJECT_READ_ERROR", exception.Message);
+        }
+
+        if (!JsonNode.DeepEquals(savedDocument, document))
+        {
+            throw new EditorRequestException(
+                "GENERATION_MODEL_NOT_SAVED",
+                "Save the current ETAB model before generating PLC files.");
+        }
+    }
+
+    private static string ComputeConfirmationToken(GenerationPlan plan)
+    {
+        var signature = new StringBuilder();
+        AppendTokenValue(signature, plan.ProjectRoot);
+        AppendTokenValue(signature, plan.GeneratedRoot);
+        foreach (var change in plan.Changes)
+        {
+            AppendTokenValue(signature, change.ChangeKind.ToContractName());
+            AppendTokenValue(signature, change.ArtifactKind.ToContractName());
+            AppendTokenValue(signature, change.SourceModelId);
+            AppendTokenValue(signature, change.RelativePath);
+            AppendTokenValue(signature, change.PreviousRelativePath);
+            AppendTokenValue(signature, change.ExpectedExistingHash);
+            AppendTokenValue(signature, change.PlannedArtifact?.Sha256);
+        }
+
+        AppendTokenValue(signature, plan.Manifest.ChangeKind.ToContractName());
+        AppendTokenValue(signature, plan.Manifest.RelativePath);
+        AppendTokenValue(signature, plan.Manifest.ExpectedExistingHash);
+        AppendTokenValue(signature, ComputeSha256(plan.Manifest.ProposedContent));
+
+        if (plan.ProjectFile is not null)
+        {
+            AppendTokenValue(signature, plan.ProjectFile.ChangeKind.ToContractName());
+            AppendTokenValue(signature, plan.ProjectFile.RelativePath);
+            AppendTokenValue(signature, plan.ProjectFile.AbsolutePath);
+            AppendTokenValue(signature, plan.ProjectFile.ExpectedExistingHash);
+            AppendTokenValue(signature, plan.ProjectFile.ProposedHash);
+        }
+        if (plan.ProjectIntegrationManifest is not null)
+        {
+            AppendTokenValue(
+                signature,
+                plan.ProjectIntegrationManifest.ChangeKind.ToContractName());
+            AppendTokenValue(signature, plan.ProjectIntegrationManifest.RelativePath);
+            AppendTokenValue(
+                signature,
+                plan.ProjectIntegrationManifest.ExpectedExistingHash);
+            AppendTokenValue(
+                signature,
+                ComputeSha256(plan.ProjectIntegrationManifest.ProposedContent));
+        }
+
+        foreach (var issue in plan.Issues)
+        {
+            AppendTokenValue(signature, issue.Code);
+            AppendTokenValue(signature, issue.Path);
+            AppendTokenValue(signature, issue.Message);
+        }
+        return ComputeSha256(signature.ToString());
+    }
+
+    private static void AppendTokenValue(StringBuilder signature, string? value)
+    {
+        var text = value ?? string.Empty;
+        signature.Append(text.Length).Append(':').Append(text).Append('|');
     }
 
     private ValidationResponse ValidateJson(string json) =>

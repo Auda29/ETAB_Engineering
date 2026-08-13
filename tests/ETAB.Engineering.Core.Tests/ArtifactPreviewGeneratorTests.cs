@@ -32,7 +32,7 @@ public sealed class ArtifactPreviewGeneratorTests
     {
         var preview = Generate(ParseProject());
 
-        Assert.Equal(14, preview.Artifacts.Count);
+        Assert.Equal(15, preview.Artifacts.Count);
         Assert.Equal(
             [
                 "Generated/DUTs/Status/ST_BM_MachineStatus.TcDUT",
@@ -48,9 +48,85 @@ public sealed class ArtifactPreviewGeneratorTests
                 "Generated/DUTs/Commands/E_BM_WorkpieceCommand.TcDUT",
                 "Generated/DUTs/Requests/ST_BM_WorkpieceRequest.TcDUT",
                 "Generated/DUTs/Status/ST_BM_WorkpieceStatus.TcDUT",
-                "Generated/POUs/FB_BM_WorkpieceUnitBase.TcPOU"
+                "Generated/POUs/FB_BM_WorkpieceUnitBase.TcPOU",
+                "Generated/GVLs/GVL_BM_Units.TcGVL"
             ],
             preview.Artifacts.Select(artifact => artifact.RelativePath));
+    }
+
+    [Fact]
+    public void ReferenceProject_GeneratesQualifiedInstanceGvlWithExplicitProjectTypes()
+    {
+        var artifact = Generate(ParseProject()).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.InstanceGlobalVariableList);
+
+        Assert.Equal("GVL_BM_Units", artifact.Name);
+        Assert.Contains("{attribute 'qualified_only'}", artifact.Content);
+        Assert.Contains("fbMachine : FB_BM_Machine;", artifact.Content);
+        Assert.Contains("fbMotionUnit : FB_BM_MotionUnit;", artifact.Content);
+        Assert.Contains("fbProcessCycle : FB_BM_ProcessCycle;", artifact.Content);
+        Assert.Contains("fbRecipeManager : FB_BM_RecipeService;", artifact.Content);
+        Assert.Contains("fbCellLink : FB_BM_CellInterface;", artifact.Content);
+    }
+
+    [Fact]
+    public void InstanceTypeDefaultsToGeneratedBaseOrEtabLibraryType()
+    {
+        var project = ParseProject();
+        project["nodes"]![1]!["generate"]!.AsObject().Remove("instanceType");
+        project["nodes"]![4]!["generate"]!.AsObject().Remove("instanceType");
+        project["nodes"]![5]!["generate"]!.AsObject().Remove("instanceType");
+        project["nodes"]![6]!["generate"]!.AsObject().Remove("instanceType");
+
+        var content = Generate(project).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.InstanceGlobalVariableList).Content;
+
+        Assert.Contains("fbMotionUnit : FB_BM_MotionUnitBase;", content);
+        Assert.Contains("fbProcessCycle : ETAB.FB_ETAB_CommandUnit;", content);
+        Assert.Contains("fbRecipeManager : ETAB.FB_ETAB_RecipeManager;", content);
+        Assert.Contains("fbCellLink : ETAB.FB_ETAB_MachineLink;", content);
+    }
+
+    [Fact]
+    public void ProgramCallStructure_IsOptInAndCallsInstancesInDeterministicOrder()
+    {
+        var project = ParseProject();
+        Assert.DoesNotContain(
+            Generate(project).Artifacts,
+            item => item.Kind == GeneratedArtifactKind.ProgramCallStructure);
+
+        project["project"]!["generation"]!["programCallStructure"] = true;
+        var artifact = Generate(project).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.ProgramCallStructure);
+
+        Assert.Equal("PRG_BM_Generated", artifact.Name);
+        Assert.Contains("PROGRAM PRG_BM_Generated", artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbMachine();", artifact.Content);
+        Assert.True(
+            artifact.Content.IndexOf("fbMachine()", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbMotionUnit()", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ProjectAndNodeOrderChanges_DoNotAffectProjectLevelArtifacts()
+    {
+        var original = ParseProject();
+        original["project"]!["generation"]!["programCallStructure"] = true;
+        var modified = original.DeepClone().AsObject();
+        Reverse(modified["nodes"]!.AsArray());
+
+        var originalProjectArtifacts = Generate(original).Artifacts
+            .Where(item => item.Kind is GeneratedArtifactKind.InstanceGlobalVariableList or
+                GeneratedArtifactKind.ProgramCallStructure)
+            .Select(item => $"{item.Kind}|{item.TwinCatGuid:D}|{item.Sha256}|{item.Content}")
+            .ToArray();
+        var modifiedProjectArtifacts = Generate(modified).Artifacts
+            .Where(item => item.Kind is GeneratedArtifactKind.InstanceGlobalVariableList or
+                GeneratedArtifactKind.ProgramCallStructure)
+            .Select(item => $"{item.Kind}|{item.TwinCatGuid:D}|{item.Sha256}|{item.Content}")
+            .ToArray();
+
+        Assert.Equal(originalProjectArtifacts, modifiedProjectArtifacts);
     }
 
     [Theory]

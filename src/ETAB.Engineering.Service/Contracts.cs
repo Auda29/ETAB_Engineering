@@ -33,7 +33,16 @@ public sealed record ValidateProjectRequest(JsonNode Document);
 public sealed record PreviewProjectRequest(
     JsonNode Document,
     string? ProjectPath,
-    string? ProjectRoot);
+    string? ProjectRoot,
+    bool IntegrateProject);
+
+public sealed record GenerateProjectRequest(
+    JsonNode Document,
+    string ProjectPath,
+    string ProjectRoot,
+    bool IntegrateProject,
+    string ConfirmationToken,
+    bool Confirmed);
 
 public sealed record ArtifactPreviewResponse(
     string SourceModelId,
@@ -70,6 +79,23 @@ public sealed record PreviewResponse(
     IReadOnlyList<ArtifactPreviewResponse> Artifacts,
     IReadOnlyList<PlannedChangeResponse> Changes,
     ManifestPreviewResponse? Manifest,
+    ManifestPreviewResponse? ProjectFile,
+    ManifestPreviewResponse? ProjectIntegrationManifest,
+    string? ConfirmationToken,
+    bool IntegrateProject,
     IReadOnlyList<GenerationPlanIssueResponse> Issues);
+
+public sealed record GenerationExecutionIssueResponse(string Code, string Message);
+
+public sealed record GenerateProjectResponse(
+    bool Success,
+    string ProjectRoot,
+    int Created,
+    int Updated,
+    int Renamed,
+    int Deleted,
+    bool ProjectFileChanged,
+    bool ManifestChanged,
+    IReadOnlyList<GenerationExecutionIssueResponse> Issues);
 
 public sealed record ApiErrorResponse(string Code, string Message);

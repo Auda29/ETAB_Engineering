@@ -155,6 +155,9 @@
             },
             "createUserStubs": {
               "type": "boolean"
+            },
+            "programCallStructure": {
+              "type": "boolean"
             }
           }
         }
@@ -322,6 +325,12 @@
           "type": "boolean"
         },
         "instance": {
+          "type": "boolean"
+        },
+        "instanceType": {
+          "$ref": "#/$defs/dataType"
+        },
+        "callInProgram": {
           "type": "boolean"
         }
       }

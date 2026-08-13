@@ -7,13 +7,27 @@ export function BottomPanel({
   validation,
   preview,
   previewBusy,
+  generateBusy,
+  generationRoot,
+  integrateProject,
+  dirty,
+  onGenerationRootChange,
+  onIntegrateProjectChange,
   onPreview,
+  onGenerate,
   onIssueSelect,
 }: {
   validation?: ValidationResponse;
   preview?: PreviewResponse;
   previewBusy: boolean;
+  generateBusy: boolean;
+  generationRoot: string;
+  integrateProject: boolean;
+  dirty: boolean;
+  onGenerationRootChange: (value: string) => void;
+  onIntegrateProjectChange: (value: boolean) => void;
   onPreview: () => void;
+  onGenerate: () => void;
   onIssueSelect: (path: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("validation");
@@ -24,6 +38,21 @@ export function BottomPanel({
   const artifact = useMemo(
     () => preview?.artifacts.find((item) => item.relativePath === selectedArtifact),
     [preview, selectedArtifact],
+  );
+  const selectedDocument = selectedArtifact === "__manifest"
+    ? preview?.manifest
+    : selectedArtifact === "__project"
+      ? preview?.projectFile
+      : selectedArtifact === "__integration-manifest"
+        ? preview?.projectIntegrationManifest
+        : undefined;
+  const canGenerate = Boolean(
+    preview?.confirmationToken &&
+    !preview.hasConflicts &&
+    !previewBusy &&
+    !generateBusy &&
+    !dirty &&
+    generationRoot.trim(),
   );
 
   return (
@@ -36,8 +65,14 @@ export function BottomPanel({
           Generation preview <span data-testid="preview-count" className="count">{preview?.artifacts.length ?? "–"}</span>
         </button>
         <div className="bottom-panel__actions">
-          <button data-testid="preview-button" className="button button--primary button--compact" onClick={() => { setTab("preview"); onPreview(); }} disabled={previewBusy || !validation?.isValid}>
+          <span className="generation-root-label">Target</span>
+          <input className="generation-root" aria-label="PLC target root" title="PLC target root" placeholder="PLC target root" value={generationRoot} onChange={(event) => onGenerationRootChange(event.target.value)} spellCheck={false} />
+          <label className="generation-project-toggle" title="Include the configured TwinCAT project file"><input type="checkbox" checked={integrateProject} onChange={(event) => onIntegrateProjectChange(event.target.checked)} /> .plcproj</label>
+          <button data-testid="preview-button" className="button button--secondary button--compact" onClick={() => { setTab("preview"); onPreview(); }} disabled={previewBusy || generateBusy || !validation?.isValid || !generationRoot.trim()}>
             {previewBusy ? "Planning…" : "Refresh preview"}
+          </button>
+          <button data-testid="generate-button" className="button button--primary button--compact" onClick={() => { setTab("preview"); onGenerate(); }} disabled={!canGenerate} title={dirty ? "Save the ETAB model before generation" : "Write the confirmed generation plan"}>
+            {generateBusy ? "Generating…" : "Generate"}
           </button>
         </div>
       </nav>
@@ -71,20 +106,27 @@ export function BottomPanel({
                   <span>{preview.generatedRoot}</span>
                 </div>
                 <div className="change-list">
+                  {preview.issues.map((issue, index) => (
+                    <button key={`${issue.code}-${issue.path}-${index}`} className="preview-issue" onClick={() => onIssueSelect(issue.path)}>
+                      <strong>{issue.code}</strong><code>{issue.path}</code><span>{issue.message}</span>
+                    </button>
+                  ))}
                   {preview.changes.map((change) => (
                     <button key={`${change.sourceModelId}-${change.artifactKind}`} className={`change-row change-row--${change.changeKind}`} onClick={() => setSelectedArtifact(change.relativePath)}>
                       <span>{change.changeKind}</span><code>{change.relativePath}</code><small>{change.artifactKind}</small>
                     </button>
                   ))}
                   {preview.manifest && <button className={`change-row change-row--${preview.manifest.changeKind}`} onClick={() => setSelectedArtifact("__manifest")}><span>{preview.manifest.changeKind}</span><code>{preview.manifest.relativePath}</code><small>manifest</small></button>}
+                  {preview.projectFile && <button className={`change-row change-row--${preview.projectFile.changeKind}`} onClick={() => setSelectedArtifact("__project")}><span>{preview.projectFile.changeKind}</span><code>{preview.projectFile.relativePath}</code><small>PLC project</small></button>}
+                  {preview.projectIntegrationManifest && <button className={`change-row change-row--${preview.projectIntegrationManifest.changeKind}`} onClick={() => setSelectedArtifact("__integration-manifest")}><span>{preview.projectIntegrationManifest.changeKind}</span><code>{preview.projectIntegrationManifest.relativePath}</code><small>project manifest</small></button>}
                 </div>
               </div>
               <div className="artifact-viewer">
                 <div className="artifact-viewer__header">
-                  <strong>{selectedArtifact === "__manifest" ? preview.manifest?.relativePath : artifact?.relativePath ?? "Select an artifact"}</strong>
+                  <strong>{selectedDocument?.relativePath ?? artifact?.relativePath ?? "Select an artifact"}</strong>
                   {artifact && <span>GUID {artifact.twinCatGuid}</span>}
                 </div>
-                <pre data-testid="artifact-content">{selectedArtifact === "__manifest" ? preview.manifest?.content : artifact?.content}</pre>
+                <pre data-testid="artifact-content">{selectedDocument?.content ?? artifact?.content}</pre>
               </div>
             </div>
           ) : <div className="panel-placeholder">Run a preview to see the read-only generation plan and complete TwinCAT XML.</div>

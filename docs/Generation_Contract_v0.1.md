@@ -77,6 +77,7 @@ A conflict exists at least when:
 - a user file would have to be renamed, overwritten, or deleted,
 - the project or output root cannot be resolved unambiguously,
 - a target path traverses a symbolic link, junction, or other reparse point,
+- a generated IEC object name is already compiled from another `.TcDUT`, `.TcPOU`, or `.TcGVL` path in the selected project,
 - a managed file changed after planning or a previously free target is now occupied.
 
 Conflicts are never overwritten, renamed, or deleted automatically.
@@ -118,6 +119,12 @@ The following additional rules then apply:
 Phase 3A implements this boundary as an explicit CLI opt-in using `--integrate-project` together with `--root`. The project file and generated artifacts participate in one preflight and rollback transaction. ETAB Engineering records only the `Compile`, `Folder`, `PlaceholderReference`, and `PlaceholderResolution` elements that it adds in `Generated/etab-project-integration-manifest.json`.
 
 Compatible entries that already exist are retained but not claimed as managed state. Missing, duplicated, incompatible, or externally changed managed entries block the whole write. Project XML is parsed before planning and again after applying the targeted textual changes; unrelated project-file lines and their existing line endings are preserved.
+
+Before adding compile entries, project integration resolves and parses existing `.TcDUT`, `.TcPOU`, and `.TcGVL` compile items inside the selected root. IEC object names are compared case-insensitively with the proposed generated artifacts. A same-name object at another path is a hard `PLC_OBJECT_NAME_CONFLICT`; unsafe, missing, reparse-point, or unreadable compiled-object paths also block integration because a collision-free project cannot be proven.
+
+Phase 3B adds the project-level artifact kinds `instance-gvl` and `program-call-structure`. They follow the same deterministic GUID, manifest, hash, conflict, staging, and rollback rules as node-level artifacts. The PRG remains optional and is not automatically assigned to a TwinCAT task.
+
+Phase 3C exposes this same transaction through the editor. The editor first requests a target-aware preview and receives a confirmation token derived from the resolved root, integration option, complete plan, expected and proposed hashes, artifacts, and manifests. Generate is permitted only for a saved model whose current document still matches the file on disk, a conflict-free plan, the exact token, and an explicit confirmation. Any changed model, target, integration option, or filesystem state invalidates the plan or is rejected by the executor preflight.
 
 ## 10. Output Attributes
 

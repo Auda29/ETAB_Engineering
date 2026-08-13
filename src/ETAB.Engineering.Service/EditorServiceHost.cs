@@ -86,7 +86,19 @@ public static class EditorServiceHost
             Handle(() => service.Preview(
                 request.Document,
                 request.ProjectPath,
-                request.ProjectRoot)));
+                request.ProjectRoot,
+                request.IntegrateProject)));
+
+        app.MapPost("/api/projects/generate", (
+            GenerateProjectRequest request,
+            EditorProjectService service) =>
+            Handle(() => service.Generate(
+                request.Document,
+                request.ProjectPath,
+                request.ProjectRoot,
+                request.IntegrateProject,
+                request.ConfirmationToken,
+                request.Confirmed)));
     }
 
     private static void MapFrontend(

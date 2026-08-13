@@ -19,7 +19,12 @@ export interface EtabProject {
   namespace: string;
   etabLibrary: { placeholder: string; version: string };
   twinCAT: { version: string; plcProject?: string };
-  generation: { generatedRoot: string; applicationRoot: string; createUserStubs: boolean };
+  generation: {
+    generatedRoot: string;
+    applicationRoot: string;
+    createUserStubs: boolean;
+    programCallStructure?: boolean;
+  };
 }
 
 export interface EtabNode {
@@ -47,6 +52,8 @@ export interface NodeGenerationSettings {
   statusType: boolean;
   baseFunctionBlock: boolean;
   instance: boolean;
+  instanceType?: string;
+  callInProgram?: boolean;
 }
 
 export interface EtabCommand {
@@ -172,5 +179,21 @@ export interface PreviewResponse {
   artifacts: ArtifactPreview[];
   changes: PlannedChange[];
   manifest?: { changeKind: string; relativePath: string; message?: string; content: string };
+  projectFile?: { changeKind: string; relativePath: string; message?: string; content: string };
+  projectIntegrationManifest?: { changeKind: string; relativePath: string; message?: string; content: string };
+  confirmationToken?: string;
+  integrateProject: boolean;
   issues: ValidationIssue[];
+}
+
+export interface GenerateProjectResponse {
+  success: boolean;
+  projectRoot: string;
+  created: number;
+  updated: number;
+  renamed: number;
+  deleted: number;
+  projectFileChanged: boolean;
+  manifestChanged: boolean;
+  issues: Array<{ code: string; message: string }>;
 }

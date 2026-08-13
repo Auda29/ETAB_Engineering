@@ -15,10 +15,12 @@ public sealed class ArtifactPreviewGenerator
 
         var artifacts = new List<GeneratedArtifact>();
         var generatedRoot = NormalizeRoot(project.Project.Generation.GeneratedRoot);
+        var orderedNodes = project.Nodes
+            .OrderBy(node => node.Name, StringComparer.Ordinal)
+            .ThenBy(node => node.Id, StringComparer.Ordinal)
+            .ToArray();
 
-        foreach (var node in project.Nodes
-                     .OrderBy(node => node.Name, StringComparer.Ordinal)
-                     .ThenBy(node => node.Id, StringComparer.Ordinal))
+        foreach (var node in orderedNodes)
         {
             if (node.Generate.CommandEnum)
             {
@@ -41,7 +43,84 @@ public sealed class ArtifactPreviewGenerator
             }
         }
 
+        var instances = orderedNodes
+            .Where(node => node.Generate.Instance)
+            .Select(node => new GeneratedInstance(
+                $"fb{node.Name}",
+                ResolveInstanceType(project, node)))
+            .ToArray();
+        if (instances.Length > 0)
+        {
+            artifacts.Add(CreateInstanceGlobalVariableList(
+                project,
+                generatedRoot,
+                instances));
+        }
+        if (instances.Length > 0 && project.Project.Generation.ProgramCallStructure)
+        {
+            var calledInstances = orderedNodes
+                .Where(node => node.Generate.Instance && node.Generate.CallInProgram)
+                .Select(node => new GeneratedInstance(
+                    $"fb{node.Name}",
+                    ResolveInstanceType(project, node)))
+                .ToArray();
+            artifacts.Add(CreateProgramCallStructure(
+                project,
+                generatedRoot,
+                calledInstances));
+        }
+
         return new GenerationPreview(project.Project.Id, project.Project.Name, artifacts.ToArray());
+    }
+
+    private static GeneratedArtifact CreateInstanceGlobalVariableList(
+        EtabProjectDocument project,
+        string generatedRoot,
+        IReadOnlyList<GeneratedInstance> instances)
+    {
+        const GeneratedArtifactKind kind = GeneratedArtifactKind.InstanceGlobalVariableList;
+        var name = $"GVL_{project.Project.Prefix}_Units";
+        var guid = CreateTwinCatGuid(project.Project.Id, project.Project.Id, kind);
+        var content = TwinCatGvlRenderer.RenderInstances(
+            name,
+            project.Project.Id,
+            guid,
+            project.Project.TwinCat.Version,
+            instances);
+
+        return CreateArtifact(
+            project.Project.Id,
+            kind,
+            name,
+            guid,
+            $"{generatedRoot}/GVLs/{name}.TcGVL",
+            content);
+    }
+
+    private static GeneratedArtifact CreateProgramCallStructure(
+        EtabProjectDocument project,
+        string generatedRoot,
+        IReadOnlyList<GeneratedInstance> instances)
+    {
+        const GeneratedArtifactKind kind = GeneratedArtifactKind.ProgramCallStructure;
+        var name = $"PRG_{project.Project.Prefix}_Generated";
+        var gvlName = $"GVL_{project.Project.Prefix}_Units";
+        var guid = CreateTwinCatGuid(project.Project.Id, project.Project.Id, kind);
+        var content = TwinCatPouRenderer.RenderProgramCallStructure(
+            name,
+            gvlName,
+            project.Project.Id,
+            guid,
+            project.Project.TwinCat.Version,
+            instances);
+
+        return CreateArtifact(
+            project.Project.Id,
+            kind,
+            name,
+            guid,
+            $"{generatedRoot}/POUs/{name}.TcPOU",
+            content);
     }
 
     private static GeneratedArtifact CreateCommandEnum(
@@ -170,6 +249,28 @@ public sealed class ArtifactPreviewGenerator
     {
         var name = $"{projectId}/{modelId}/{kind.ToContractName()}/{nestedObject}";
         return DeterministicGuid.CreateVersion5(GeneratorNamespace, name);
+    }
+
+    private static string ResolveInstanceType(
+        EtabProjectDocument project,
+        EtabNode node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.Generate.InstanceType))
+        {
+            return node.Generate.InstanceType.Trim();
+        }
+
+        return node.Kind switch
+        {
+            "applicationUnit" when node.Generate.BaseFunctionBlock =>
+                $"FB_{project.Project.Prefix}_{node.SymbolStem}UnitBase",
+            "applicationUnit" => "ETAB.FB_ETAB_ApplicationUnit",
+            "commandUnit" => "ETAB.FB_ETAB_CommandUnit",
+            "recipeManager" => "ETAB.FB_ETAB_RecipeManager",
+            "machineLink" => "ETAB.FB_ETAB_MachineLink",
+            _ => throw new InvalidOperationException(
+                $"Instances are not supported for node kind '{node.Kind}'.")
+        };
     }
 
     private static GeneratedArtifact CreateArtifact(

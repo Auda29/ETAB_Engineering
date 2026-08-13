@@ -646,6 +646,12 @@ public sealed class GenerationPlanBuilder
             case "base-function-block":
                 kind = GeneratedArtifactKind.BaseFunctionBlock;
                 return true;
+            case "instance-gvl":
+                kind = GeneratedArtifactKind.InstanceGlobalVariableList;
+                return true;
+            case "program-call-structure":
+                kind = GeneratedArtifactKind.ProgramCallStructure;
+                return true;
             default:
                 kind = default;
                 return false;

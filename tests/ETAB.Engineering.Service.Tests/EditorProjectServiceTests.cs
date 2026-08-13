@@ -79,10 +79,116 @@ public sealed class EditorProjectServiceTests : IDisposable
         var preview = service.Preview(opened.Document, projectPath, testRoot);
 
         Assert.True(preview.Validation.IsValid);
-        Assert.Equal(14, preview.Artifacts.Count);
+        Assert.Equal(15, preview.Artifacts.Count);
         Assert.All(preview.Changes, change => Assert.Equal("create", change.ChangeKind));
         Assert.Equal("create", preview.Manifest!.ChangeKind);
+        Assert.NotNull(preview.ConfirmationToken);
         Assert.False(Directory.Exists(Path.Combine(testRoot, "Generated")));
+    }
+
+    [Fact]
+    public async Task Generate_AppliesExactlyConfirmedPreviewAndBecomesSynchronized()
+    {
+        var projectPath = CopyReferenceProject("BrushMachine.etab.json");
+        var opened = await service.OpenAsync(projectPath);
+        var preview = service.Preview(opened.Document, projectPath, testRoot);
+
+        var generated = service.Generate(
+            opened.Document,
+            projectPath,
+            testRoot,
+            integrateProject: false,
+            preview.ConfirmationToken!,
+            confirmed: true);
+
+        Assert.True(generated.Success);
+        Assert.Equal(15, generated.Created);
+        Assert.True(generated.ManifestChanged);
+        Assert.False(generated.ProjectFileChanged);
+        var repeated = service.Preview(opened.Document, projectPath, testRoot);
+        Assert.All(repeated.Changes, change => Assert.Equal("unchanged", change.ChangeKind));
+        Assert.Equal("unchanged", repeated.Manifest!.ChangeKind);
+    }
+
+    [Fact]
+    public async Task Generate_RejectsUnconfirmedStaleOrUnsavedPlansWithoutWriting()
+    {
+        var projectPath = CopyReferenceProject("BrushMachine.etab.json");
+        var opened = await service.OpenAsync(projectPath);
+        var preview = service.Preview(opened.Document, projectPath, testRoot);
+
+        var unconfirmed = Assert.Throws<EditorRequestException>(() => service.Generate(
+            opened.Document,
+            projectPath,
+            testRoot,
+            integrateProject: false,
+            preview.ConfirmationToken!,
+            confirmed: false));
+        Assert.Equal("GENERATION_CONFIRMATION_REQUIRED", unconfirmed.Code);
+
+        var otherRoot = Path.Combine(testRoot, "other-target");
+        Directory.CreateDirectory(otherRoot);
+        var stale = Assert.Throws<EditorRequestException>(() => service.Generate(
+            opened.Document,
+            projectPath,
+            otherRoot,
+            integrateProject: false,
+            preview.ConfirmationToken!,
+            confirmed: true));
+        Assert.Equal("GENERATION_PREVIEW_STALE", stale.Code);
+
+        opened.Document["project"]!["displayName"] = "Unsaved change";
+        var unsaved = Assert.Throws<EditorRequestException>(() => service.Generate(
+            opened.Document,
+            projectPath,
+            testRoot,
+            integrateProject: false,
+            preview.ConfirmationToken!,
+            confirmed: true));
+        Assert.Equal("GENERATION_MODEL_NOT_SAVED", unsaved.Code);
+        Assert.False(Directory.Exists(Path.Combine(testRoot, "Generated")));
+    }
+
+    [Fact]
+    public async Task Generate_WithProjectIntegrationWritesThePreviewedPlcProjectPlan()
+    {
+        var projectPath = CopyReferenceProject("BrushMachine.etab.json");
+        var plcProjectPath = Path.Combine(testRoot, "AutomationBase_Beispiel.plcproj");
+        await File.WriteAllTextAsync(
+            plcProjectPath,
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+            "<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n" +
+            "  <PropertyGroup><Name>Test</Name></PropertyGroup>\n" +
+            "  <ItemGroup />\n" +
+            "</Project>\n",
+            new UTF8Encoding(false));
+        var opened = await service.OpenAsync(projectPath);
+        var preview = service.Preview(
+            opened.Document,
+            projectPath,
+            testRoot,
+            integrateProject: true);
+
+        Assert.NotNull(preview.ProjectFile);
+        Assert.NotNull(preview.ProjectIntegrationManifest);
+        var generated = service.Generate(
+            opened.Document,
+            projectPath,
+            testRoot,
+            integrateProject: true,
+            preview.ConfirmationToken!,
+            confirmed: true);
+
+        Assert.True(generated.Success);
+        Assert.True(generated.ProjectFileChanged);
+        Assert.Contains(
+            "Generated\\GVLs\\GVL_BM_Units.TcGVL",
+            await File.ReadAllTextAsync(plcProjectPath),
+            StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(
+            testRoot,
+            "Generated",
+            "etab-project-integration-manifest.json")));
     }
 
     public void Dispose()

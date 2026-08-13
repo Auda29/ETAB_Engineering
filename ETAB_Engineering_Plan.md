@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0, Phase 1, Phase 2, and the structural Phase 3A project integration completed; Phase 3 acceptance remains open
+- Status: implementation; Phase 0, Phase 1, Phase 2, and structural Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis completed; ownership reconciliation and Phase 3 XAE acceptance remain open
 - As of: 2026-08-13
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
@@ -368,10 +368,12 @@ Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETA
 - [x] manage the ETAB library reference (Phase 3A, 2026-08-13)
 - [x] manage `<Compile Include="…">` entries (Phase 3A, 2026-08-13)
 - [x] create the TwinCAT folder structure (Phase 3A, 2026-08-13)
-- [ ] generate GVL instances
-- [ ] generate an optional PRG call structure
+- [x] generate GVL instances (Phase 3B, 2026-08-13)
+- [x] generate an optional PRG call structure (Phase 3B, 2026-08-13)
 - [x] safeguard renaming and deletion of generated project entries (Phase 3A, 2026-08-13)
 - [x] initially test integration only in a copy of the project (Phase 3A, 2026-08-13)
+- [x] select the target root, preview, and explicitly confirm generation in the editor (Phase 3C, 2026-08-13)
+- [x] define the TwinCAT task-assignment policy and inspect the reference task (2026-08-13)
 
 Acceptance:
 
@@ -381,16 +383,24 @@ Acceptance:
 
 Phase 3A evidence: `docs/Phase3A_Validation.md`. The opt-in CLI integration updates only ETAB-owned project entries, preserves compatible unmanaged entries, participates in the generation transaction, and was idempotently exercised against a temporary copy of `AutomationBase_Beispiel.plcproj`. XAE open and compile evidence remain outstanding.
 
+Phase 3B evidence: `docs/Phase3B_Validation.md`. The generator now creates one qualified instance GVL for nodes with `instance = true`. A project-wide opt-in creates a PRG that calls only instances explicitly selected with `callInProgram`; an explicit `instanceType` binds project-specific FBs while safe ETAB/generated defaults remain available. The reference model proposes 15 artifacts, including the GVL. Current project-aware preview additionally detects seven pre-existing IEC-name conflicts in the golden sample. XAE open and compile evidence remain outstanding.
+
+Phase 3C evidence: `docs/Phase3C_Validation.md`. The editor now exposes the exact target root, optional `.plcproj` integration, the complete shared-core plan, and a separate Generate action. Generation requires a saved model, a conflict-free current preview, an exact confirmation token, and a final user confirmation. No live reference project was written during automated validation; XAE open and compile evidence remain outstanding.
+
+Task policy: ETAB Engineering v0.1 does not modify `.TcTTO` task objects. A generated PRG must be invoked either once from an existing cyclic program or assigned manually to exactly one task, never both. The BrushMachine reference keeps `programCallStructure = false`; its existing `PlcTask.TcTTO` calls only `MAIN`, which calls the handwritten application FB.
+
 ### Phase 4 – Golden Sample `AutomationBase Beispiel`
 
-- [ ] model `FB_BM_Machine`
-- [ ] model `FB_BM_MotionUnit`
-- [ ] model `FB_BM_WorkpieceUnit`
-- [ ] model `FB_BM_ProcessUnit`
-- [ ] compare the existing request, command, and status DUTs
+- [x] model `FB_BM_Machine`
+- [x] model `FB_BM_MotionUnit`
+- [x] model `FB_BM_WorkpieceUnit`
+- [x] model `FB_BM_ProcessUnit`
+- [x] compare the existing request, command, and status DUTs (Phase 4A, 2026-08-13)
 - [ ] verify the structure and public interfaces against the handwritten state
 
 MVP completion: the visual BrushMachine model produces a TwinCAT-compilable ETAB scaffold without overwriting handwritten code.
+
+Phase 4A evidence: `docs/Phase4A_Reconciliation.md`. The three existing command enums and three existing request DUTs match the model semantically. The existing `ST_BM_MachineStatus` is a 42-field project aggregate and is intentionally incompatible with the lean generated six-field contract. Project-aware preview now blocks all seven duplicate IEC names before writes. The next decision is whether these seven objects remain externally owned in a golden-sample integration model or the matching command/request types are migrated into the generated ownership boundary; the existing machine status must remain external or be renamed.
 
 ### Phase 5 – Optional MTP Extension
 
@@ -506,9 +516,25 @@ Binding decisions for Phase 3A:
 - Project XML is changed through targeted element edits and parsed before and after modification so unrelated lines and existing mixed line endings remain unchanged.
 - TwinCAT XAE open and compile validation remain separate acceptance evidence and are not inferred from structural XML validation.
 
+Binding decisions for Phase 3B:
+
+- Nodes with `instance = true` are collected in one qualified `GVL_<prefix>_Units` object in deterministic node order.
+- `instanceType` is optional. If omitted, ApplicationUnits use their generated base FB when available and the remaining node kinds use the corresponding ETAB library FB.
+- The optional `PRG_<prefix>_Generated` artifact is controlled by project setting `programCallStructure` and calls only nodes explicitly selected with `callInProgram`.
+- PRG generation does not add the program to a TwinCAT task automatically. Task assignment or invocation from an existing program remains an explicit engineering decision.
+- Project-specific FB interfaces are not inferred. Selecting a custom `instanceType` for PRG invocation is valid only when that FB can be called without mandatory `VAR_IN_OUT` arguments.
+- ETAB Engineering v0.1 never edits `.TcTTO` task objects. A generated PRG has exactly one manually selected cyclic entry path: either an existing program call or one task assignment.
+
+Binding decisions for Phase 3C:
+
+- The editor requires a saved ETAB model before generation; the submitted document must still match the model on disk byte-semantically.
+- The preview token binds the resolved target root, integration option, complete planned change set, content hashes, manifests, and proposed `.plcproj` update.
+- Changing the model path, model content, target root, or project-integration option invalidates the preview and disables Generate.
+- The service rebuilds and verifies the plan before execution; the core executor performs another target and hash preflight immediately before writing.
+- A final editor confirmation names the exact target root. The `.plcproj` remains a separate, explicit opt-in.
+
 Non-blocking decisions for later phases:
 
-- exact scope of automatically generated GVL and PRG structures in Phase 3,
 - Automation Interface only after file-based project integration,
 - exact MTP state mapping in Phase 5.
 
@@ -525,4 +551,4 @@ The initially approved development slice comprised:
 7. CLI `preview` and CLI `check`
 8. tests based on a simplified `ProcessUnit`
 
-Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration. The next implementation slice is Phase 3B: generated GVL instances and the optional PRG call structure, followed by an editor-side target selection and confirmed write action. TwinCAT XAE open and real compile evidence remain required before Phase 3 is accepted.
+Phase 1 implemented this slice in full and additionally added ApplicationUnit base FBs, the writing CLI command `generate`, transactional file operations, and rollback. The core is reproducible and accepted according to `docs/Phase1_Validation.md`. Phase 2 then added the visual editor and local service without changing the core generation boundary. Phase 3A added safe, opt-in TwinCAT project-file integration, Phase 3B added the instance GVL and optional selected PRG calls, and Phase 3C added target selection plus confirmed generation to the editor. Phase 4A then added compiled IEC-name collision detection and identified the golden-sample ownership conflicts. Resolving those seven ownership decisions, XAE open, and real compile evidence are required before Phase 3 is accepted.

@@ -131,9 +131,26 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             existingManifest,
             project,
             projectFileRelativePath!).ToList();
+        var managedCompileIncludes = new HashSet<string>(
+            existingManifest?.ManagedCompileIncludes ?? [],
+            PathComparer);
+        issues.AddRange(TwinCatCompiledObjectCollisionScanner.FindCollisions(
+            basePlan.ProjectRoot,
+            document,
+            ns,
+            preview.Artifacts,
+            managedCompileIncludes));
         if (issues.Count > 0)
         {
-            return WithIssues(basePlan, issues);
+            return WithProjectConflict(
+                basePlan,
+                projectFileRelativePath!,
+                projectFilePath!,
+                projectFileContent,
+                projectFileHash,
+                manifestRelativePath,
+                existingManifestHash,
+                issues);
         }
 
         var desiredCompileIncludes = preview.Artifacts
@@ -141,9 +158,6 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
         var desiredFolderIncludes = BuildFolderIncludes(desiredCompileIncludes);
-        var managedCompileIncludes = new HashSet<string>(
-            existingManifest?.ManagedCompileIncludes ?? [],
-            PathComparer);
         var managedFolderIncludes = new HashSet<string>(
             existingManifest?.ManagedFolderIncludes ?? [],
             PathComparer);

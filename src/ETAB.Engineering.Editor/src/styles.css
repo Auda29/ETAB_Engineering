@@ -196,7 +196,11 @@ code { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
 .count { display: grid; min-width: 18px; height: 17px; place-items: center; padding: 0 5px; color: #91a29f; background: #202c2d; border-radius: 9px; font-size: 8px; }
 .count--valid { color: #9cead9; }
 .count--invalid { color: #ff9999; }
-.bottom-panel__actions { display: flex; align-items: center; margin-left: auto; }
+.bottom-panel__actions { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+.generation-root-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.generation-root { width: min(420px, 29vw); min-width: 180px; padding: 5px 8px; color: #cbd8d5; background: #0a1011; border: 1px solid var(--line); border-radius: 5px; font: 9px "Cascadia Code", monospace; }
+.generation-project-toggle { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.generation-project-toggle input { accent-color: var(--teal); }
 .bottom-panel__content { min-height: 0; overflow: hidden; }
 .validation-pane { height: 100%; overflow: auto; }
 .validation-success { display: flex; align-items: center; gap: 12px; padding: 22px 28px; }
@@ -214,6 +218,9 @@ code { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
 .preview-summary { display: flex; align-items: center; gap: 12px; padding: 7px 11px; color: var(--muted); border-bottom: 1px solid #1e2a2b; font-size: 9px; }
 .preview-summary span:last-child { overflow: hidden; margin-left: auto; font-family: "Cascadia Code", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .change-list { padding: 5px 8px; }
+.preview-issue { display: grid; width: 100%; grid-template-columns: 150px 180px 1fr; gap: 8px; padding: 6px 7px; color: #d7c5c5; text-align: left; background: #211719; border: 0; border-bottom: 1px solid #3b2327; font-size: 8px; cursor: pointer; }
+.preview-issue strong { color: var(--red); }
+.preview-issue code { overflow: hidden; color: #a88d90; text-overflow: ellipsis; white-space: nowrap; }
 .change-row { display: grid; width: 100%; grid-template-columns: 68px 1fr 110px; gap: 8px; padding: 5px 7px; color: #bdcac7; text-align: left; background: transparent; border: 0; border-bottom: 1px solid #1b2627; font-size: 8px; cursor: pointer; }
 .change-row:hover { background: #182223; }
 .change-row > span { font-weight: 900; text-transform: uppercase; }

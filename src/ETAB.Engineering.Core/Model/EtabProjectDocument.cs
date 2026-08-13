@@ -58,6 +58,8 @@ public sealed class GenerationSettings
     public required string ApplicationRoot { get; init; }
 
     public bool CreateUserStubs { get; init; }
+
+    public bool ProgramCallStructure { get; init; }
 }
 
 public sealed class EtabNode
@@ -106,6 +108,10 @@ public sealed class NodeGenerationSettings
     public bool BaseFunctionBlock { get; init; }
 
     public bool Instance { get; init; }
+
+    public string? InstanceType { get; init; }
+
+    public bool CallInProgram { get; init; }
 }
 
 public sealed class EtabCommand

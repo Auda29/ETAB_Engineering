@@ -97,7 +97,7 @@ For prefix `BM`, node name `MotionUnit`, and `symbolStem` `Motion`:
 | Base FB | `FB_BM_MotionUnitBase` |
 | Command Router (planned for Phase 3 onward) | `FB_BM_MotionCommandRouter` |
 
-Naming collisions are treated as validation errors.
+Naming collisions inside the model are treated as validation errors. When `.plcproj` integration is selected, case-insensitive collisions with IEC objects already compiled from other project paths are planning conflicts and block all writes.
 
 ## 5. Nodes
 
@@ -118,9 +118,13 @@ Each node explicitly defines:
 - `requestType`
 - `statusType`
 - `baseFunctionBlock`
-- `instance` (stored in the model; instance generation begins in Phase 3)
+- `instance`
+- optional `instanceType` for a project-specific function-block type
+- optional `callInProgram` selection for the generated PRG
 
 Invalid combinations are rejected semantically. For example, a `recipeManager` does not generate a project-specific command enum in the MVP.
+
+Phase 3B collects all enabled instances in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB when available; otherwise the matching ETAB library FB is used. The project-wide `programCallStructure` option creates `PRG_<prefix>_Generated`, which invokes only nodes selected with `callInProgram`. This does not assign the PRG to a TwinCAT task.
 
 ### 5.2 `applicationUnit`
 

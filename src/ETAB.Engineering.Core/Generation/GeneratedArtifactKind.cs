@@ -5,7 +5,9 @@ public enum GeneratedArtifactKind
     CommandEnum,
     RequestDut,
     StatusDut,
-    BaseFunctionBlock
+    BaseFunctionBlock,
+    InstanceGlobalVariableList,
+    ProgramCallStructure
 }
 
 public static class GeneratedArtifactKindExtensions
@@ -16,6 +18,8 @@ public static class GeneratedArtifactKindExtensions
         GeneratedArtifactKind.RequestDut => "request-dut",
         GeneratedArtifactKind.StatusDut => "status-dut",
         GeneratedArtifactKind.BaseFunctionBlock => "base-function-block",
+        GeneratedArtifactKind.InstanceGlobalVariableList => "instance-gvl",
+        GeneratedArtifactKind.ProgramCallStructure => "program-call-structure",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

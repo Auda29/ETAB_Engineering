@@ -57,7 +57,7 @@ public sealed class TwinCatProjectIntegrationTests
             .Select(element => (string?)element.Attribute("Include"))
             .Where(include => include?.StartsWith("Generated\\", StringComparison.Ordinal) == true)
             .ToArray();
-        Assert.Equal(14, generatedCompiles.Length);
+        Assert.Equal(15, generatedCompiles.Length);
         Assert.Single(
             document.Descendants(ns + "PlaceholderReference"),
             element => (string?)element.Attribute("Include") == "ETAB");
@@ -66,8 +66,8 @@ public sealed class TwinCatProjectIntegrationTests
             element => (string?)element.Attribute("Include") == "ETAB");
 
         var integrationManifest = ReadIntegrationManifest(temporary.Path);
-        Assert.Equal(14, integrationManifest.ManagedCompileIncludes.Count);
-        Assert.Equal(6, integrationManifest.ManagedFolderIncludes.Count);
+        Assert.Equal(15, integrationManifest.ManagedCompileIncludes.Count);
+        Assert.Equal(7, integrationManifest.ManagedFolderIncludes.Count);
         Assert.NotNull(integrationManifest.ManagedPlaceholderReference);
         Assert.NotNull(integrationManifest.ManagedPlaceholderResolution);
 
@@ -107,6 +107,26 @@ public sealed class TwinCatProjectIntegrationTests
     }
 
     [Fact]
+    public void EnabledProgramCallStructure_IsManagedAsProjectCompileEntry()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(temporary.Path, MinimalProject());
+        var projectJson = ParseProject();
+        projectJson["project"]!["generation"]!["programCallStructure"] = true;
+
+        var execution = _executor.Execute(BuildPlan(temporary.Path, Validate(projectJson)));
+
+        Assert.True(execution.Success, FormatIssues(execution));
+        var expected = "Generated\\POUs\\PRG_BM_Generated.TcPOU";
+        var document = XDocument.Load(Path.Combine(temporary.Path, ProjectFileName));
+        var ns = XNamespace.Get(MsBuildNamespace);
+        Assert.Single(
+            document.Descendants(ns + "Compile"),
+            element => (string?)element.Attribute("Include") == expected);
+        Assert.Contains(expected, ReadIntegrationManifest(temporary.Path).ManagedCompileIncludes);
+    }
+
+    [Fact]
     public void ExistingUnmanagedCompileEntry_IsPreservedAndNotClaimed()
     {
         using var temporary = new TemporaryDirectory();
@@ -126,6 +146,44 @@ public sealed class TwinCatProjectIntegrationTests
         Assert.Single(
             document.Descendants(ns + "Compile"),
             element => (string?)element.Attribute("Include") == existingGenerated);
+    }
+
+    [Fact]
+    public void ExistingCompiledIecObjectWithGeneratedName_BlocksAllWrites()
+    {
+        using var temporary = new TemporaryDirectory();
+        const string existingInclude = "DUTs\\Commands\\LegacyMotionCommand.TcDUT";
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(additionalCompileInclude: existingInclude));
+        var existingPath = Path.Combine(
+            temporary.Path,
+            existingInclude.Replace('\\', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+        File.WriteAllText(
+            existingPath,
+            """
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="e_bm_motioncommand" Id="{12345678-1234-4123-8123-123456789abc}">
+    <Declaration><![CDATA[TYPE e_bm_motioncommand : (NONE := 0); END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>
+""",
+            new UTF8Encoding(false));
+        var before = SnapshotFiles(temporary.Path);
+
+        var plan = BuildPlan(temporary.Path, Validate(ParseProject()));
+        var execution = _executor.Execute(plan);
+
+        Assert.True(plan.HasConflicts);
+        var issue = Assert.Single(
+            plan.Issues,
+            item => item.Code == "PLC_OBJECT_NAME_CONFLICT");
+        Assert.Equal(existingInclude, issue.Path);
+        Assert.Contains("E_BM_MotionCommand", issue.Message, StringComparison.Ordinal);
+        Assert.False(execution.Success);
+        Assert.Equal(before, SnapshotFiles(temporary.Path));
     }
 
     [Fact]
@@ -279,11 +337,27 @@ public sealed class TwinCatProjectIntegrationTests
             "Generated",
             ProjectIntegrationManifestSerializer.FileName)));
 
-    private static void WriteProjectFile(string root, string content) =>
+    private static void WriteProjectFile(string root, string content)
+    {
         File.WriteAllText(
             Path.Combine(root, ProjectFileName),
             content,
             new UTF8Encoding(false));
+        var existingPath = Path.Combine(root, "Application", "Existing.TcPOU");
+        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+        File.WriteAllText(
+            existingPath,
+            """
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Existing" Id="{87654321-4321-4321-8321-cba987654321}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Existing]]></Declaration>
+    <Implementation><ST><![CDATA[]]></ST></Implementation>
+  </POU>
+</TcPlcObject>
+""",
+            new UTF8Encoding(false));
+    }
 
     private static string MinimalProject(
         bool includeCompatibleLibrary = false,
