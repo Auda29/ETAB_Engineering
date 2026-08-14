@@ -85,7 +85,7 @@ For a normal installation, start the `setup.exe`. It installs for the current us
 
 As a portable alternative, extract the complete ZIP and start `ETAB Engineering.exe`. WebView2 Runtime must already be present when using the ZIP directly. Neither distribution requires the .NET SDK, Node.js, a terminal, or a separately started service on the target computer.
 
-The GitHub Actions workflow `Desktop release` runs the complete installer script. A `v*` tag attaches the ZIP, Setup EXE, and both checksums directly to a GitHub Release. A manual workflow run builds and verifies all four files without creating a Release. The Setup EXE is not currently code-signed, so Windows may display an unknown-publisher warning until release signing is configured.
+After its one-time signing setup, the GitHub Actions workflow `Desktop release` creates authoritative signed releases through Microsoft Artifact Signing. It builds and smoke-tests an unpacked bundle, signs `ETAB Engineering.exe` with SHA-256 and an RFC 3161 timestamp, verifies that signature, and only then creates the portable ZIP. The installer is built from that signed ZIP, signed separately, verified, smoke-tested, and hashed after signing. A new `v*` tag attaches the signed ZIP, signed Setup EXE, and both final checksums directly to a GitHub Release. A manual workflow run performs the same signed build without creating a Release. Previously published assets are not changed retroactively. The required Azure and GitHub environment configuration is documented in [Windows Desktop Release](docs/Desktop_Release.md#artifact-signing-setup).
 
 ## Documents
 

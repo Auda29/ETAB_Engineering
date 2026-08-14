@@ -14,11 +14,13 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build-desktop:
     name: Build Windows desktop release
     runs-on: windows-latest
+    environment: release-signing
 
     steps:
       - name: Check out repository
@@ -76,7 +78,7 @@ jobs:
             throw 'The verified Inno Setup installation did not provide ISCC.exe.'
           }
 
-      - name: Build and verify portable bundle and installer
+      - name: Configure release paths
         shell: pwsh
         run: |
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
@@ -88,11 +90,167 @@ jobs:
             $version = '${{ inputs.version }}'
           }
 
-          .\publish-installer-win-x64.ps1 -Version $version
-          if ($LASTEXITCODE -ne 0) {
-            throw "Desktop publish script failed with exit code $LASTEXITCODE."
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw 'A release version is required.'
           }
+
+          $packageName = "ETAB-Engineering-v$version-win-x64"
+          $bundleDirectory = Join-Path $env:RUNNER_TEMP $packageName
+          $portableExecutable = Join-Path $bundleDirectory 'ETAB Engineering.exe'
+          $installerPath = Join-Path $PWD "artifacts\$packageName-setup.exe"
+
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PORTABLE_BUNDLE_DIRECTORY=$bundleDirectory" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PORTABLE_EXECUTABLE=$portableExecutable" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_PATH=$installerPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Validate Artifact Signing configuration
+        shell: pwsh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          SIGNING_PROFILE_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+        run: |
+          $requiredValues = [ordered]@{
+            AZURE_CLIENT_ID = $env:AZURE_CLIENT_ID
+            AZURE_TENANT_ID = $env:AZURE_TENANT_ID
+            AZURE_SUBSCRIPTION_ID = $env:AZURE_SUBSCRIPTION_ID
+            AZURE_ARTIFACT_SIGNING_ENDPOINT = $env:SIGNING_ENDPOINT
+            AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME = $env:SIGNING_ACCOUNT_NAME
+            AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME = $env:SIGNING_PROFILE_NAME
+          }
+          $missing = @($requiredValues.GetEnumerator() |
+            Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } |
+            ForEach-Object { $_.Key })
+          if ($missing.Count -ne 0) {
+            throw "Artifact Signing configuration is incomplete. Missing GitHub secrets or variables: $($missing -join ', ')"
+          }
+
+          $endpoint = $null
+          if (-not [Uri]::TryCreate($env:SIGNING_ENDPOINT, [UriKind]::Absolute, [ref]$endpoint) -or
+              $endpoint.Scheme -ne 'https' -or
+              -not $endpoint.Host.EndsWith('.codesigning.azure.net', [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'AZURE_ARTIFACT_SIGNING_ENDPOINT must be the HTTPS endpoint of the configured Artifact Signing region.'
+          }
+
+      - name: Build and test portable bundle before signing
+        shell: pwsh
+        run: |
+          .\publish-win-x64.ps1 `
+            -Version $env:RELEASE_VERSION `
+            -OutputDirectory (Join-Path $PWD 'artifacts') `
+            -BundleDirectory $env:PORTABLE_BUNDLE_DIRECTORY `
+            -SkipArchive
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign ETAB Engineering executable
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ env.PORTABLE_EXECUTABLE }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: ETAB Engineering
+          description-url: https://github.com/${{ github.repository }}
+
+      - name: Verify and package signed portable bundle
+        shell: pwsh
+        run: |
+          .\publish-win-x64.ps1 `
+            -Version $env:RELEASE_VERSION `
+            -OutputDirectory (Join-Path $PWD 'artifacts') `
+            -BundleDirectory $env:PORTABLE_BUNDLE_DIRECTORY `
+            -SkipBuild `
+            -RequireSignature
+
+      - name: Build installer from signed portable bundle
+        shell: pwsh
+        run: |
+          .\publish-installer-win-x64.ps1 `
+            -Version $env:RELEASE_VERSION `
+            -OutputDirectory (Join-Path $PWD 'artifacts') `
+            -SkipPortableBuild `
+            -SkipInstallerTest `
+            -RequirePortableSignature
+
+      - name: Sign ETAB Engineering installer
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ env.INSTALLER_PATH }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: ETAB Engineering installer
+          description-url: https://github.com/${{ github.repository }}/releases
+
+      - name: Verify signed release and regenerate checksums
+        shell: pwsh
+        run: |
+          function Assert-ReleaseSignature {
+            param([Parameter(Mandatory)][string]$Path)
+
+            if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+              throw "Signed release file is missing: '$Path'."
+            }
+            $signature = Get-AuthenticodeSignature -LiteralPath $Path
+            $subject = if ($null -eq $signature.SignerCertificate) {
+              '<no signer certificate>'
+            } else {
+              $signature.SignerCertificate.Subject
+            }
+            if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+              throw "Release signature is not valid: path='$Path', status=$($signature.Status), subject=$subject"
+            }
+            if ($null -eq $signature.TimeStamperCertificate) {
+              throw "Release signature has no trusted RFC 3161 timestamp: path='$Path', subject=$subject"
+            }
+            Write-Host "Verified release signature: $subject"
+          }
+
+          function Assert-Checksum {
+            param([Parameter(Mandatory)][string]$Path)
+
+            $checksumPath = "$Path.sha256"
+            if (-not (Test-Path -LiteralPath $checksumPath -PathType Leaf)) {
+              throw "Checksum file is missing: '$checksumPath'."
+            }
+            $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $declared = (Get-Content -LiteralPath $checksumPath -Raw).Trim().Split(' ')[0].ToLowerInvariant()
+            if ($actual -ne $declared) {
+              throw "SHA-256 mismatch: path='$Path', actual=$actual, declared=$declared"
+            }
+          }
+
+          Assert-ReleaseSignature -Path $env:PORTABLE_EXECUTABLE
+          Assert-ReleaseSignature -Path $env:INSTALLER_PATH
+
+          $installerName = [IO.Path]::GetFileName($env:INSTALLER_PATH)
+          $installerHash = (Get-FileHash -LiteralPath $env:INSTALLER_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText(
+            "$env:INSTALLER_PATH.sha256",
+            "$installerHash  $installerName`n",
+            [Text.UTF8Encoding]::new($false))
+
+          .\test-installer-win-x64.ps1 -InstallerPath $env:INSTALLER_PATH
+
+          $portableZip = Join-Path $PWD "artifacts\ETAB-Engineering-v$env:RELEASE_VERSION-win-x64.zip"
+          Assert-Checksum -Path $portableZip
+          Assert-Checksum -Path $env:INSTALLER_PATH
 
       - name: Create or update GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')

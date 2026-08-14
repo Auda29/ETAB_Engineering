@@ -24,6 +24,8 @@ Install Inno Setup 7, then run this command from the repository root:
 .\publish-installer-win-x64.ps1 -Version 0.1.0.6
 ```
 
+This local command creates unsigned development artifacts because no private signing identity is stored in the repository. The authoritative public artifacts are built and signed in GitHub Actions. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for signing and package that exact bundle afterward.
+
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
 
 1. deterministic frontend dependency installation with `npm ci`,
@@ -68,14 +70,52 @@ The ZIP contains one root directory so it can be extracted without scattering fi
 - Setup installs WebView2 Runtime only when registry detection reports that it is missing.
 - Silent installation uses the standard Inno Setup flags, for example `setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`.
 
-The release Setup EXE is not currently Authenticode-signed. Windows can therefore show an unknown-publisher or SmartScreen warning until a release code-signing certificate is configured. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
+Every new GitHub Release produced by the configured workflow contains an Authenticode-signed application executable and Setup EXE. Both signatures use a SHA-256 file digest and the Microsoft Artifact Signing RFC 3161 timestamp service. The workflow rejects a missing, invalid, or non-timestamped signature. Previously published unsigned assets are not modified retroactively. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
+
+Authenticode establishes the verified publisher and file integrity. A newly established publisher can still receive a temporary SmartScreen reputation warning until Microsoft has accumulated sufficient reputation for the signing identity and downloads. Every release must therefore use the same public-trust certificate profile.
+
+## Artifact Signing Setup
+
+The workflow uses [Microsoft Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/overview) with GitHub OpenID Connect. No client secret, certificate file, PFX password, or private key is stored in GitHub.
+
+Perform this account setup once before running the updated workflow:
+
+1. In Azure, create an Artifact Signing account in a supported region, complete public-trust identity validation, and create a public-trust certificate profile.
+2. Create or select a Microsoft Entra application/service principal for GitHub Actions.
+3. Add an OIDC federated credential whose subject is `repo:Auda29/ETAB_Engineering:environment:release-signing`. The workflow deliberately uses the `release-signing` GitHub environment so manual runs and all version tags share one narrowly scoped subject.
+4. Assign that principal the **Artifact Signing Certificate Profile Signer** role for the configured signing account/profile.
+5. Create the `release-signing` environment in the GitHub repository. Protect it with required reviewers or deployment restrictions if appropriate.
+6. Add these environment secrets:
+
+   - `AZURE_CLIENT_ID`
+   - `AZURE_TENANT_ID`
+   - `AZURE_SUBSCRIPTION_ID`
+
+7. Add these environment variables:
+
+   - `AZURE_ARTIFACT_SIGNING_ENDPOINT`, for example the endpoint shown on the Azure account such as `https://weu.codesigning.azure.net/`
+   - `AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME`
+   - `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+
+The endpoint must match the Azure region that contains the account and certificate profile. The workflow validates that all six settings exist before building and fails closed if signing cannot be completed.
+
+The GitHub configuration can be entered through **Settings → Environments → release-signing**. Keep these values out of tracked files. OIDC removes the need for an `AZURE_CLIENT_SECRET`.
 
 ## GitHub Release Workflow
 
-`.github/workflows/desktop-release.yml` runs on Windows and calls the same `publish-installer-win-x64.ps1` script used locally. The workflow installs a pinned official Inno Setup compiler only after validating its publisher signature.
+`.github/workflows/desktop-release.yml` runs on Windows and installs an official Inno Setup compiler only after validating its publisher signature. Its signed release sequence is:
 
-- `workflow_dispatch` builds and verifies the four files without creating a Release.
-- A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
+1. build, test, and smoke-test an unpacked portable bundle,
+2. authenticate to Azure through GitHub OIDC,
+3. sign `ETAB Engineering.exe` with Microsoft Artifact Signing,
+4. require a valid timestamped signature before ZIP creation,
+5. build the installer exclusively from that signed ZIP,
+6. sign the final Setup EXE with the same certificate profile,
+7. require valid timestamped signatures, run the isolated signed-installer test, and regenerate the Setup checksum after signing,
+8. verify both SHA-256 sidecars before any release upload.
+
+- `workflow_dispatch` builds, signs, and verifies the four files without creating a Release.
+- A pushed `v*` tag derives the package version from the tag, builds and verifies both signed distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
 For version `0.1.0.6`, publish with:

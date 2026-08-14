@@ -13,7 +13,9 @@ param(
 
     [switch]$SkipPortableBuild,
 
-    [switch]$SkipInstallerTest
+    [switch]$SkipInstallerTest,
+
+    [switch]$RequirePortableSignature
 )
 
 Set-StrictMode -Version Latest
@@ -133,6 +135,25 @@ function Assert-MicrosoftBootstrapper {
     }
 }
 
+function Assert-ValidReleaseSignature {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $signature = Get-AuthenticodeSignature -LiteralPath $Path
+    $subject = if ($null -eq $signature.SignerCertificate) {
+        '<no signer certificate>'
+    } else {
+        $signature.SignerCertificate.Subject
+    }
+    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+        throw "Release signature is not valid: path='$Path', status=$($signature.Status), subject=$subject"
+    }
+    if ($null -eq $signature.TimeStamperCertificate) {
+        throw "Release signature has no trusted timestamp: path='$Path', subject=$subject"
+    }
+
+    Write-Host "Verified release signature: $subject"
+}
+
 function Assert-PortablePackage {
     if (-not (Test-Path -LiteralPath $portableZip -PathType Leaf) -or
         -not (Test-Path -LiteralPath $portableChecksum -PathType Leaf)) {
@@ -166,8 +187,12 @@ try {
     New-Item -ItemType Directory -Path $extractionRoot -Force | Out-Null
     Expand-Archive -LiteralPath $portableZip -DestinationPath $extractionRoot
     $payloadRoot = Join-Path $extractionRoot $portablePackageName
-    if (-not (Test-Path -LiteralPath (Join-Path $payloadRoot 'ETAB Engineering.exe') -PathType Leaf)) {
+    $desktopExecutable = Join-Path $payloadRoot 'ETAB Engineering.exe'
+    if (-not (Test-Path -LiteralPath $desktopExecutable -PathType Leaf)) {
         throw "Portable payload was not extracted as expected under '$payloadRoot'."
+    }
+    if ($RequirePortableSignature) {
+        Assert-ValidReleaseSignature -Path $desktopExecutable
     }
 
     if ([string]::IsNullOrWhiteSpace($WebView2BootstrapperPath)) {
