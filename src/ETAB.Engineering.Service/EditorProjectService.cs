@@ -107,8 +107,11 @@ public sealed class EditorProjectService
               ],
               "relations": [],
               "layout": {
+                "groups": [
+                  { "name": "machine", "displayName": "Machine" }
+                ],
                 "nodes": [
-                  { "nodeId": "{{machineId}}", "x": 120, "y": 90 }
+                  { "nodeId": "{{machineId}}", "x": 120, "y": 90, "group": "machine" }
                 ]
               }
             }

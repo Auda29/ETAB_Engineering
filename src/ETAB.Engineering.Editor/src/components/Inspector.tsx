@@ -18,16 +18,19 @@ import { Field, IconButton, NumberInput, SelectInput, TextArea, TextInput, Toggl
 type DocumentMutation = (document: EtabProjectDocument) => void;
 type NodeMutation = (node: EtabNode) => void;
 type InspectorTab = "general" | "commands" | "request" | "status" | "relations" | "settings";
+type InspectorTabRequest = { nodeId: string; tab: InspectorTab; requestId: string };
 
 export function Inspector({
   document,
   selectedNodeId,
+  requestedTab,
   updateDocument,
   updateNode,
   deleteNode,
 }: {
   document: EtabProjectDocument;
   selectedNodeId?: string;
+  requestedTab?: InspectorTabRequest;
   updateDocument: (mutation: DocumentMutation) => void;
   updateNode: (nodeId: string, mutation: NodeMutation) => void;
   deleteNode: (nodeId: string) => void;
@@ -35,6 +38,9 @@ export function Inspector({
   const [tab, setTab] = useState<InspectorTab>("general");
   const node = document.nodes.find((item) => item.id === selectedNodeId);
   useEffect(() => setTab("general"), [selectedNodeId]);
+  useEffect(() => {
+    if (requestedTab && requestedTab.nodeId === selectedNodeId) setTab(requestedTab.tab);
+  }, [requestedTab]);
 
   if (!node) {
     return <ProjectInspector document={document} updateDocument={updateDocument} />;

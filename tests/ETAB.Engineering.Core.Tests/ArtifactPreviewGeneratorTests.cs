@@ -190,6 +190,11 @@ public sealed class ArtifactPreviewGeneratorTests
         modified["layout"]!["nodes"]![0]!["x"] = 9876.5;
         modified["layout"]!["nodes"]![0]!["y"] = -1234.25;
         modified["layout"]!["nodes"]![0]!["group"] = "MovedOnCanvas";
+        modified["layout"]!["groups"]!.AsArray().Add(new JsonObject
+        {
+            ["name"] = "MovedOnCanvas",
+            ["displayName"] = "Moved on canvas"
+        });
 
         Assert.Equal(Signatures(Generate(original)), Signatures(Generate(modified)));
     }

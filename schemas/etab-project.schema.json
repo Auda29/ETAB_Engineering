@@ -674,6 +674,28 @@
           "items": {
             "$ref": "#/$defs/nodeLayout"
           }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layoutGroup"
+          }
+        }
+      }
+    },
+    "layoutGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "displayName"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/iecIdentifier"
+        },
+        "displayName": {
+          "$ref": "#/$defs/displayText"
         }
       }
     },

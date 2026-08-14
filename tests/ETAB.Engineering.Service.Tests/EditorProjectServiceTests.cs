@@ -34,6 +34,8 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.Single(first.Document["nodes"]!.AsArray());
         Assert.Equal("applicationUnit", first.Document["nodes"]![0]!["kind"]!.GetValue<string>());
         Assert.Equal(5, first.Document["nodes"]![0]!["commands"]!.AsArray().Count);
+        Assert.Equal("machine", first.Document["layout"]!["groups"]![0]!["name"]!.GetValue<string>());
+        Assert.Equal("machine", first.Document["layout"]!["nodes"]![0]!["group"]!.GetValue<string>());
         var preview = service.Preview(first.Document, projectPath: null, testRoot);
         Assert.True(preview.Validation.IsValid);
         Assert.Equal(5, preview.Artifacts.Count);

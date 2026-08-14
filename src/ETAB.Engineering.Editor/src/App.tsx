@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { editorApi } from "./api";
+import {
+  areaViewForGroup,
+  createUniqueAreaName,
+  getLayoutGroups,
+  groupNameFromAreaView,
+  nodeGroup,
+  nodeMatchesArea,
+  type AreaView,
+} from "./areaModel";
 import { BottomPanel } from "./components/BottomPanel";
 import { Inspector } from "./components/Inspector";
 import { MachineCanvas } from "./components/MachineCanvas";
@@ -7,17 +16,24 @@ import { Palette } from "./components/Palette";
 import { ProjectTree } from "./components/ProjectTree";
 import { TopBar } from "./components/TopBar";
 import type { EtabNode, EtabProjectDocument, NodeKind, PreviewResponse, RelationKind, ValidationResponse } from "./model";
-import { createNode } from "./modelFactory";
+import { createCommand, createNode } from "./modelFactory";
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
+type Theme = "dark" | "light";
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = window.localStorage.getItem("etab-theme");
+    if (saved === "dark" || saved === "light") return saved;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  });
   const [document, setDocument] = useState<EtabProjectDocument>();
   const [path, setPath] = useState("");
   const [exampleProjectPath, setExampleProjectPath] = useState("");
   const [sessionReady, setSessionReady] = useState(false);
   const [supportsNativeFileDialogs, setSupportsNativeFileDialogs] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
+  const [activeAreaView, setActiveAreaView] = useState<AreaView>("all");
   const [validation, setValidation] = useState<ValidationResponse>();
   const [preview, setPreview] = useState<PreviewResponse>();
   const [busy, setBusy] = useState(false);
@@ -27,6 +43,7 @@ export default function App() {
   const [integrateProject, setIntegrateProject] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [notice, setNotice] = useState<Notice>();
+  const [inspectorFocus, setInspectorFocus] = useState<{ nodeId: string; tab: "commands"; requestId: string }>();
 
   const loadProject = useCallback(async (requestedPath: string) => {
     if (!requestedPath.trim()) {
@@ -43,6 +60,7 @@ export default function App() {
       setIntegrateProject(false);
       setValidation(result.validation);
       setSelectedNodeId(result.document.nodes[0]?.id);
+      setActiveAreaView("all");
       setPreview(undefined);
       setDirty(false);
       setNotice({ tone: "success", text: `Opened ${result.document.project.displayName}` });
@@ -90,6 +108,7 @@ export default function App() {
       setIntegrateProject(false);
       setValidation(result.validation);
       setSelectedNodeId(result.document.nodes[0]?.id);
+      setActiveAreaView("all");
       setPreview(undefined);
       setDirty(true);
       setNotice({ tone: "info", text: "New project created from the minimal template. Save it to choose a location." });
@@ -115,6 +134,27 @@ export default function App() {
       });
     return () => controller.abort();
   }, []); // Establish editor capabilities without opening a project implicitly.
+
+  useLayoutEffect(() => {
+    window.document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("etab-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const preventPageWheelZoom = (event: WheelEvent) => {
+      if (event.ctrlKey) event.preventDefault();
+    };
+    const preventPageKeyboardZoom = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || !["+", "-", "=", "0"].includes(event.key)) return;
+      event.preventDefault();
+    };
+    window.document.addEventListener("wheel", preventPageWheelZoom, { passive: false });
+    window.document.addEventListener("keydown", preventPageKeyboardZoom);
+    return () => {
+      window.document.removeEventListener("wheel", preventPageWheelZoom);
+      window.document.removeEventListener("keydown", preventPageKeyboardZoom);
+    };
+  }, []);
 
   useEffect(() => {
     if (!document) return;
@@ -215,7 +255,7 @@ export default function App() {
     });
   }, [updateDocument]);
 
-  const addNode = useCallback((kind: NodeKind) => {
+  const addNode = useCallback((kind: NodeKind, position?: { x: number; y: number }, group?: string) => {
     if (!document) return;
     const node = createNode(kind, document);
     updateDocument((draft) => {
@@ -223,12 +263,83 @@ export default function App() {
       const index = draft.nodes.length - 1;
       draft.layout.nodes.push({
         nodeId: node.id,
-        x: 80 + (index % 4) * 270,
-        y: 80 + Math.floor(index / 4) * 175,
+        x: position?.x ?? 80 + (index % 4) * 270,
+        y: position?.y ?? 80 + Math.floor(index / 4) * 175,
+        ...(group ? { group } : {}),
       });
     });
     setSelectedNodeId(node.id);
   }, [document, updateDocument]);
+
+  const createArea = useCallback((displayName: string) => {
+    if (!document || !displayName.trim()) return undefined;
+    const name = createUniqueAreaName(displayName.trim(), getLayoutGroups(document));
+    updateDocument((draft) => {
+      draft.layout.groups = getLayoutGroups(draft);
+      draft.layout.groups.push({ name, displayName: displayName.trim() });
+    });
+    setActiveAreaView(areaViewForGroup(name));
+    setSelectedNodeId(undefined);
+    return name;
+  }, [document, updateDocument]);
+
+  const renameArea = useCallback((name: string, displayName: string) => {
+    if (!displayName.trim()) return;
+    updateDocument((draft) => {
+      draft.layout.groups = getLayoutGroups(draft);
+      const group = draft.layout.groups.find((item) => item.name.toLowerCase() === name.toLowerCase());
+      if (group) group.displayName = displayName.trim();
+    });
+  }, [updateDocument]);
+
+  const deleteArea = useCallback((name: string) => {
+    const area = document ? getLayoutGroups(document).find((group) => group.name.toLowerCase() === name.toLowerCase()) : undefined;
+    if (!area || !window.confirm(`Remove the ${area.displayName} area? Its nodes will become unassigned; no nodes or relationships will be deleted.`)) return;
+    updateDocument((draft) => {
+      draft.layout.groups = getLayoutGroups(draft).filter((group) => group.name.toLowerCase() !== name.toLowerCase());
+      draft.layout.nodes.forEach((layout) => {
+        if (layout.group?.toLowerCase() === name.toLowerCase()) delete layout.group;
+      });
+    });
+    setActiveAreaView("unassigned");
+  }, [document, updateDocument]);
+
+  const moveNodeToArea = useCallback((nodeId: string, group?: string) => {
+    updateDocument((draft) => {
+      let layout = draft.layout.nodes.find((item) => item.nodeId === nodeId);
+      if (!layout) {
+        layout = { nodeId, x: 80, y: 80 };
+        draft.layout.nodes.push(layout);
+      }
+      if (group) layout.group = group;
+      else delete layout.group;
+    });
+    setActiveAreaView(group ? areaViewForGroup(group) : "unassigned");
+  }, [updateDocument]);
+
+  const selectTreeNode = useCallback((nodeId?: string) => {
+    setSelectedNodeId(nodeId);
+    if (!document || !nodeId) return;
+    const group = nodeGroup(document, nodeId);
+    setActiveAreaView(group ? areaViewForGroup(group) : "unassigned");
+  }, [document]);
+
+  const changeActiveAreaView = useCallback((view: AreaView) => {
+    setActiveAreaView(view);
+    if (document && selectedNodeId && !nodeMatchesArea(document, selectedNodeId, view)) {
+      setSelectedNodeId(undefined);
+    }
+  }, [document, selectedNodeId]);
+
+  const addCommand = useCallback((nodeId: string) => {
+    updateDocument((draft) => {
+      const node = draft.nodes.find((item) => item.id === nodeId);
+      if (!node?.generate.commandEnum) return;
+      node.commands.push(createCommand(node.commands));
+    });
+    setSelectedNodeId(nodeId);
+    setInspectorFocus({ nodeId, tab: "commands", requestId: crypto.randomUUID() });
+  }, [updateDocument]);
 
   const deleteNode = useCallback((nodeId: string) => {
     const node = document?.nodes.find((item) => item.id === nodeId);
@@ -361,9 +472,20 @@ export default function App() {
     if (match && document) setSelectedNodeId(document.nodes[Number(match[1])]?.id);
   }, [document]);
 
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => current === "dark" ? "light" : "dark");
+  }, []);
+
   if (!document) {
     return (
       <div className="startup-screen">
+        <button
+          className="theme-toggle startup-theme-toggle"
+          type="button"
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          onClick={toggleTheme}
+        ><span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span></button>
         <div className="startup-card">
           <div className="brand__mark">ET</div>
           <h1>ETAB Engineering</h1>
@@ -413,22 +535,32 @@ export default function App() {
         dirty={dirty}
         projectName={document.project.displayName}
         validation={validation}
+        theme={theme}
+        onThemeToggle={toggleTheme}
       />
       <div className="workspace">
         <aside className="sidebar">
-          <Palette onAdd={addNode} />
-          <ProjectTree document={document} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} />
+          <Palette onAdd={(kind) => addNode(kind, undefined, groupNameFromAreaView(activeAreaView))} />
+          <ProjectTree document={document} selectedNodeId={selectedNodeId} activeAreaView={activeAreaView} onSelect={selectTreeNode} onSelectArea={changeActiveAreaView} />
         </aside>
         <MachineCanvas
           document={document}
           selectedNodeId={selectedNodeId}
           onSelect={setSelectedNodeId}
           onMoveNode={moveNode}
+          onAddNode={addNode}
+          onAddCommand={addCommand}
+          activeAreaView={activeAreaView}
+          onActiveAreaViewChange={changeActiveAreaView}
+          onCreateArea={createArea}
+          onRenameArea={renameArea}
+          onDeleteArea={deleteArea}
+          onMoveNodeToArea={moveNodeToArea}
           onAddRelation={addRelation}
           onUpdateRelation={updateRelation}
           onDeleteRelation={deleteRelation}
         />
-        <Inspector document={document} selectedNodeId={selectedNodeId} updateDocument={updateDocument} updateNode={updateNode} deleteNode={deleteNode} />
+        <Inspector document={document} selectedNodeId={selectedNodeId} requestedTab={inspectorFocus} updateDocument={updateDocument} updateNode={updateNode} deleteNode={deleteNode} />
       </div>
       <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} generateBusy={generateBusy} generationRoot={generationRoot} integrateProject={integrateProject} dirty={dirty} onGenerationRootChange={changeGenerationRoot} onIntegrateProjectChange={changeIntegrateProject} onPreview={refreshPreview} onGenerate={generateProject} onIssueSelect={selectIssue} />
       {notice && <button className={`notice notice--${notice.tone}`} onClick={() => setNotice(undefined)}>{notice.text}<span>×</span></button>}

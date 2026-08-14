@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.3
+.\publish-installer-win-x64.ps1 -Version 0.1.0.4
 ```
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
@@ -51,10 +51,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.4-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.4-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.4-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.4-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -78,11 +78,11 @@ The release Setup EXE is not currently Authenticode-signed. Windows can therefor
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.3`, publish with:
+For version `0.1.0.4`, publish with:
 
 ```powershell
-git tag -a v0.1.0.3 -m "ETAB Engineering v0.1.0.3"
-git push origin v0.1.0.3
+git tag -a v0.1.0.4 -m "ETAB Engineering v0.1.0.4"
+git push origin v0.1.0.4
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -154,3 +154,23 @@ Local validation on 2026-08-14 passed the TypeScript check, all 57 core tests, a
 The user then performed the interactive acceptance with a newly created project. The direct canvas workflow successfully created directed `commands`, `observes`, and `usesRecipe` relationships; the relation legend and inspector list rendered correctly; the model remained valid; and confirmed generation completed with 21 created artifacts. This manual acceptance used the packaged desktop editor and no Playwright automation.
 
 The `v0.1.0.3` tag workflow builds the final portable ZIP and installer from the release commit, repeats the complete automated suite and isolated installer smoke test, and publishes the authoritative final assets and checksum sidecars to the GitHub Release.
+
+## Validation Record for v0.1.0.4
+
+Local validation on 2026-08-14 passed the TypeScript check, all 59 core tests, all 8 editor-service tests, the complete Release publish, and the packaged desktop smoke test. The release includes drag-and-drop node placement, node context actions for relationships and commands, persistent machine areas with cross-area relationships, canvas-only zoom, and saved dark/light themes.
+
+The 78,808,978-byte portable ZIP completed the 15-artifact BrushMachine preview and lossless save/reopen smoke test. Its SHA-256 value is:
+
+```text
+deca3c800df9e131596c5820752670b8be28a4d0a0ce16d8b082042f46c09d51
+```
+
+The installer build produced a 55,847,795-byte Setup EXE with this SHA-256 value:
+
+```text
+98a7a76c83e9ff1f271cad37a72cb12933d6ebca0e0dfffb51ec8e737d1b6164
+```
+
+Both checksum sidecars were generated with the release files. The isolated installer test installed the application into a temporary per-user directory, ran the packaged desktop smoke test successfully, uninstalled the application, and verified cleanup. No interactive browser, editor window, or Playwright automation was used. TwinCAT XAE open, PLC compile, simulation, and machine acceptance remain separate manual engineering tests.
+
+The `v0.1.0.4` tag workflow builds the final portable ZIP and installer from the release commit, repeats the complete automated suite and isolated installer smoke test, and publishes the authoritative final assets and checksum sidecars to the GitHub Release.

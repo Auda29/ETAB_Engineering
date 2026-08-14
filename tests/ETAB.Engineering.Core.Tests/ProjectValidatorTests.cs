@@ -141,6 +141,34 @@ public sealed class ProjectValidatorTests
     }
 
     [Fact]
+    public void DuplicateLayoutAreaNameIsRejected()
+    {
+        var project = ParseProject();
+        project["layout"]!["groups"]!.AsArray().Add(new JsonObject
+        {
+            ["name"] = "Machine",
+            ["displayName"] = "Duplicate machine"
+        });
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_GROUP_DUPLICATE");
+    }
+
+    [Fact]
+    public void UndeclaredLayoutAreaReferenceIsRejected()
+    {
+        var project = ParseProject();
+        project["layout"]!["nodes"]![0]!["group"] = "missingArea";
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_GROUP_MISSING");
+    }
+
+    [Fact]
     public void InvertedArrayBounds_AreRejectedSemantically()
     {
         var project = ParseProject();

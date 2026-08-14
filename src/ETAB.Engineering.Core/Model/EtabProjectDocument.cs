@@ -241,7 +241,16 @@ public sealed class EtabRelation
 
 public sealed class EtabLayout
 {
+    public List<LayoutGroup>? Groups { get; init; }
+
     public required List<NodeLayout> Nodes { get; init; }
+}
+
+public sealed class LayoutGroup
+{
+    public required string Name { get; init; }
+
+    public required string DisplayName { get; init; }
 }
 
 public sealed class NodeLayout

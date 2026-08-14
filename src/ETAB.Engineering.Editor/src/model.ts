@@ -120,7 +120,15 @@ export interface EtabRelation {
   label?: string;
 }
 
-export interface EtabLayout { nodes: NodeLayout[] }
+export interface EtabLayout {
+  groups?: LayoutGroup[];
+  nodes: NodeLayout[];
+}
+
+export interface LayoutGroup {
+  name: string;
+  displayName: string;
+}
 
 export interface NodeLayout {
   nodeId: string;

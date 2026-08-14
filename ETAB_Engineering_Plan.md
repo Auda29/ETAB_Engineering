@@ -181,7 +181,7 @@ Safety or collision enables are not modeled as automatically executable relation
 
 ### 5.5 Layout Data
 
-The position, size, and grouping of a component are stored separately. Changes to the canvas layout must not cause a PLC code diff.
+The position, size, and area assignment of a component are stored separately. Optional layout-group declarations preserve empty areas and user-facing names. Areas remain editor organization only; global node relations may cross area boundaries. Changes to areas, canvas positions, or zoom must not cause a PLC code diff.
 
 ## 6. Planned Generator Output
 
@@ -232,6 +232,8 @@ Application/
 
 ### 7.1 Left: Component Palette
 
+- drag components onto the canvas and place them at the drop position
+- keyboard placement through Enter or Space with automatic positioning
 - Application Unit
 - Command Unit
 - Machine Link
@@ -243,8 +245,11 @@ Application/
 - place units
 - display the hierarchy
 - connect relationships
+- open contextual node actions by right-clicking
 - select components
-- form groups or machine areas
+- create machine areas represented by project-tree folders and canvas tabs
+- move nodes between areas and navigate cross-area relationships
+- zoom only the machine canvas without scaling the surrounding editor
 
 The MVP does not require a completely free-form HMI drawing tool. A clear node/tree editor is sufficient.
 
@@ -350,18 +355,22 @@ Acceptance:
 ### Phase 2 – Visual Editor MVP (completed 2026-08-10)
 
 - [x] create a valid project from a minimal template and use native Open/Save As dialogs in the desktop application (follow-up 2026-08-13)
-- [x] component palette
+- [x] drag-and-drop component palette with drop-position placement and keyboard fallback (follow-up 2026-08-14)
 - [x] machine canvas
 - [x] unit selection and property inspector
 - [x] command editor
 - [x] request/status field editor
-- [x] direct canvas relationships with filtered endpoints/types, direction arrows, editing, deletion, and legend (follow-up 2026-08-14)
+- [x] direct canvas relationships with filtered endpoints/types, direction arrows, editing, deletion, legend, and a right-click entry point (follow-up 2026-08-14)
+- [x] context-menu command creation with automatic inspector focus and capability filtering (follow-up 2026-08-14)
+- [x] persistent machine areas with tree folders, canvas tabs, node movement, and cross-area relationship navigation (follow-up 2026-08-14)
+- [x] canvas-only zoom from 50 to 160 percent with normalized drag/drop coordinates and disabled WebView page zoom (follow-up 2026-08-14)
+- [x] persistent dark/light theme switch covering startup and the complete editor shell (follow-up 2026-08-14)
 - [x] live validation
 - [x] generation preview
 
 Acceptance: BrushMachine can be modeled visually, saved, closed, and reopened without data loss.
 
-Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETAB.Engineering.Core`; editor validation and preview do not duplicate generator logic. Browser acceptance covered editing all Phase 2 contract types, invalid-to-valid live feedback, relationship creation, canvas movement, an 18-artifact read-only preview, and a successful save/reopen round-trip. The 2026-08-14 follow-up added the direct filtered canvas workflow and strengthened Core validation for source kinds and duplicates; interactive acceptance of this follow-up remains assigned to the user's UI-validation session.
+Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETAB.Engineering.Core`; editor validation and preview do not duplicate generator logic. Browser acceptance covered editing all Phase 2 contract types, invalid-to-valid live feedback, relationship creation, canvas movement, an 18-artifact read-only preview, and a successful save/reopen round-trip. The 2026-08-14 follow-ups added the direct filtered canvas workflow, strengthened Core validation for source kinds and duplicates, changed palette creation to drag-and-drop placement with a keyboard fallback, added capability-filtered right-click actions, introduced persistent machine areas with cross-area relationships, restricted zoom to the canvas, and added a persistent dark/light theme. Interactive acceptance of these UI follow-ups remains assigned to the user's validation session.
 
 ### Phase 3 – TwinCAT Project Integration
 

@@ -12,6 +12,8 @@ interface Props {
   dirty: boolean;
   projectName?: string;
   validation?: ValidationResponse;
+  theme: "dark" | "light";
+  onThemeToggle: () => void;
 }
 
 export function TopBar({
@@ -26,6 +28,8 @@ export function TopBar({
   dirty,
   projectName,
   validation,
+  theme,
+  onThemeToggle,
 }: Props) {
   const issueCount = validation?.issues.length ?? 0;
   return (
@@ -65,6 +69,16 @@ export function TopBar({
       </div>
 
       <div className="topbar__status">
+        <button
+          className="theme-toggle"
+          type="button"
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          aria-pressed={theme === "light"}
+          onClick={onThemeToggle}
+        >
+          <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+        </button>
         {projectName && <span className="project-name">{projectName}</span>}
         {dirty && <span className="status-pill status-pill--dirty">Unsaved</span>}
         {validation && (

@@ -23,7 +23,7 @@ The implemented editor provides:
 - a Core-validated minimal New Project template with fresh stable IDs;
 - native Windows Open, first-Save, and Save As dialogs in the desktop application, plus manual-path fallback for development browsers;
 - project save, dirty-state protection, `Ctrl+S`, and save validation feedback;
-- a palette for Application Unit, Command Unit, Recipe Manager, and Machine Link nodes;
+- a drag-and-drop palette for Application Unit, Command Unit, Recipe Manager, and Machine Link nodes, with keyboard placement as an accessibility fallback;
 - a searchable hierarchy and a draggable machine canvas with directed SVG relationship paths;
 - project and node property inspection;
 - add, edit, delete, and reorder operations for commands and request/status fields;
@@ -34,7 +34,7 @@ The implemented editor provides:
 
 ## Automated Verification
 
-The complete solution builds without warnings or errors. The current test suite contains 57 core tests and 8 service tests, all passing.
+The complete solution builds without warnings or errors. The current test suite contains 59 core tests and 8 service tests, all passing.
 
 The service tests prove that:
 
@@ -76,6 +76,32 @@ Relationship editing is now available directly on the machine canvas. Each unit 
 Clicking a relationship line or label opens an editor for changing its type or optional line label, or deleting it. The inspector remains available as the detailed list and creation view and uses the same filtered choices. The editor prevents self-relations, duplicates, invalid source/target kinds, multiple `contains` parents, and `contains` cycles. The Core validator enforces the same semantic boundary for manually edited or external project files through `RELATION_SOURCE_KIND`, `RELATION_TARGET_KIND`, `RELATION_DUPLICATE`, and the existing hierarchy diagnostics.
 
 Automated evidence includes TypeScript checking plus three new Core tests for invalid source kinds, invalid target kinds, and duplicate relationships. No browser automation or Playwright run was performed for this follow-up; interactive canvas acceptance remains part of the user's UI-validation session.
+
+## Palette Drag-and-Drop Follow-up – 2026-08-14
+
+Palette cards are now dragged onto the machine canvas instead of creating nodes on a mouse click. The canvas highlights as a valid drop target, shows a placement hint, and creates the component centered at the dropped position on the existing four-pixel layout grid. Dropped positions are clamped to the canvas bounds. Enter or Space on a focused palette card remains available for keyboard users and applies the existing automatic placement.
+
+Verification for this follow-up consists of TypeScript checking, the production editor build, the complete Release solution build and automated .NET tests, plus the packaged application's non-interactive smoke test. No browser automation or Playwright run is part of this follow-up; interactive drag-and-drop acceptance remains assigned to the user's UI-validation session.
+
+## Node Context Menu Follow-up – 2026-08-14
+
+Right-clicking a canvas node now opens a contextual action menu. **Create relationship** enters the existing filtered connection workflow and is disabled when no valid target exists. **Add command** creates the next stable default command, selects the node, and opens the Commands inspector tab; the action is disabled for node configurations without command-enum generation. The menu closes on outside interaction, canvas scrolling, window resize, focus loss, or Escape.
+
+The implementation reuses the existing relation rules and command factory rather than introducing separate context-menu semantics. TypeScript checking, the production editor build, the complete Release solution build, and the packaged application's non-interactive smoke test cover the static and packaging boundary. Interactive right-click acceptance remains part of the user's UI-validation session; no browser automation or Playwright run is used.
+
+## Machine Areas and Canvas Zoom Follow-up – 2026-08-14
+
+The editor now treats the existing non-semantic layout grouping as persistent machine areas. Area declarations carry a stable IEC-compatible name and a separate display name. They appear as folders in the project tree and as tabs above the canvas. Users can create, rename, and remove areas; removing one makes its nodes unassigned without deleting nodes or relationships. Palette drops inherit the active area, and the node context menu moves existing nodes between areas. The **All** tab shows the complete graph.
+
+Relations remain global and may connect nodes assigned to different areas. During direct connection mode the source remains active while the user changes tabs to choose a valid target. An area view lists its cross-area relationships and links to the remote node and area. Two new Core tests reject duplicate declared area names and references to undeclared areas. Existing files that only contain the legacy `nodeLayout.group` field remain valid and are displayed through derived area metadata. Layout groups continue to be excluded from the semantic hash; the artifact regression test proves that a valid area and coordinate change does not change generated PLC content.
+
+Zoom controls and Ctrl+mouse-wheel scale only the canvas world, its grid, nodes, and relationship paths from 50 to 160 percent. Drag and drop coordinates and node movement are normalized against the active scale. Desktop WebView page zoom is disabled, and the development UI suppresses page-level wheel and keyboard zoom shortcuts. TypeScript checking and all 59 Core plus 8 service tests pass. Interactive area, cross-tab relationship, and zoom acceptance remains assigned to the user's UI-validation session; no browser automation or Playwright run is used.
+
+## Dark and Light Theme Follow-up – 2026-08-14
+
+The startup screen and editor header now expose a dark/light theme toggle. The selection is applied before paint, stored in local browser data, and restored on the next application start. Both themes cover the complete application shell, palette and tree, area tabs, canvas and relations, inspector forms, context menus, validation and generation panels, notices, and the startup workflow. Native form controls receive the matching color scheme.
+
+TypeScript checking and the production editor build cover the theme-switch implementation. Visual acceptance of contrast and component coverage in both themes remains assigned to the user's UI-validation session; no browser automation or Playwright run is used.
 
 ## Acceptance Conclusion
 

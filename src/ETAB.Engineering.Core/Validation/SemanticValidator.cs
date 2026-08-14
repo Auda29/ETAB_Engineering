@@ -518,6 +518,22 @@ internal sealed class SemanticValidator
     {
         var nodeIds = project.Nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
         var seenLayoutNodes = new HashSet<string>(StringComparer.Ordinal);
+        var declaredGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (project.Layout.Groups is not null)
+        {
+            for (var index = 0; index < project.Layout.Groups.Count; index++)
+            {
+                var group = project.Layout.Groups[index];
+                if (!declaredGroups.Add(group.Name))
+                {
+                    issues.Add(new ValidationIssue(
+                        "LAYOUT_GROUP_DUPLICATE",
+                        $"/layout/groups/{index}/name",
+                        $"Layout area name '{group.Name}' is already declared."));
+                }
+            }
+        }
 
         for (var index = 0; index < project.Layout.Nodes.Count; index++)
         {
@@ -537,6 +553,16 @@ internal sealed class SemanticValidator
                     "LAYOUT_NODE_DUPLICATE",
                     $"/layout/nodes/{index}/nodeId",
                     $"Node '{layout.NodeId}' has more than one layout entry."));
+            }
+
+            if (declaredGroups.Count > 0 &&
+                !string.IsNullOrWhiteSpace(layout.Group) &&
+                !declaredGroups.Contains(layout.Group))
+            {
+                issues.Add(new ValidationIssue(
+                    "LAYOUT_GROUP_MISSING",
+                    $"/layout/nodes/{index}/group",
+                    $"Layout references undeclared area '{layout.Group}'."));
             }
         }
     }

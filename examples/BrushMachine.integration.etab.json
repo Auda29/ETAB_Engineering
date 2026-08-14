@@ -862,6 +862,11 @@
     }
   ],
   "layout": {
+    "groups": [
+      { "name": "machine", "displayName": "Machine" },
+      { "name": "services", "displayName": "Services" },
+      { "name": "communication", "displayName": "Communication" }
+    ],
     "nodes": [
       {
         "nodeId": "10000000-0000-4000-8000-000000000001",

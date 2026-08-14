@@ -33,6 +33,7 @@ public partial class MainWindow : Window
             EditorWebView.CoreWebView2.Settings.AreDevToolsEnabled = Debugger.IsAttached;
             EditorWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = Debugger.IsAttached;
             EditorWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            EditorWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             EditorWebView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
             EditorWebView.NavigationCompleted += EditorWebView_NavigationCompleted;
             EditorWebView.Source = serviceHost.Address;

@@ -291,7 +291,11 @@ The layout references nodes exclusively through `nodeId` and stores:
 
 - `x`, `y`,
 - optional width and height,
-- optional grouping.
+- an optional `group` identifier assigning the node to an editor area.
+
+`layout.groups` optionally declares persistent editor areas with a unique IEC-compatible `name` and a user-facing `displayName`. The declaration permits empty areas to survive save/reopen. Legacy models that only use `nodeLayout.group` remain valid; the editor derives their display names and materializes declarations when an area is edited.
+
+Areas are visual organization only. Relations remain global node-to-node contracts and may connect nodes in different areas. Area declarations, assignments, positions, sizes, and canvas zoom do not participate in the semantic model hash and must not alter generated PLC artifacts.
 
 A node may have at most one layout entry. Missing layout does not affect model validity; in that case, the editor may position the node automatically.
 

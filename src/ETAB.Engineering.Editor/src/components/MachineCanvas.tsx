@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EtabProjectDocument, NodeLayout, RelationKind } from "../model";
+import {
+  areaViewForGroup,
+  getLayoutGroups,
+  groupNameFromAreaView,
+  nodeGroup,
+  nodeMatchesArea,
+  type AreaView,
+} from "../areaModel";
+import type { EtabProjectDocument, NodeKind, NodeLayout, RelationKind } from "../model";
 import { nodeKindLabels } from "../modelFactory";
+import { containsDraggedNodeKind, readDraggedNodeKind } from "../nodeDragDrop";
 import {
   getAvailableRelationKinds,
   getRelationDefinition,
@@ -9,6 +18,8 @@ import {
 
 const defaultWidth = 222;
 const defaultHeight = 112;
+const canvasWidth = 1800;
+const canvasHeight = 1100;
 
 interface DragState {
   nodeId: string;
@@ -23,11 +34,25 @@ interface Point {
   y: number;
 }
 
+interface NodeContextMenuState {
+  nodeId: string;
+  x: number;
+  y: number;
+}
+
 export function MachineCanvas({
   document,
   selectedNodeId,
   onSelect,
   onMoveNode,
+  onAddNode,
+  onAddCommand,
+  activeAreaView,
+  onActiveAreaViewChange,
+  onCreateArea,
+  onRenameArea,
+  onDeleteArea,
+  onMoveNodeToArea,
   onAddRelation,
   onUpdateRelation,
   onDeleteRelation,
@@ -36,6 +61,14 @@ export function MachineCanvas({
   selectedNodeId?: string;
   onSelect: (id: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
+  onAddNode: (kind: NodeKind, position: { x: number; y: number }, group?: string) => void;
+  onAddCommand: (nodeId: string) => void;
+  activeAreaView: AreaView;
+  onActiveAreaViewChange: (view: AreaView) => void;
+  onCreateArea: (displayName: string) => string | undefined;
+  onRenameArea: (name: string, displayName: string) => void;
+  onDeleteArea: (name: string) => void;
+  onMoveNodeToArea: (nodeId: string, group?: string) => void;
   onAddRelation: (sourceId: string, targetId: string, kind: RelationKind, label?: string) => void;
   onUpdateRelation: (relationId: string, kind: RelationKind, label?: string) => void;
   onDeleteRelation: (relationId: string) => void;
@@ -48,7 +81,16 @@ export function MachineCanvas({
   const [selectedRelationId, setSelectedRelationId] = useState<string>();
   const [editKind, setEditKind] = useState<RelationKind>();
   const [editLabel, setEditLabel] = useState("");
+  const [paletteDragOver, setPaletteDragOver] = useState(false);
+  const [nodeContextMenu, setNodeContextMenu] = useState<NodeContextMenuState>();
+  const [zoom, setZoom] = useState(1);
+  const [creatingArea, setCreatingArea] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
+  const [managingArea, setManagingArea] = useState(false);
+  const [areaNameDraft, setAreaNameDraft] = useState("");
   const drag = useRef<DragState | undefined>(undefined);
+  const paletteDragDepth = useRef(0);
+  const shellRef = useRef<HTMLElement | null>(null);
 
   const layouts = useMemo(() => {
     const map = new Map<string, NodeLayout>();
@@ -62,12 +104,36 @@ export function MachineCanvas({
     return map;
   }, [document]);
 
+  const groups = useMemo(() => getLayoutGroups(document), [document]);
+  const activeGroupName = groupNameFromAreaView(activeAreaView);
+  const activeGroup = groups.find((group) => group.name.toLowerCase() === activeGroupName?.toLowerCase());
+  const unassignedCount = document.nodes.filter((node) => !nodeGroup(document, node.id)).length;
+  const visibleNodes = useMemo(
+    () => document.nodes.filter((node) => nodeMatchesArea(document, node.id, activeAreaView)),
+    [activeAreaView, document],
+  );
+  const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
+  const visibleRelations = useMemo(
+    () => document.relations.filter((relation) =>
+      visibleNodeIds.has(relation.sourceNodeId) && visibleNodeIds.has(relation.targetNodeId)),
+    [document.relations, visibleNodeIds],
+  );
+  const crossAreaRelations = useMemo(
+    () => activeAreaView === "all"
+      ? []
+      : document.relations.filter((relation) =>
+        visibleNodeIds.has(relation.sourceNodeId) !== visibleNodeIds.has(relation.targetNodeId)),
+    [activeAreaView, document.relations, visibleNodeIds],
+  );
+
   const sourceNode = document.nodes.find((node) => node.id === connectSourceId);
   const targetNode = document.nodes.find((node) => node.id === connectTargetId);
   const connectKinds = connectSourceId && connectTargetId
     ? getAvailableRelationKinds(document, connectSourceId, connectTargetId)
     : [];
   const selectedRelation = document.relations.find((relation) => relation.id === selectedRelationId);
+  const contextNode = document.nodes.find((node) => node.id === nodeContextMenu?.nodeId);
+  const contextNodeCanStartRelation = contextNode ? hasConnectableTarget(document, contextNode.id) : false;
   const editKinds = selectedRelation
     ? getAvailableRelationKinds(
       document,
@@ -84,9 +150,39 @@ export function MachineCanvas({
       setConnectTargetId(undefined);
       setConnectKind(undefined);
       setSelectedRelationId(undefined);
+      setNodeContextMenu(undefined);
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
+  }, []);
+
+  useEffect(() => {
+    const closeContextMenu = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest(".node-context-menu")) return;
+      setNodeContextMenu(undefined);
+    };
+    const closeContextMenuUnconditionally = () => setNodeContextMenu(undefined);
+    window.addEventListener("pointerdown", closeContextMenu);
+    window.addEventListener("resize", closeContextMenuUnconditionally);
+    window.addEventListener("blur", closeContextMenuUnconditionally);
+    return () => {
+      window.removeEventListener("pointerdown", closeContextMenu);
+      window.removeEventListener("resize", closeContextMenuUnconditionally);
+      window.removeEventListener("blur", closeContextMenuUnconditionally);
+    };
+  }, []);
+
+  useEffect(() => {
+    const resetPaletteDrag = () => {
+      paletteDragDepth.current = 0;
+      setPaletteDragOver(false);
+    };
+    window.addEventListener("dragend", resetPaletteDrag);
+    window.addEventListener("drop", resetPaletteDrag);
+    return () => {
+      window.removeEventListener("dragend", resetPaletteDrag);
+      window.removeEventListener("drop", resetPaletteDrag);
+    };
   }, []);
 
   useEffect(() => {
@@ -94,6 +190,12 @@ export function MachineCanvas({
     const relation = document.relations.find((item) => item.id === selectedRelationId);
     if (!relation) setSelectedRelationId(undefined);
   }, [document.relations, selectedRelationId]);
+
+  useEffect(() => {
+    setManagingArea(false);
+    setAreaNameDraft(activeGroup?.displayName ?? "");
+    setNodeContextMenu(undefined);
+  }, [activeAreaView, activeGroup?.displayName]);
 
   const cancelConnect = () => {
     setConnectSourceId(undefined);
@@ -141,23 +243,127 @@ export function MachineCanvas({
     setSelectedRelationId(undefined);
   };
 
+  const changeZoom = (nextZoom: number) => {
+    setZoom(Math.min(1.6, Math.max(0.5, Math.round(nextZoom * 10) / 10)));
+    setNodeContextMenu(undefined);
+  };
+
+  const createArea = () => {
+    const name = onCreateArea(newAreaName);
+    if (!name) return;
+    setNewAreaName("");
+    setCreatingArea(false);
+    onActiveAreaViewChange(areaViewForGroup(name));
+  };
+
   return (
-    <main className="canvas-shell">
+    <main className="canvas-shell" ref={shellRef}>
       <div className="canvas-toolbar">
-        <div>
-          <strong>Machine canvas</strong>
-          <span>{connectSourceId ? "Choose a highlighted target node" : "Drag nodes or connect them directly"}</span>
+        <div className="canvas-toolbar__top">
+          <div>
+            <strong>Machine canvas</strong>
+            <span>{paletteDragOver
+              ? "Drop the component at the desired position"
+              : connectSourceId
+                ? "Choose a highlighted target node; switch areas if necessary"
+                : "Drag components onto the canvas; right-click nodes for actions"}</span>
+          </div>
+          <div className="canvas-toolbar__controls">
+            <label className="canvas-toggle">
+              <input type="checkbox" checked={showRelations} onChange={(event) => setShowRelations(event.target.checked)} />
+              Relations
+            </label>
+            <div className="canvas-zoom" aria-label="Canvas zoom">
+              <button type="button" title="Zoom out" onClick={() => changeZoom(zoom - .1)}>−</button>
+              <button type="button" title="Reset canvas zoom" onClick={() => changeZoom(1)}>{Math.round(zoom * 100)}%</button>
+              <button type="button" title="Zoom in" onClick={() => changeZoom(zoom + .1)}>+</button>
+            </div>
+          </div>
         </div>
-        <label className="canvas-toggle">
-          <input type="checkbox" checked={showRelations} onChange={(event) => setShowRelations(event.target.checked)} />
-          Relations
-        </label>
+        <div className="canvas-area-bar">
+          <div className="canvas-area-tabs" role="tablist" aria-label="Machine areas">
+            <button className={activeAreaView === "all" ? "active" : ""} type="button" role="tab" onClick={() => onActiveAreaViewChange("all")}>All</button>
+            {groups.map((group) => {
+              const view = areaViewForGroup(group.name);
+              return <button className={activeAreaView === view ? "active" : ""} type="button" role="tab" key={group.name} onClick={() => onActiveAreaViewChange(view)}>{group.displayName}</button>;
+            })}
+            {unassignedCount > 0 && <button className={activeAreaView === "unassigned" ? "active" : ""} type="button" role="tab" onClick={() => onActiveAreaViewChange("unassigned")}>Unassigned <span>{unassignedCount}</span></button>}
+          </div>
+          <div className="canvas-area-actions">
+            {activeGroup && <button className="canvas-area-action" type="button" title="Area settings" onClick={() => setManagingArea((current) => !current)}>•••</button>}
+            {creatingArea ? (
+              <div className="canvas-area-create">
+                <input
+                  autoFocus
+                  value={newAreaName}
+                  placeholder="Area name"
+                  aria-label="New area name"
+                  onChange={(event) => setNewAreaName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") createArea();
+                    if (event.key === "Escape") {
+                      setCreatingArea(false);
+                      setNewAreaName("");
+                    }
+                  }}
+                />
+                <button type="button" disabled={!newAreaName.trim()} title="Create area" onClick={createArea}>✓</button>
+                <button type="button" title="Cancel" onClick={() => {
+                  setCreatingArea(false);
+                  setNewAreaName("");
+                }}>×</button>
+              </div>
+            ) : <button className="canvas-area-action canvas-area-action--add" type="button" onClick={() => setCreatingArea(true)}>+ Area</button>}
+          </div>
+        </div>
       </div>
 
-      <div className="canvas-viewport" data-testid="machine-canvas">
-        <div className="canvas-world">
+      <div
+        className={`canvas-viewport ${paletteDragOver ? "canvas-viewport--drop-target" : ""}`}
+        data-testid="machine-canvas"
+        style={{ backgroundSize: `${80 * zoom}px ${80 * zoom}px, ${80 * zoom}px ${80 * zoom}px, ${16 * zoom}px ${16 * zoom}px, ${16 * zoom}px ${16 * zoom}px` }}
+        onScroll={() => setNodeContextMenu(undefined)}
+        onWheel={(event) => {
+          if (!event.ctrlKey) return;
+          event.preventDefault();
+          changeZoom(zoom + (event.deltaY < 0 ? .1 : -.1));
+        }}
+        onDragEnter={(event) => {
+          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          event.preventDefault();
+          paletteDragDepth.current += 1;
+          setPaletteDragOver(true);
+        }}
+        onDragOver={(event) => {
+          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }}
+        onDragLeave={(event) => {
+          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          paletteDragDepth.current = Math.max(0, paletteDragDepth.current - 1);
+          if (paletteDragDepth.current === 0) setPaletteDragOver(false);
+        }}
+        onDrop={(event) => {
+          const kind = readDraggedNodeKind(event.dataTransfer);
+          if (!kind) return;
+          event.preventDefault();
+          paletteDragDepth.current = 0;
+          setPaletteDragOver(false);
+
+          const viewport = event.currentTarget;
+          const bounds = viewport.getBoundingClientRect();
+          const rawX = (event.clientX - bounds.left + viewport.scrollLeft) / zoom - defaultWidth / 2;
+          const rawY = (event.clientY - bounds.top + viewport.scrollTop) / zoom - defaultHeight / 2;
+          const x = Math.min(canvasWidth - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
+          const y = Math.min(canvasHeight - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
+          onAddNode(kind, { x, y }, activeGroupName);
+        }}
+      >
+        <div className="canvas-stage" style={{ width: canvasWidth * zoom, height: canvasHeight * zoom }}>
+        <div className="canvas-world" style={{ transform: `scale(${zoom})` }}>
           {showRelations && (
-            <svg className="relation-layer" width="1800" height="1100" aria-label="Node relations">
+            <svg className="relation-layer" width={canvasWidth} height={canvasHeight} aria-label="Node relations">
               <defs>
                 {(["contains", "commands", "observes", "usesRecipe", "usesLink"] as RelationKind[]).map((kind) => (
                   <marker
@@ -174,7 +380,7 @@ export function MachineCanvas({
                   </marker>
                 ))}
               </defs>
-              {document.relations.map((relation) => {
+              {visibleRelations.map((relation) => {
                 const source = layouts.get(relation.sourceNodeId);
                 const target = layouts.get(relation.targetNodeId);
                 if (!source || !target) return null;
@@ -208,7 +414,7 @@ export function MachineCanvas({
             </svg>
           )}
 
-          {document.nodes.map((node) => {
+          {visibleNodes.map((node) => {
             const layout = layouts.get(node.id)!;
             const selected = selectedNodeId === node.id;
             const source = connectSourceId === node.id;
@@ -237,6 +443,20 @@ export function MachineCanvas({
                   width: layout.width ?? defaultWidth,
                   minHeight: layout.height ?? defaultHeight,
                 }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const bounds = shellRef.current?.getBoundingClientRect();
+                  if (!bounds) return;
+                  const menuWidth = 246;
+                  const menuHeight = 208;
+                  setNodeContextMenu({
+                    nodeId: node.id,
+                    x: Math.max(8, Math.min(event.clientX - bounds.left, bounds.width - menuWidth - 8)),
+                    y: Math.max(50, Math.min(event.clientY - bounds.top, bounds.height - menuHeight - 8)),
+                  });
+                  onSelect(node.id);
+                }}
                 onPointerDown={(event) => {
                   if (event.button !== 0) return;
                   if (connectSourceId) {
@@ -255,8 +475,10 @@ export function MachineCanvas({
                 }}
                 onPointerMove={(event) => {
                   if (!drag.current || drag.current.nodeId !== node.id) return;
-                  const x = Math.max(12, Math.round((drag.current.startX + event.clientX - drag.current.startPointerX) / 4) * 4);
-                  const y = Math.max(12, Math.round((drag.current.startY + event.clientY - drag.current.startPointerY) / 4) * 4);
+                  const rawX = drag.current.startX + (event.clientX - drag.current.startPointerX) / zoom;
+                  const rawY = drag.current.startY + (event.clientY - drag.current.startPointerY) / zoom;
+                  const x = Math.min(canvasWidth - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
+                  const y = Math.min(canvasHeight - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
                   onMoveNode(node.id, x, y);
                 }}
                 onPointerUp={() => { drag.current = undefined; }}
@@ -294,15 +516,121 @@ export function MachineCanvas({
             );
           })}
 
-          {document.nodes.length === 0 && (
+          {visibleNodes.length === 0 && (
             <div className="canvas-empty">
-              <span>+</span>
-              <strong>Add a component from the palette</strong>
-              <p>The semantic validator remains active while the model is incomplete.</p>
+              <span>↓</span>
+              <strong>{activeAreaView === "all" ? "Drag a component onto the canvas" : "This area is empty"}</strong>
+              <p>Drop a component here or move an existing node into this area.</p>
             </div>
           )}
         </div>
+        </div>
       </div>
+
+      {paletteDragOver && <div className="canvas-drop-hint">Drop to place component</div>}
+
+      {activeGroup && managingArea && (
+        <div className="area-manager-popover">
+          <div>
+            <span className="eyebrow">Area settings</span>
+            <strong>{activeGroup.name}</strong>
+          </div>
+          <label className="field">
+            <span className="field__label">Display name</span>
+            <input className="input" autoFocus value={areaNameDraft} onChange={(event) => setAreaNameDraft(event.target.value)} />
+          </label>
+          <div className="relationship-popover__actions">
+            <button className="button button--danger button--compact" type="button" onClick={() => {
+              setManagingArea(false);
+              onDeleteArea(activeGroup.name);
+            }}>Remove area</button>
+            <button className="button button--secondary button--compact" type="button" onClick={() => setManagingArea(false)}>Cancel</button>
+            <button className="button button--primary button--compact" type="button" disabled={!areaNameDraft.trim()} onClick={() => {
+              onRenameArea(activeGroup.name, areaNameDraft);
+              setManagingArea(false);
+            }}>Save</button>
+          </div>
+        </div>
+      )}
+
+      {showRelations && crossAreaRelations.length > 0 && (
+        <div className="cross-area-relations" aria-label="Cross-area relations">
+          <span className="cross-area-relations__title">Cross-area</span>
+          {crossAreaRelations.slice(0, 5).map((relation) => {
+            const sourceVisible = visibleNodeIds.has(relation.sourceNodeId);
+            const localNode = document.nodes.find((node) => node.id === (sourceVisible ? relation.sourceNodeId : relation.targetNodeId));
+            const remoteNode = document.nodes.find((node) => node.id === (sourceVisible ? relation.targetNodeId : relation.sourceNodeId));
+            if (!localNode || !remoteNode) return null;
+            const remoteGroup = nodeGroup(document, remoteNode.id);
+            const remoteView: AreaView = remoteGroup ? areaViewForGroup(remoteGroup) : "unassigned";
+            const remoteArea = groups.find((group) => group.name.toLowerCase() === remoteGroup?.toLowerCase())?.displayName ?? "Unassigned";
+            return (
+              <button type="button" key={relation.id} title={`Open ${remoteArea}`} onClick={() => {
+                onActiveAreaViewChange(remoteView);
+                onSelect(remoteNode.id);
+              }}>
+                <i className={`relation-legend__line relation-legend__line--${relation.kind}`} />
+                <span><strong>{localNode.displayName}</strong> {sourceVisible ? "→" : "←"} {remoteNode.displayName}<small>{getRelationDefinition(relation.kind).label} · {remoteArea}</small></span>
+              </button>
+            );
+          })}
+          {crossAreaRelations.length > 5 && <small>+{crossAreaRelations.length - 5} more</small>}
+        </div>
+      )}
+
+      {contextNode && nodeContextMenu && (
+        <div
+          className="node-context-menu"
+          style={{ left: nodeContextMenu.x, top: nodeContextMenu.y }}
+          role="menu"
+          aria-label={`${contextNode.displayName} actions`}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <div className="node-context-menu__header">
+            <strong>{contextNode.displayName}</strong>
+            <span>{nodeKindLabels[contextNode.kind]}</span>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!contextNodeCanStartRelation}
+            title={contextNodeCanStartRelation ? "Choose a valid target and relationship type" : "No valid relationship target is available"}
+            onClick={() => {
+              setNodeContextMenu(undefined);
+              beginConnect(contextNode.id);
+            }}
+          >
+            <span className="node-context-menu__icon node-context-menu__icon--relation">↗</span>
+            <span><strong>Create relationship</strong><small>Select a valid target node</small></span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!contextNode.generate.commandEnum}
+            title={contextNode.generate.commandEnum ? "Add a command and open the command editor" : "Command generation is disabled for this node type"}
+            onClick={() => {
+              setNodeContextMenu(undefined);
+              onAddCommand(contextNode.id);
+            }}
+          >
+            <span className="node-context-menu__icon node-context-menu__icon--command">+</span>
+            <span><strong>Add command</strong><small>{contextNode.generate.commandEnum ? "Open it in the inspector" : "Unavailable for this node type"}</small></span>
+          </button>
+          <label className="node-context-menu__area">
+            <span>Move to area</span>
+            <select
+              value={nodeGroup(document, contextNode.id) ?? ""}
+              onChange={(event) => {
+                setNodeContextMenu(undefined);
+                onMoveNodeToArea(contextNode.id, event.target.value || undefined);
+              }}
+            >
+              <option value="">Unassigned</option>
+              {groups.map((group) => <option value={group.name} key={group.name}>{group.displayName}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
 
       {showRelations && (
         <div className="relation-legend" aria-label="Relation legend">
