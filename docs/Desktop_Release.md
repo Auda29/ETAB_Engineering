@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.4
+.\publish-installer-win-x64.ps1 -Version 0.1.0.5
 ```
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
@@ -51,10 +51,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.4-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.4-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.4-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.4-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.5-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.5-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.5-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.5-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -78,11 +78,11 @@ The release Setup EXE is not currently Authenticode-signed. Windows can therefor
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.4`, publish with:
+For version `0.1.0.5`, publish with:
 
 ```powershell
-git tag -a v0.1.0.4 -m "ETAB Engineering v0.1.0.4"
-git push origin v0.1.0.4
+git tag -a v0.1.0.5 -m "ETAB Engineering v0.1.0.5"
+git push origin v0.1.0.5
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -174,3 +174,23 @@ The installer build produced a 55,847,795-byte Setup EXE with this SHA-256 value
 Both checksum sidecars were generated with the release files. The isolated installer test installed the application into a temporary per-user directory, ran the packaged desktop smoke test successfully, uninstalled the application, and verified cleanup. No interactive browser, editor window, or Playwright automation was used. TwinCAT XAE open, PLC compile, simulation, and machine acceptance remain separate manual engineering tests.
 
 The `v0.1.0.4` tag workflow builds the final portable ZIP and installer from the release commit, repeats the complete automated suite and isolated installer smoke test, and publishes the authoritative final assets and checksum sidecars to the GitHub Release.
+
+## Validation Record for v0.1.0.5
+
+Local validation on 2026-08-14 passed the TypeScript check, all 59 core tests, all 8 editor-service tests, the complete Release publish, and the packaged desktop smoke test. This release exposes rename and remove actions directly on every named area folder in the project tree. Renaming preserves the stable internal area name, while removing an area keeps all nodes and relationships and moves its nodes to **Unassigned** after confirmation. The inline controls support both dark and light themes; **Unassigned** itself is intentionally not editable.
+
+The 78,809,587-byte portable ZIP completed the 15-artifact BrushMachine preview and lossless save/reopen smoke test. Its local SHA-256 value is:
+
+```text
+1f67b23d56d69d032ffa396c227fde95d804c4c8603a8883afa728fad4592136
+```
+
+The installer build produced a 55,855,364-byte Setup EXE with this local SHA-256 value:
+
+```text
+3caa85030f8cd7e3aead96deb98474335ea5edf9718c187744b32c834fdf72d4
+```
+
+Both checksum sidecars were generated with the release files. The isolated installer test installed the application into a temporary per-user directory, ran the packaged desktop smoke test successfully, uninstalled the application, and verified cleanup. No interactive browser, editor window, or Playwright automation was used.
+
+The `v0.1.0.5` tag workflow builds the authoritative portable ZIP and installer from the release commit, repeats the automated suite and isolated installer smoke test, and publishes both distributions plus their checksum sidecars to the GitHub Release.

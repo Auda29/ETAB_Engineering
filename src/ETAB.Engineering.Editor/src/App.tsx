@@ -541,7 +541,15 @@ export default function App() {
       <div className="workspace">
         <aside className="sidebar">
           <Palette onAdd={(kind) => addNode(kind, undefined, groupNameFromAreaView(activeAreaView))} />
-          <ProjectTree document={document} selectedNodeId={selectedNodeId} activeAreaView={activeAreaView} onSelect={selectTreeNode} onSelectArea={changeActiveAreaView} />
+          <ProjectTree
+            document={document}
+            selectedNodeId={selectedNodeId}
+            activeAreaView={activeAreaView}
+            onSelect={selectTreeNode}
+            onSelectArea={changeActiveAreaView}
+            onRenameArea={renameArea}
+            onDeleteArea={deleteArea}
+          />
         </aside>
         <MachineCanvas
           document={document}

@@ -86,14 +86,26 @@ code { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
 .tree { min-height: 0; flex: 1; overflow: auto; margin: 0 -6px; }
 .tree-section { margin-bottom: 3px; }
 .tree-folder { display: grid; grid-template-columns: 1fr 25px; align-items: center; margin: 0 2px; border-radius: 5px; }
+.tree-folder--editable { grid-template-columns: 1fr 25px 25px; }
 .tree-folder:hover { background: #172223; }
 .tree-folder--active { background: #1a2c2b; box-shadow: inset 2px 0 var(--teal); }
 .tree-folder__main { display: grid; min-width: 0; grid-template-columns: 18px 1fr auto; align-items: center; gap: 5px; padding: 7px 5px 7px 8px; color: #aabbb8; text-align: left; background: transparent; border: 0; cursor: pointer; }
 .tree-folder__main strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .tree-folder__main > span:last-child { color: #627572; font-size: 8px; }
 .tree-folder__icon { color: #62a99d; font-size: 10px; }
-.tree-folder__toggle { width: 23px; height: 23px; padding: 0; color: #6f827f; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
-.tree-folder__toggle:hover { color: #d7e2df; background: #223132; }
+.tree-folder__settings, .tree-folder__toggle { width: 23px; height: 23px; padding: 0; color: #6f827f; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
+.tree-folder__settings { font-size: 9px; letter-spacing: -1px; }
+.tree-folder__settings:hover, .tree-folder__settings--active, .tree-folder__toggle:hover { color: #d7e2df; background: #223132; }
+.tree-area-editor { display: flex; flex-direction: column; gap: 7px; margin: 2px 7px 6px 10px; padding: 8px; background: #121d1e; border: 1px solid #304342; border-radius: 6px; box-shadow: inset 2px 0 var(--teal-dim); }
+.tree-area-editor label, .tree-area-editor label span { display: block; }
+.tree-area-editor label span { margin-bottom: 4px; color: #718582; font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.tree-area-editor input { width: 100%; height: 27px; padding: 0 7px; color: #dce7e4; background: #0d1415; border: 1px solid #35504e; border-radius: 4px; font-size: 9px; }
+.tree-area-editor__actions { display: flex; justify-content: flex-end; gap: 4px; }
+.tree-area-editor__actions button { height: 24px; padding: 0 7px; color: #9badaa; background: #172223; border: 1px solid #304342; border-radius: 4px; font-size: 8px; cursor: pointer; }
+.tree-area-editor__actions button:hover:not(:disabled) { color: #e5f0ed; border-color: var(--teal-dim); }
+.tree-area-editor__actions button[type="submit"] { color: #09221e; background: var(--teal); border-color: var(--teal); font-weight: 800; }
+.tree-area-editor__actions button.tree-area-editor__delete { margin-right: auto; color: #efaaa3; border-color: #613c3b; }
+.tree-area-editor__actions button:disabled { opacity: .35; cursor: default; }
 .tree-folder__empty { padding: 6px 10px 9px 28px; color: #647673; font-size: 8px; font-style: italic; }
 .tree-row { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 8px; text-align: left; background: transparent; border: 0; border-radius: 5px; cursor: pointer; }
 .tree-row--grouped { position: relative; padding-top: 6px; padding-bottom: 6px; }
@@ -428,6 +440,14 @@ code { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
 [data-theme="light"] .tree-row small,
 [data-theme="light"] .tree-folder__empty { color: #6b817c; }
 [data-theme="light"] .tree-row--grouped::before { background: #d6e1de; }
+[data-theme="light"] .tree-folder__settings:hover,
+[data-theme="light"] .tree-folder__settings--active,
+[data-theme="light"] .tree-folder__toggle:hover { color: #24453e; background: #dbe8e5; }
+[data-theme="light"] .tree-area-editor { background: #f3f8f6; border-color: #b7c8c4; }
+[data-theme="light"] .tree-area-editor input { color: #253633; background: #fff; border-color: #b7c8c4; }
+[data-theme="light"] .tree-area-editor__actions button { color: #405853; background: #fff; border-color: #b8c8c4; }
+[data-theme="light"] .tree-area-editor__actions button[type="submit"] { color: #fff; background: #147b69; border-color: #147b69; }
+[data-theme="light"] .tree-area-editor__actions button.tree-area-editor__delete { color: #9c3f38; border-color: #d7aaa6; }
 [data-theme="light"] .canvas-shell { background: #e7efed; }
 [data-theme="light"] .canvas-viewport { background-color: #edf3f1; background-image: linear-gradient(rgb(53 91 84 / 13%) 1px, transparent 1px), linear-gradient(90deg, rgb(53 91 84 / 13%) 1px, transparent 1px), linear-gradient(rgb(53 91 84 / 7%) 1px, transparent 1px), linear-gradient(90deg, rgb(53 91 84 / 7%) 1px, transparent 1px); }
 [data-theme="light"] .canvas-viewport--drop-target { background-color: #dcf0eb; }

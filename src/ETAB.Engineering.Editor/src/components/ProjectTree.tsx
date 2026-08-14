@@ -9,7 +9,12 @@ import type { EtabNode, EtabProjectDocument } from "../model";
 import { nodeKindLabels } from "../modelFactory";
 
 interface TreeRow { node: EtabNode; depth: number }
-interface TreeSection { view: AreaView; label: string; rows: TreeRow[] }
+interface TreeSection { view: AreaView; label: string; rows: TreeRow[]; groupName?: string }
+
+interface AreaEditorState {
+  name: string;
+  displayName: string;
+}
 
 function createTreeRows(document: EtabProjectDocument, nodes: EtabNode[]): TreeRow[] {
   const nodeIds = new Set(nodes.map((node) => node.id));
@@ -45,20 +50,26 @@ export function ProjectTree({
   activeAreaView,
   onSelect,
   onSelectArea,
+  onRenameArea,
+  onDeleteArea,
 }: {
   document: EtabProjectDocument;
   selectedNodeId?: string;
   activeAreaView: AreaView;
   onSelect: (id?: string) => void;
   onSelectArea: (view: AreaView) => void;
+  onRenameArea: (name: string, displayName: string) => void;
+  onDeleteArea: (name: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<AreaView>>(() => new Set());
+  const [areaEditor, setAreaEditor] = useState<AreaEditorState>();
   const groups = useMemo(() => getLayoutGroups(document), [document]);
   const sections = useMemo<TreeSection[]>(() => {
     const groupSections: TreeSection[] = groups.map((group) => ({
       view: areaViewForGroup(group.name),
       label: group.displayName,
+      groupName: group.name,
       rows: createTreeRows(document, document.nodes.filter((node) =>
         nodeGroup(document, node.id)?.toLowerCase() === group.name.toLowerCase())),
     }));
@@ -88,6 +99,7 @@ export function ProjectTree({
       <div className="section-heading">
         <span>Machine structure</span>
         <button className="link-button" onClick={() => {
+          setAreaEditor(undefined);
           onSelect(undefined);
           onSelectArea("all");
         }}>Project</button>
@@ -106,14 +118,34 @@ export function ProjectTree({
             : section.rows;
           if (normalizedQuery && rows.length === 0) return null;
           const isCollapsed = collapsed.has(section.view) && !normalizedQuery;
+          const groupName = section.groupName;
+          const editedArea = areaEditor?.name.toLowerCase() === groupName?.toLowerCase()
+            ? areaEditor
+            : undefined;
           return (
             <div className="tree-section" key={section.view}>
-              <div className={`tree-folder ${activeAreaView === section.view ? "tree-folder--active" : ""}`}>
+              <div className={`tree-folder ${groupName ? "tree-folder--editable" : ""} ${activeAreaView === section.view ? "tree-folder--active" : ""}`}>
                 <button className="tree-folder__main" type="button" onClick={() => onSelectArea(section.view)}>
                   <span className="tree-folder__icon">▰</span>
                   <strong>{section.label}</strong>
                   <span>{section.rows.length}</span>
                 </button>
+                {groupName && (
+                  <button
+                    className={`tree-folder__settings ${editedArea ? "tree-folder__settings--active" : ""}`}
+                    type="button"
+                    title={`Rename or remove ${section.label}`}
+                    aria-label={`Rename or remove ${section.label} area`}
+                    aria-expanded={Boolean(editedArea)}
+                    onClick={() => {
+                      onSelectArea(section.view);
+                      setAreaEditor(editedArea ? undefined : {
+                        name: groupName,
+                        displayName: section.label,
+                      });
+                    }}
+                  >•••</button>
+                )}
                 <button
                   className="tree-folder__toggle"
                   type="button"
@@ -122,6 +154,35 @@ export function ProjectTree({
                   onClick={() => toggleSection(section.view)}
                 >{isCollapsed ? "›" : "⌄"}</button>
               </div>
+              {editedArea && groupName && (
+                <form className="tree-area-editor" onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!editedArea.displayName.trim()) return;
+                  onRenameArea(groupName, editedArea.displayName);
+                  setAreaEditor(undefined);
+                }}>
+                  <label>
+                    <span>Area name</span>
+                    <input
+                      autoFocus
+                      value={editedArea.displayName}
+                      aria-label={`${section.label} area name`}
+                      onChange={(event) => setAreaEditor({ ...editedArea, displayName: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") setAreaEditor(undefined);
+                      }}
+                    />
+                  </label>
+                  <div className="tree-area-editor__actions">
+                    <button className="tree-area-editor__delete" type="button" onClick={() => {
+                      setAreaEditor(undefined);
+                      onDeleteArea(groupName);
+                    }}>Remove</button>
+                    <button type="button" onClick={() => setAreaEditor(undefined)}>Cancel</button>
+                    <button type="submit" disabled={!editedArea.displayName.trim()}>Save</button>
+                  </div>
+                </form>
+              )}
               {!isCollapsed && rows.map(({ node, depth }) => (
                 <button
                   data-testid={`tree-node-${node.name}`}
