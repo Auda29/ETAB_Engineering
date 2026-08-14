@@ -19,9 +19,9 @@ The service transports the complete JSON document rather than a reduced editor D
 
 The implemented editor provides:
 
-- explicit startup actions without an implicitly opened example;
-- a Core-validated minimal New Project template with fresh stable IDs;
-- native Windows Open, first-Save, and Save As dialogs in the desktop application, plus manual-path fallback for development browsers;
+- an explicit TwinCAT-first startup without an implicitly opened example;
+- a Core-validated minimal companion model with fresh stable IDs, derived automatically from the selected `.plcproj`;
+- native Windows `.plcproj` and existing-model selection with read-only resolved paths and filenames;
 - project save, dirty-state protection, `Ctrl+S`, and save validation feedback;
 - a drag-and-drop palette for Application Unit, Command Unit, Recipe Manager, and Machine Link nodes, with keyboard placement as an accessibility fallback;
 - a searchable hierarchy and a draggable machine canvas with directed SVG relationship paths;
@@ -42,7 +42,9 @@ The service tests prove that:
 2. a full JSON document round-trips losslessly at the JSON data level;
 3. files are saved as UTF-8 without BOM and with LF line endings;
 4. parseable invalid drafts can be saved together with validation feedback;
-5. the reference preview contains 14 artifacts and does not write them.
+5. the reference preview contains the expected artifacts and does not write them;
+6. selecting an empty `.plcproj` creates and reopens its deterministic companion model;
+7. direct PLC-root generation writes into `DUTs`, `POUs`, and `GVLs` and updates the `.plcproj` transactionally.
 
 The editor passes TypeScript checking and a production Vite build.
 
@@ -65,9 +67,19 @@ The original BrushMachine reference file was not modified by this acceptance flo
 
 ## File Workflow Follow-up – 2026-08-13
 
-The first independent UI-validation pass identified that the editor always opened the same bundled BrushMachine path, required manual path editing, and offered neither New Project nor Save As. The desktop workflow now starts without a loaded document and provides explicit **New Project**, **Open Project**, and optional **Open BrushMachine example** actions. The top bar provides **New**, **Open**, **Save**, and **Save As**. Desktop file selection is implemented through native Windows dialogs; no arbitrary path must be typed.
+The first independent UI-validation pass identified that the editor always opened the same bundled BrushMachine path and required manual path editing. The initial follow-up introduced generic **New Project**, **Open**, and **Save As** actions through native dialogs. The later TwinCAT-first follow-up below supersedes that generic new/save-as workflow for the production desktop: a `.plcproj` selection now determines the companion model and all target paths without typed values.
 
 The minimal template is produced by the .NET service and validated through the shared Core before it reaches the editor. Its automated test proves a valid single-machine model, fresh project and node IDs on every creation, ETAB `0.1.0.3`, five standard commands, and a conflict-free five-artifact preview. The service suite now contains 8 passing tests. TypeScript checking and the complete Release build pass with zero warnings and zero errors. Interactive dialog acceptance remains assigned to the user's UI-validation session; no Playwright test was used.
+
+## TwinCAT-First File Workflow Follow-up – 2026-08-14
+
+The production desktop workflow now begins with an empty PLC project created in TwinCAT. **Connect TwinCAT PLC Project** opens a native `.plcproj` picker. The service validates the selected file and creates or reopens a deterministic companion `<PLC name>.etab.json` in the same directory. For a newly created companion it derives the IEC project name, display name, prefix, namespace, linked PLC filename, project root, and direct-output layout automatically. Reconnecting preserves the existing model and its stable IDs.
+
+The UI no longer accepts typed model paths, save filenames, PLC filenames, target roots, or generation-root values. The top bar and generation panel display the resolved values read-only; PLC project integration is always enabled for the connected workflow. The project inspector also exposes the selected PLC project and output layout as read-only information.
+
+For these linked projects, `project.generation.generatedRoot = "."` is an explicit direct-layout mode. Generated artifacts use the existing TwinCAT hierarchy (`DUTs/Commands`, `DUTs/Requests`, `DUTs/Status`, `POUs`, and `GVLs`) instead of creating an additional `Generated` folder. Transaction and ownership safety remain manifest-based: only planned, manifest-listed ETAB artifacts and project entries are modified, while unrelated files in the same PLC root remain unmanaged.
+
+Automated evidence now consists of all 59 Core tests and 10 service tests. The new end-to-end service test creates an empty `.plcproj`, connects it, previews the direct paths, performs the confirmed transaction, verifies the files in the TwinCAT folders, verifies the matching `.plcproj` include, and proves that no `Generated` directory was created. A second test reconnects the same PLC project and verifies that its project ID is unchanged. TypeScript checking also passes. No browser automation or Playwright run was performed.
 
 ## Relationship Editing Follow-up – 2026-08-14
 
@@ -85,7 +97,7 @@ Verification for this follow-up consists of TypeScript checking, the production 
 
 ## Node Context Menu Follow-up – 2026-08-14
 
-Right-clicking a canvas node now opens a contextual action menu. **Create relationship** enters the existing filtered connection workflow and is disabled when no valid target exists. **Add command** creates the next stable default command, selects the node, and opens the Commands inspector tab; the action is disabled for node configurations without command-enum generation. The menu closes on outside interaction, canvas scrolling, window resize, focus loss, or Escape.
+Right-clicking a canvas node now opens a contextual action menu. **Rename node** opens a compact form for the display name, PLC name, and symbol stem so visual labels, generated instance names, and generated DUT/FB names can be changed together without changing the stable node ID. **Create relationship** enters the existing filtered connection workflow and is disabled when no valid target exists. **Add command** creates the next stable default command, selects the node, and opens the Commands inspector tab; the action is disabled for node configurations without command-enum generation. The menu closes on outside interaction, canvas scrolling, window resize, focus loss, or Escape.
 
 The implementation reuses the existing relation rules and command factory rather than introducing separate context-menu semantics. TypeScript checking, the production editor build, the complete Release solution build, and the packaged application's non-interactive smoke test cover the static and packaging boundary. Interactive right-click acceptance remains part of the user's UI-validation session; no browser automation or Playwright run is used.
 

@@ -118,10 +118,10 @@ function ProjectInspector({
         <Field label="Version"><TextInput value={project.etabLibrary.version} onChange={(event) => update((draft) => { draft.etabLibrary.version = event.target.value; })} /></Field>
         <SectionTitle>TwinCAT target</SectionTitle>
         <Field label="Version"><TextInput value={project.twinCAT.version} onChange={(event) => update((draft) => { draft.twinCAT.version = event.target.value; })} /></Field>
-        <Field label="PLC project" wide><TextInput value={project.twinCAT.plcProject ?? ""} onChange={(event) => update((draft) => setOptional(draft.twinCAT, "plcProject", event.target.value))} /></Field>
+        <Field label="PLC project" hint="Assigned automatically from the selected TwinCAT project." wide><TextInput value={project.twinCAT.plcProject ?? "No PLC project linked"} readOnly /></Field>
         <SectionTitle>Generation boundary</SectionTitle>
-        <Field label="Generated root"><TextInput value={project.generation.generatedRoot} onChange={(event) => update((draft) => { draft.generation.generatedRoot = event.target.value; })} /></Field>
-        <Field label="Application root"><TextInput value={project.generation.applicationRoot} onChange={(event) => update((draft) => { draft.generation.applicationRoot = event.target.value; })} /></Field>
+        <Field label="PLC output" hint="ETAB writes directly to the TwinCAT DUTs, POUs and GVLs folders."><TextInput value={project.generation.generatedRoot === "." ? "TwinCAT PLC project folders" : project.generation.generatedRoot} readOnly /></Field>
+        <Field label="Application root" hint="Managed automatically by the project template."><TextInput value={project.generation.applicationRoot} readOnly /></Field>
         <div className="field field--wide"><Toggle label="Create user stubs" checked={project.generation.createUserStubs} onChange={(checked) => update((draft) => { draft.generation.createUserStubs = checked; })} /><Toggle label="Generate PRG call structure" checked={project.generation.programCallStructure ?? false} onChange={(checked) => update((draft) => { draft.generation.programCallStructure = checked; })} /></div>
       </div>
     </aside>

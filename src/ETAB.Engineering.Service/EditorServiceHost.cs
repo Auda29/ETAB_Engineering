@@ -74,6 +74,25 @@ public static class EditorServiceHost
                 return new ProjectFileDialogResponse(path is null, path);
             }));
 
+        app.MapPost("/api/projects/connect-plc", async (
+            EditorProjectService service,
+            CancellationToken cancellationToken) =>
+            await HandleAsync(async () =>
+            {
+                var dialogs = RequireProjectFileDialogs(projectFileDialogs);
+                var plcProjectPath = await dialogs.SelectTwinCatPlcProjectAsync(
+                    cancellationToken);
+                if (plcProjectPath is null)
+                {
+                    return new ConnectPlcProjectDialogResponse(true, null);
+                }
+
+                var project = await service.ConnectTwinCatPlcProjectAsync(
+                    plcProjectPath,
+                    cancellationToken);
+                return new ConnectPlcProjectDialogResponse(false, project);
+            }));
+
         app.MapPost("/api/dialogs/save-project", async (
             SaveProjectDialogRequest request,
             CancellationToken cancellationToken) =>

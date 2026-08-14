@@ -1,5 +1,6 @@
 import type {
   EtabProjectDocument,
+  ConnectPlcProjectDialogResponse,
   GenerateProjectResponse,
   NewProjectResponse,
   OpenProjectResponse,
@@ -27,6 +28,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const editorApi = {
   session: (signal?: AbortSignal) => request<SessionResponse>("/api/session", { signal }),
   createNew: () => request<NewProjectResponse>("/api/projects/new", {
+    method: "POST",
+  }),
+  connectPlcProject: () => request<ConnectPlcProjectDialogResponse>("/api/projects/connect-plc", {
     method: "POST",
   }),
   chooseOpenProject: () => request<ProjectFileDialogResponse>("/api/dialogs/open-project", {

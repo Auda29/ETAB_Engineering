@@ -36,7 +36,9 @@ internal static class GenerationPathResolver
                 .Replace('\\', Path.DirectorySeparatorChar)
                 .Replace('/', Path.DirectorySeparatorChar);
 
-            if (ContainsTraversalSegment(normalizedConfiguredRoot))
+            var usesProjectRoot = normalizedConfiguredRoot == ".";
+
+            if (!usesProjectRoot && ContainsTraversalSegment(normalizedConfiguredRoot))
             {
                 error = "project.generation.generatedRoot cannot contain '.' or '..' path segments.";
                 return false;
@@ -48,13 +50,13 @@ internal static class GenerationPathResolver
                 return false;
             }
 
-            var resolvedGeneratedRoot = Path.GetFullPath(
-                normalizedConfiguredRoot,
-                resolvedProjectRoot);
+            var resolvedGeneratedRoot = usesProjectRoot
+                ? resolvedProjectRoot
+                : Path.GetFullPath(normalizedConfiguredRoot, resolvedProjectRoot);
 
-            if (!IsStrictDescendant(resolvedGeneratedRoot, resolvedProjectRoot))
+            if (!usesProjectRoot && !IsStrictDescendant(resolvedGeneratedRoot, resolvedProjectRoot))
             {
-                error = "project.generation.generatedRoot must resolve to a child directory of the project root.";
+                error = "project.generation.generatedRoot must resolve to the project root or one of its child directories.";
                 return false;
             }
 

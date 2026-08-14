@@ -125,6 +125,84 @@ public sealed class EditorProjectService
         return new NewProjectResponse(document, validation);
     }
 
+    public async Task<ConnectedPlcProjectResponse> ConnectTwinCatPlcProjectAsync(
+        string plcProjectPath,
+        CancellationToken cancellationToken = default)
+    {
+        var fullPlcProjectPath = ResolveTwinCatPlcProjectPath(plcProjectPath);
+        var projectRoot = Path.GetDirectoryName(fullPlcProjectPath)!;
+        var plcProjectFileName = Path.GetFileName(fullPlcProjectPath);
+        var plcProjectName = Path.GetFileNameWithoutExtension(fullPlcProjectPath);
+        var etabProjectPath = Path.Combine(projectRoot, $"{plcProjectName}.etab.json");
+
+        if (File.Exists(etabProjectPath))
+        {
+            var opened = await OpenAsync(etabProjectPath, cancellationToken);
+            var configuredPlcProject = opened.Document["project"]?["twinCAT"]?["plcProject"]?
+                .GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(configuredPlcProject) &&
+                !string.Equals(
+                    configuredPlcProject,
+                    plcProjectFileName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new EditorRequestException(
+                    "PLC_PROJECT_MODEL_CONFLICT",
+                    $"The companion ETAB model is linked to '{configuredPlcProject}', not '{plcProjectFileName}'.");
+            }
+
+            var document = opened.Document.DeepClone();
+            var changed = string.IsNullOrWhiteSpace(configuredPlcProject);
+            document["project"]!["twinCAT"]!["plcProject"] = plcProjectFileName;
+
+            var generatedRoot = document["project"]!["generation"]!["generatedRoot"]!
+                .GetValue<string>();
+            if (string.Equals(generatedRoot, "Generated", StringComparison.OrdinalIgnoreCase) &&
+                !Directory.Exists(Path.Combine(projectRoot, generatedRoot)))
+            {
+                document["project"]!["generation"]!["generatedRoot"] = ".";
+                changed = true;
+            }
+
+            var validation = opened.Validation;
+            if (changed)
+            {
+                var saved = await SaveAsync(etabProjectPath, document, cancellationToken);
+                validation = saved.Validation;
+            }
+
+            return new ConnectedPlcProjectResponse(
+                etabProjectPath,
+                projectRoot,
+                fullPlcProjectPath,
+                false,
+                document,
+                validation);
+        }
+
+        var created = CreateNew();
+        var newDocument = created.Document.DeepClone();
+        var iecProjectName = ToIecIdentifier(plcProjectName);
+        newDocument["project"]!["name"] = iecProjectName;
+        newDocument["project"]!["displayName"] = Truncate(plcProjectName, 160);
+        newDocument["project"]!["prefix"] = ToProjectPrefix(plcProjectName);
+        newDocument["project"]!["namespace"] = iecProjectName;
+        newDocument["project"]!["twinCAT"]!["plcProject"] = plcProjectFileName;
+        newDocument["project"]!["generation"]!["generatedRoot"] = ".";
+
+        var savedProject = await SaveAsync(
+            etabProjectPath,
+            newDocument,
+            cancellationToken);
+        return new ConnectedPlcProjectResponse(
+            savedProject.Path,
+            savedProject.ProjectRoot,
+            fullPlcProjectPath,
+            true,
+            newDocument,
+            savedProject.Validation);
+    }
+
     public async Task<OpenProjectResponse> OpenAsync(
         string path,
         CancellationToken cancellationToken = default)
@@ -505,6 +583,94 @@ public sealed class EditorProjectService
 
         return fullPath;
     }
+
+    private static string ResolveTwinCatPlcProjectPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new EditorRequestException(
+                "PLC_PROJECT_PATH_REQUIRED",
+                "Select a TwinCAT PLC project file.");
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            throw new EditorRequestException("PLC_PROJECT_PATH_INVALID", exception.Message);
+        }
+
+        if (!fullPath.EndsWith(".plcproj", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new EditorRequestException(
+                "PLC_PROJECT_EXTENSION",
+                "Select a TwinCAT .plcproj file.");
+        }
+        if (!File.Exists(fullPath))
+        {
+            throw new EditorRequestException(
+                "PLC_PROJECT_NOT_FOUND",
+                $"The TwinCAT PLC project does not exist: {fullPath}");
+        }
+
+        RejectReparsePoint(fullPath);
+        var directory = new DirectoryInfo(Path.GetDirectoryName(fullPath)!);
+        if (directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            throw new EditorRequestException(
+                "PLC_PROJECT_REPARSE_POINT",
+                "Linking a PLC project through a file-system reparse point is not allowed.");
+        }
+
+        return fullPath;
+    }
+
+    private static string ToIecIdentifier(string value)
+    {
+        var normalized = new StringBuilder(value.Length + 1);
+        foreach (var character in value)
+        {
+            normalized.Append(char.IsAsciiLetterOrDigit(character) || character == '_'
+                ? character
+                : '_');
+        }
+
+        if (normalized.Length == 0)
+        {
+            normalized.Append("PlcProject");
+        }
+        if (!char.IsAsciiLetter(normalized[0]) && normalized[0] != '_')
+        {
+            normalized.Insert(0, '_');
+        }
+
+        return Truncate(normalized.ToString(), 80);
+    }
+
+    private static string ToProjectPrefix(string value)
+    {
+        var normalized = new string(value
+            .Where(char.IsAsciiLetterOrDigit)
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+        if (string.IsNullOrEmpty(normalized) || !char.IsAsciiLetter(normalized[0]))
+        {
+            normalized = $"P{normalized}";
+        }
+        if (normalized.Length < 2)
+        {
+            normalized += "P";
+        }
+
+        return Truncate(normalized, 16);
+    }
+
+    private static string Truncate(string value, int maximumLength) =>
+        value.Length <= maximumLength ? value : value[..maximumLength];
 
     private string ResolveProjectRoot(string? projectRoot, string? projectPath)
     {

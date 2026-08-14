@@ -153,6 +153,20 @@ export interface ProjectFileDialogResponse {
   path?: string;
 }
 
+export interface ConnectedPlcProjectResponse {
+  path: string;
+  projectRoot: string;
+  plcProjectPath: string;
+  created: boolean;
+  document: EtabProjectDocument;
+  validation: ValidationResponse;
+}
+
+export interface ConnectPlcProjectDialogResponse {
+  canceled: boolean;
+  project?: ConnectedPlcProjectResponse;
+}
+
 export interface NewProjectResponse {
   document: EtabProjectDocument;
   validation: ValidationResponse;

@@ -40,12 +40,19 @@ interface NodeContextMenuState {
   y: number;
 }
 
+interface NodeRenameDraft {
+  displayName: string;
+  name: string;
+  symbolStem: string;
+}
+
 export function MachineCanvas({
   document,
   selectedNodeId,
   onSelect,
   onMoveNode,
   onAddNode,
+  onRenameNode,
   onAddCommand,
   activeAreaView,
   onActiveAreaViewChange,
@@ -62,6 +69,7 @@ export function MachineCanvas({
   onSelect: (id: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
   onAddNode: (kind: NodeKind, position: { x: number; y: number }, group?: string) => void;
+  onRenameNode: (nodeId: string, displayName: string, name: string, symbolStem: string) => void;
   onAddCommand: (nodeId: string) => void;
   activeAreaView: AreaView;
   onActiveAreaViewChange: (view: AreaView) => void;
@@ -83,6 +91,7 @@ export function MachineCanvas({
   const [editLabel, setEditLabel] = useState("");
   const [paletteDragOver, setPaletteDragOver] = useState(false);
   const [nodeContextMenu, setNodeContextMenu] = useState<NodeContextMenuState>();
+  const [nodeRenameDraft, setNodeRenameDraft] = useState<NodeRenameDraft>();
   const [zoom, setZoom] = useState(1);
   const [creatingArea, setCreatingArea] = useState(false);
   const [newAreaName, setNewAreaName] = useState("");
@@ -151,6 +160,7 @@ export function MachineCanvas({
       setConnectKind(undefined);
       setSelectedRelationId(undefined);
       setNodeContextMenu(undefined);
+      setNodeRenameDraft(undefined);
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
@@ -160,8 +170,12 @@ export function MachineCanvas({
     const closeContextMenu = (event: PointerEvent) => {
       if (event.target instanceof Element && event.target.closest(".node-context-menu")) return;
       setNodeContextMenu(undefined);
+      setNodeRenameDraft(undefined);
     };
-    const closeContextMenuUnconditionally = () => setNodeContextMenu(undefined);
+    const closeContextMenuUnconditionally = () => {
+      setNodeContextMenu(undefined);
+      setNodeRenameDraft(undefined);
+    };
     window.addEventListener("pointerdown", closeContextMenu);
     window.addEventListener("resize", closeContextMenuUnconditionally);
     window.addEventListener("blur", closeContextMenuUnconditionally);
@@ -322,7 +336,10 @@ export function MachineCanvas({
         className={`canvas-viewport ${paletteDragOver ? "canvas-viewport--drop-target" : ""}`}
         data-testid="machine-canvas"
         style={{ backgroundSize: `${80 * zoom}px ${80 * zoom}px, ${80 * zoom}px ${80 * zoom}px, ${16 * zoom}px ${16 * zoom}px, ${16 * zoom}px ${16 * zoom}px` }}
-        onScroll={() => setNodeContextMenu(undefined)}
+        onScroll={() => {
+          setNodeContextMenu(undefined);
+          setNodeRenameDraft(undefined);
+        }}
         onWheel={(event) => {
           if (!event.ctrlKey) return;
           event.preventDefault();
@@ -449,7 +466,8 @@ export function MachineCanvas({
                   const bounds = shellRef.current?.getBoundingClientRect();
                   if (!bounds) return;
                   const menuWidth = 246;
-                  const menuHeight = 208;
+                  const menuHeight = 282;
+                  setNodeRenameDraft(undefined);
                   setNodeContextMenu({
                     nodeId: node.id,
                     x: Math.max(8, Math.min(event.clientX - bounds.left, bounds.width - menuWidth - 8)),
@@ -582,53 +600,113 @@ export function MachineCanvas({
         <div
           className="node-context-menu"
           style={{ left: nodeContextMenu.x, top: nodeContextMenu.y }}
-          role="menu"
-          aria-label={`${contextNode.displayName} actions`}
+          role={nodeRenameDraft ? "dialog" : "menu"}
+          aria-label={nodeRenameDraft ? `Rename ${contextNode.displayName}` : `${contextNode.displayName} actions`}
           onContextMenu={(event) => event.preventDefault()}
         >
           <div className="node-context-menu__header">
             <strong>{contextNode.displayName}</strong>
             <span>{nodeKindLabels[contextNode.kind]}</span>
           </div>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!contextNodeCanStartRelation}
-            title={contextNodeCanStartRelation ? "Choose a valid target and relationship type" : "No valid relationship target is available"}
-            onClick={() => {
+          {nodeRenameDraft ? (
+            <form className="node-rename-form" onSubmit={(event) => {
+              event.preventDefault();
+              const displayName = nodeRenameDraft.displayName.trim();
+              const name = nodeRenameDraft.name.trim();
+              const symbolStem = nodeRenameDraft.symbolStem.trim();
+              if (!displayName || !name || !symbolStem) return;
+              onRenameNode(contextNode.id, displayName, name, symbolStem);
+              setNodeRenameDraft(undefined);
               setNodeContextMenu(undefined);
-              beginConnect(contextNode.id);
-            }}
-          >
-            <span className="node-context-menu__icon node-context-menu__icon--relation">↗</span>
-            <span><strong>Create relationship</strong><small>Select a valid target node</small></span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!contextNode.generate.commandEnum}
-            title={contextNode.generate.commandEnum ? "Add a command and open the command editor" : "Command generation is disabled for this node type"}
-            onClick={() => {
-              setNodeContextMenu(undefined);
-              onAddCommand(contextNode.id);
-            }}
-          >
-            <span className="node-context-menu__icon node-context-menu__icon--command">+</span>
-            <span><strong>Add command</strong><small>{contextNode.generate.commandEnum ? "Open it in the inspector" : "Unavailable for this node type"}</small></span>
-          </button>
-          <label className="node-context-menu__area">
-            <span>Move to area</span>
-            <select
-              value={nodeGroup(document, contextNode.id) ?? ""}
-              onChange={(event) => {
-                setNodeContextMenu(undefined);
-                onMoveNodeToArea(contextNode.id, event.target.value || undefined);
-              }}
-            >
-              <option value="">Unassigned</option>
-              {groups.map((group) => <option value={group.name} key={group.name}>{group.displayName}</option>)}
-            </select>
-          </label>
+            }}>
+              <label>
+                <span>Display name</span>
+                <input
+                  autoFocus
+                  value={nodeRenameDraft.displayName}
+                  onChange={(event) => setNodeRenameDraft({ ...nodeRenameDraft, displayName: event.target.value })}
+                />
+                <small>Shown on the canvas and in the project tree.</small>
+              </label>
+              <label>
+                <span>PLC name</span>
+                <input
+                  value={nodeRenameDraft.name}
+                  onChange={(event) => setNodeRenameDraft({ ...nodeRenameDraft, name: event.target.value })}
+                />
+                <small>Used for generated instance names.</small>
+              </label>
+              <label>
+                <span>Symbol stem</span>
+                <input
+                  value={nodeRenameDraft.symbolStem}
+                  onChange={(event) => setNodeRenameDraft({ ...nodeRenameDraft, symbolStem: event.target.value })}
+                />
+                <small>Used in generated DUT and FB names.</small>
+              </label>
+              <div className="node-rename-form__actions">
+                <button type="button" onClick={() => setNodeRenameDraft(undefined)}>Cancel</button>
+                <button
+                  type="submit"
+                  disabled={!nodeRenameDraft.displayName.trim() || !nodeRenameDraft.name.trim() || !nodeRenameDraft.symbolStem.trim()}
+                >Save</button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => setNodeRenameDraft({
+                  displayName: contextNode.displayName,
+                  name: contextNode.name,
+                  symbolStem: contextNode.symbolStem,
+                })}
+              >
+                <span className="node-context-menu__icon node-context-menu__icon--rename">✎</span>
+                <span><strong>Rename node</strong><small>Edit display and generated PLC names</small></span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!contextNodeCanStartRelation}
+                title={contextNodeCanStartRelation ? "Choose a valid target and relationship type" : "No valid relationship target is available"}
+                onClick={() => {
+                  setNodeContextMenu(undefined);
+                  beginConnect(contextNode.id);
+                }}
+              >
+                <span className="node-context-menu__icon node-context-menu__icon--relation">↗</span>
+                <span><strong>Create relationship</strong><small>Select a valid target node</small></span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!contextNode.generate.commandEnum}
+                title={contextNode.generate.commandEnum ? "Add a command and open the command editor" : "Command generation is disabled for this node type"}
+                onClick={() => {
+                  setNodeContextMenu(undefined);
+                  onAddCommand(contextNode.id);
+                }}
+              >
+                <span className="node-context-menu__icon node-context-menu__icon--command">+</span>
+                <span><strong>Add command</strong><small>{contextNode.generate.commandEnum ? "Open it in the inspector" : "Unavailable for this node type"}</small></span>
+              </button>
+              <label className="node-context-menu__area">
+                <span>Move to area</span>
+                <select
+                  value={nodeGroup(document, contextNode.id) ?? ""}
+                  onChange={(event) => {
+                    setNodeContextMenu(undefined);
+                    onMoveNodeToArea(contextNode.id, event.target.value || undefined);
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {groups.map((group) => <option value={group.name} key={group.name}>{group.displayName}</option>)}
+                </select>
+              </label>
+            </>
+          )}
         </div>
       )}
 

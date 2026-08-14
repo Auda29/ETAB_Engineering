@@ -93,7 +93,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/GVLs/{name}.TcGVL",
+            InGeneratedRoot(generatedRoot, $"GVLs/{name}.TcGVL"),
             content);
     }
 
@@ -119,7 +119,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/POUs/{name}.TcPOU",
+            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
             content);
     }
 
@@ -143,7 +143,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/DUTs/Commands/{name}.TcDUT",
+            InGeneratedRoot(generatedRoot, $"DUTs/Commands/{name}.TcDUT"),
             content);
     }
 
@@ -169,7 +169,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/DUTs/Requests/{name}.TcDUT",
+            InGeneratedRoot(generatedRoot, $"DUTs/Requests/{name}.TcDUT"),
             content);
     }
 
@@ -193,7 +193,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/DUTs/Status/{name}.TcDUT",
+            InGeneratedRoot(generatedRoot, $"DUTs/Status/{name}.TcDUT"),
             content);
     }
 
@@ -228,7 +228,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            $"{generatedRoot}/POUs/{name}.TcPOU",
+            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
             content);
     }
 
@@ -301,6 +301,15 @@ public sealed class ArtifactPreviewGenerator
             .Replace('\\', '/')
             .Trim('/');
 
-        return string.IsNullOrEmpty(normalized) ? "Generated" : normalized;
+        return normalized == "."
+            ? string.Empty
+            : string.IsNullOrEmpty(normalized)
+                ? "Generated"
+                : normalized;
     }
+
+    private static string InGeneratedRoot(string generatedRoot, string relativePath) =>
+        string.IsNullOrEmpty(generatedRoot)
+            ? relativePath
+            : $"{generatedRoot}/{relativePath}";
 }

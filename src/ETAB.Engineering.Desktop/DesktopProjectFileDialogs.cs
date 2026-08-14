@@ -11,6 +11,28 @@ internal sealed class DesktopProjectFileDialogs : IProjectFileDialogService
     private const string ProjectFilter =
         "ETAB project (*.etab.json)|*.etab.json|JSON document (*.json)|*.json|All files (*.*)|*.*";
 
+    private const string TwinCatPlcProjectFilter =
+        "TwinCAT PLC project (*.plcproj)|*.plcproj";
+
+    public Task<string?> SelectTwinCatPlcProjectAsync(CancellationToken cancellationToken) =>
+        InvokeOnUiThreadAsync(() =>
+        {
+            var dialog = new OpenFileDialog
+            {
+                AddExtension = true,
+                CheckFileExists = true,
+                DefaultExt = ".plcproj",
+                Filter = TwinCatPlcProjectFilter,
+                Multiselect = false,
+                RestoreDirectory = true,
+                Title = "Connect TwinCAT PLC Project"
+            };
+
+            return ShowDialog(dialog) == true
+                ? Path.GetFullPath(dialog.FileName)
+                : null;
+        }, cancellationToken);
+
     public Task<string?> SelectOpenProjectAsync(CancellationToken cancellationToken) =>
         InvokeOnUiThreadAsync(() =>
         {

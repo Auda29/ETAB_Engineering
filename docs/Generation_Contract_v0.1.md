@@ -8,13 +8,15 @@ This contract defines the write and ownership boundaries of the generator. It ha
 
 ### Generator-Owned Area
 
-Default path:
+Default CLI path:
 
 ```text
 Generated/
 ```
 
-Only files assigned to the current project and a model ID in the last valid manifest are considered generator-managed.
+The TwinCAT-first desktop workflow uses the selected PLC project directory directly so generated objects land in its existing `DUTs`, `POUs`, and `GVLs` hierarchy. This mode is represented by `project.generation.generatedRoot = "."`.
+
+In either layout, only files assigned to the current project and a model ID in the last valid manifest are considered generator-managed. Selecting the PLC root does not transfer ownership of handwritten or otherwise unmanaged files in that directory to ETAB Engineering.
 
 ### User-Owned Area
 
@@ -60,7 +62,7 @@ The manifest is written only after all intended output files have been generated
 9. Abort without writing if conflicts exist.
 10. Write only after an explicit generate command.
 11. Immediately before writing, revalidate target paths, reparse points, target occupancy, and expected previous hashes.
-12. Prepare new content in a UUID-based staging directory within `Generated/`.
+12. Prepare new content in a UUID-based staging directory within the configured generator root.
 13. Back up managed files to be modified or deleted in a separate transaction directory.
 14. Execute only the specifically planned `create`, `update`, `rename`, and `delete` operations.
 15. Write the new manifest last.
@@ -87,7 +89,7 @@ Conflicts are never overwritten, renamed, or deleted automatically.
 - The model ID is retained.
 - The TwinCAT GUID is retained.
 - The new target name is calculated from the current naming rules.
-- The old path is removed only if it is present in the manifest, unchanged, and within `Generated/`.
+- The old path is removed only if it is present in the manifest, unchanged, and within the configured generator root.
 - The preview reports the operation as `rename`.
 
 ## 7. Deletion
@@ -116,7 +118,7 @@ The following additional rules then apply:
 - an XML structural validation is performed before writing,
 - a real XAE compile is a separate acceptance step after writing.
 
-Phase 3A implements this boundary as an explicit CLI opt-in using `--integrate-project` together with `--root`. The project file and generated artifacts participate in one preflight and rollback transaction. ETAB Engineering records only the `Compile`, `Folder`, `PlaceholderReference`, and `PlaceholderResolution` elements that it adds in `Generated/etab-project-integration-manifest.json`.
+Phase 3A implements this boundary as an explicit CLI opt-in using `--integrate-project` together with `--root`. The project file and generated artifacts participate in one preflight and rollback transaction. ETAB Engineering records only the `Compile`, `Folder`, `PlaceholderReference`, and `PlaceholderResolution` elements that it adds in the project-integration manifest below the configured generator root.
 
 Compatible entries that already exist are retained but not claimed as managed state. Missing, duplicated, incompatible, or externally changed managed entries block the whole write. Project XML is parsed before planning and again after applying the targeted textual changes; unrelated project-file lines and their existing line endings are preserved.
 
@@ -125,6 +127,8 @@ Before adding compile entries, project integration resolves and parses existing 
 Phase 3B adds the project-level artifact kinds `instance-gvl` and `program-call-structure`. They follow the same deterministic GUID, manifest, hash, conflict, staging, and rollback rules as node-level artifacts. The PRG remains optional and is not automatically assigned to a TwinCAT task.
 
 Phase 3C exposes this same transaction through the editor. The editor first requests a target-aware preview and receives a confirmation token derived from the resolved root, integration option, complete plan, expected and proposed hashes, artifacts, and manifests. Generate is permitted only for a saved model whose current document still matches the file on disk, a conflict-free plan, the exact token, and an explicit confirmation. Any changed model, target, integration option, or filesystem state invalidates the plan or is rejected by the executor preflight.
+
+The later TwinCAT-first desktop workflow removes manual target selection from the editor. A native `.plcproj` selection creates or reopens the companion ETAB model in the same PLC directory, sets direct-root output, and enables project integration as one binding configuration. CLI callers may continue to use a separate generated subdirectory and explicit integration option.
 
 ## 10. Output Attributes
 

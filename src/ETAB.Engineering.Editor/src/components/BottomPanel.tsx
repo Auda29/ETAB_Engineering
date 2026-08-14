@@ -11,8 +11,6 @@ export function BottomPanel({
   generationRoot,
   integrateProject,
   dirty,
-  onGenerationRootChange,
-  onIntegrateProjectChange,
   onPreview,
   onGenerate,
   onIssueSelect,
@@ -24,8 +22,6 @@ export function BottomPanel({
   generationRoot: string;
   integrateProject: boolean;
   dirty: boolean;
-  onGenerationRootChange: (value: string) => void;
-  onIntegrateProjectChange: (value: boolean) => void;
   onPreview: () => void;
   onGenerate: () => void;
   onIssueSelect: (path: string) => void;
@@ -66,8 +62,10 @@ export function BottomPanel({
         </button>
         <div className="bottom-panel__actions">
           <span className="generation-root-label">Target</span>
-          <input className="generation-root" aria-label="PLC target root" title="PLC target root" placeholder="PLC target root" value={generationRoot} onChange={(event) => onGenerationRootChange(event.target.value)} spellCheck={false} />
-          <label className="generation-project-toggle" title="Include the configured TwinCAT project file"><input type="checkbox" checked={integrateProject} onChange={(event) => onIntegrateProjectChange(event.target.checked)} /> .plcproj</label>
+          <code className="generation-root" aria-label="PLC target root" title={generationRoot}>{generationRoot}</code>
+          <span className={`generation-project-toggle ${integrateProject ? "is-linked" : ""}`} title={integrateProject ? "The linked TwinCAT PLC project is updated automatically" : "No TwinCAT PLC project is linked"}>
+            {integrateProject ? "✓ .plcproj linked" : "Model only"}
+          </span>
           <button data-testid="preview-button" className="button button--secondary button--compact" onClick={() => { setTab("preview"); onPreview(); }} disabled={previewBusy || generateBusy || !validation?.isValid || !generationRoot.trim()}>
             {previewBusy ? "Planning…" : "Refresh preview"}
           </button>

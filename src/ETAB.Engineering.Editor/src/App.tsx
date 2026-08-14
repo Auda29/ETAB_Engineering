@@ -57,7 +57,7 @@ export default function App() {
       setDocument(result.document);
       setPath(result.path);
       setGenerationRoot(result.projectRoot);
-      setIntegrateProject(false);
+      setIntegrateProject(Boolean(result.document.project.twinCAT.plcProject));
       setValidation(result.validation);
       setSelectedNodeId(result.document.nodes[0]?.id);
       setActiveAreaView("all");
@@ -74,50 +74,69 @@ export default function App() {
   const openProject = useCallback(async () => {
     if (dirty && !window.confirm("Discard unsaved editor changes and open another project?")) return;
 
-    let requestedPath = path.trim();
-    if (supportsNativeFileDialogs) {
-      setBusy(true);
-      setNotice({ tone: "info", text: "Choose an ETAB project file…" });
-      try {
-        const selection = await editorApi.chooseOpenProject();
-        if (selection.canceled || !selection.path) {
-          setNotice(undefined);
-          return;
-        }
-        requestedPath = selection.path;
-      } catch (error) {
-        setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    if (!supportsNativeFileDialogs) {
+      setNotice({ tone: "error", text: "Use the Windows desktop application to select an ETAB project file." });
+      return;
+    }
+
+    let requestedPath: string;
+    setBusy(true);
+    setNotice({ tone: "info", text: "Choose an ETAB project file…" });
+    try {
+      const selection = await editorApi.chooseOpenProject();
+      if (selection.canceled || !selection.path) {
+        setNotice(undefined);
         return;
-      } finally {
-        setBusy(false);
       }
+      requestedPath = selection.path;
+    } catch (error) {
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+      return;
+    } finally {
+      setBusy(false);
     }
 
     await loadProject(requestedPath);
-  }, [dirty, loadProject, path, supportsNativeFileDialogs]);
+  }, [dirty, loadProject, supportsNativeFileDialogs]);
 
-  const newProject = useCallback(async () => {
-    if (dirty && !window.confirm("Discard unsaved editor changes and create a new project?")) return;
+  const connectPlcProject = useCallback(async () => {
+    if (dirty && !window.confirm("Discard unsaved editor changes and connect another TwinCAT PLC project?")) return;
+    if (!supportsNativeFileDialogs) {
+      setNotice({ tone: "error", text: "Use the Windows desktop application to select a TwinCAT .plcproj file." });
+      return;
+    }
+
     setBusy(true);
-    setNotice({ tone: "info", text: "Creating a new project…" });
+    setNotice({ tone: "info", text: "Choose the empty TwinCAT .plcproj file…" });
     try {
-      const result = await editorApi.createNew();
-      setDocument(result.document);
-      setPath("");
-      setGenerationRoot("");
-      setIntegrateProject(false);
-      setValidation(result.validation);
-      setSelectedNodeId(result.document.nodes[0]?.id);
+      const result = await editorApi.connectPlcProject();
+      if (result.canceled || !result.project) {
+        setNotice(undefined);
+        return;
+      }
+
+      const connected = result.project;
+      setDocument(connected.document);
+      setPath(connected.path);
+      setGenerationRoot(connected.projectRoot);
+      setIntegrateProject(true);
+      setValidation(connected.validation);
+      setSelectedNodeId(connected.document.nodes[0]?.id);
       setActiveAreaView("all");
       setPreview(undefined);
-      setDirty(true);
-      setNotice({ tone: "info", text: "New project created from the minimal template. Save it to choose a location." });
+      setDirty(false);
+      setNotice({
+        tone: "success",
+        text: connected.created
+          ? `Connected ${connected.plcProjectPath} and created ${connected.path}`
+          : `Opened the ETAB model linked to ${connected.plcProjectPath}`,
+      });
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
     } finally {
       setBusy(false);
     }
-  }, [dirty]);
+  }, [dirty, supportsNativeFileDialogs]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,39 +201,20 @@ export default function App() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const saveProject = useCallback(async (saveAs = false) => {
+  const saveProject = useCallback(async () => {
     if (!document) return;
-    let targetPath = path.trim();
-    if (saveAs || !targetPath) {
-      if (!supportsNativeFileDialogs) {
-        setNotice({ tone: "info", text: "Enter the new project path above, then select Save." });
-        return;
-      }
-
-      setBusy(true);
-      setNotice({ tone: "info", text: "Choose where to save the ETAB project…" });
-      try {
-        const selection = await editorApi.chooseSaveProject(`${document.project.name}.etab.json`);
-        if (selection.canceled || !selection.path) {
-          setNotice(undefined);
-          return;
-        }
-        targetPath = selection.path;
-      } catch (error) {
-        setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
-        return;
-      } finally {
-        setBusy(false);
-      }
+    const targetPath = path.trim();
+    if (!targetPath) {
+      setNotice({ tone: "error", text: "Connect a TwinCAT PLC project before saving." });
+      return;
     }
 
-    const pathChanged = targetPath !== path;
     setBusy(true);
     setNotice({ tone: "info", text: "Saving project…" });
     try {
       const result = await editorApi.save(targetPath, document);
       setPath(result.path);
-      if (pathChanged) setGenerationRoot(result.projectRoot);
+      setGenerationRoot(result.projectRoot);
       setValidation(result.validation);
       setDirty(false);
       setPreview(undefined);
@@ -224,13 +224,13 @@ export default function App() {
     } finally {
       setBusy(false);
     }
-  }, [document, path, supportsNativeFileDialogs]);
+  }, [document, path]);
 
   useEffect(() => {
     const saveShortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void saveProject(false);
+        void saveProject();
       }
     };
     window.addEventListener("keydown", saveShortcut);
@@ -254,6 +254,14 @@ export default function App() {
       if (node) mutation(node);
     });
   }, [updateDocument]);
+
+  const renameNode = useCallback((nodeId: string, displayName: string, name: string, symbolStem: string) => {
+    updateNode(nodeId, (node) => {
+      node.displayName = displayName.trim();
+      node.name = name.trim();
+      node.symbolStem = symbolStem.trim();
+    });
+  }, [updateNode]);
 
   const addNode = useCallback((kind: NodeKind, position?: { x: number; y: number }, group?: string) => {
     if (!document) return;
@@ -412,16 +420,6 @@ export default function App() {
     }
   }, [document, generationRoot, integrateProject, path]);
 
-  const changeGenerationRoot = useCallback((value: string) => {
-    setGenerationRoot(value);
-    setPreview(undefined);
-  }, []);
-
-  const changeIntegrateProject = useCallback((value: boolean) => {
-    setIntegrateProject(value);
-    setPreview(undefined);
-  }, []);
-
   const generateProject = useCallback(async () => {
     if (!document || !preview?.confirmationToken) return;
     if (dirty) {
@@ -489,23 +487,19 @@ export default function App() {
         <div className="startup-card">
           <div className="brand__mark">ET</div>
           <h1>ETAB Engineering</h1>
-          <p>{notice?.text ?? (sessionReady ? "Create a logical machine model or open an existing ETAB project." : "Connecting to the local engineering service…")}</p>
+          <p>{notice?.text ?? (sessionReady ? "Start with the empty PLC project you created in TwinCAT." : "Connecting to the local engineering service…")}</p>
           {sessionReady && (
             <>
-              {!supportsNativeFileDialogs && (
-                <input
-                  className="filebar__path startup-path"
-                  value={path}
-                  onChange={(event) => setPath(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && void openProject()}
-                  placeholder="C:\\Path\\Project.etab.json"
-                  spellCheck={false}
-                />
-              )}
+              <ol className="startup-steps">
+                <li>Create an empty PLC project in TwinCAT.</li>
+                <li>Select its <code>.plcproj</code> file here.</li>
+                <li>ETAB assigns the model, output folders and project integration automatically.</li>
+              </ol>
               <div className="startup-actions">
-                <button className="button button--primary" onClick={() => void newProject()} disabled={busy}>New Project</button>
-                <button className="button button--secondary" onClick={() => void openProject()} disabled={busy}>Open Project</button>
+                <button className="button button--primary" onClick={() => void connectPlcProject()} disabled={busy || !supportsNativeFileDialogs}>Connect TwinCAT PLC Project</button>
+                <button className="button button--secondary" onClick={() => void openProject()} disabled={busy || !supportsNativeFileDialogs}>Open Existing ETAB Model</button>
               </div>
+              {!supportsNativeFileDialogs && <p className="startup-desktop-hint">Native file selection is available in the Windows desktop application.</p>}
               {exampleProjectPath && (
                 <button className="link-button startup-example" onClick={() => void loadProject(exampleProjectPath)} disabled={busy}>
                   Open BrushMachine example
@@ -525,12 +519,9 @@ export default function App() {
     <div className="app-shell">
       <TopBar
         path={path}
-        onPathChange={(value) => { setPath(value); setPreview(undefined); }}
-        onNew={() => void newProject()}
+        onConnectPlc={() => void connectPlcProject()}
         onOpen={() => void openProject()}
-        onSave={() => void saveProject(false)}
-        onSaveAs={() => void saveProject(true)}
-        supportsNativeFileDialogs={supportsNativeFileDialogs}
+        onSave={() => void saveProject()}
         busy={busy}
         dirty={dirty}
         projectName={document.project.displayName}
@@ -557,6 +548,7 @@ export default function App() {
           onSelect={setSelectedNodeId}
           onMoveNode={moveNode}
           onAddNode={addNode}
+          onRenameNode={renameNode}
           onAddCommand={addCommand}
           activeAreaView={activeAreaView}
           onActiveAreaViewChange={changeActiveAreaView}
@@ -570,7 +562,7 @@ export default function App() {
         />
         <Inspector document={document} selectedNodeId={selectedNodeId} requestedTab={inspectorFocus} updateDocument={updateDocument} updateNode={updateNode} deleteNode={deleteNode} />
       </div>
-      <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} generateBusy={generateBusy} generationRoot={generationRoot} integrateProject={integrateProject} dirty={dirty} onGenerationRootChange={changeGenerationRoot} onIntegrateProjectChange={changeIntegrateProject} onPreview={refreshPreview} onGenerate={generateProject} onIssueSelect={selectIssue} />
+      <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} generateBusy={generateBusy} generationRoot={generationRoot} integrateProject={integrateProject} dirty={dirty} onPreview={refreshPreview} onGenerate={generateProject} onIssueSelect={selectIssue} />
       {notice && <button className={`notice notice--${notice.tone}`} onClick={() => setNotice(undefined)}>{notice.text}<span>×</span></button>}
     </div>
   );

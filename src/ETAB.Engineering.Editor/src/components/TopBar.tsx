@@ -2,12 +2,9 @@ import type { ValidationResponse } from "../model";
 
 interface Props {
   path: string;
-  onPathChange: (path: string) => void;
-  onNew: () => void;
+  onConnectPlc: () => void;
   onOpen: () => void;
   onSave: () => void;
-  onSaveAs: () => void;
-  supportsNativeFileDialogs: boolean;
   busy: boolean;
   dirty: boolean;
   projectName?: string;
@@ -18,12 +15,9 @@ interface Props {
 
 export function TopBar({
   path,
-  onPathChange,
-  onNew,
+  onConnectPlc,
   onOpen,
   onSave,
-  onSaveAs,
-  supportsNativeFileDialogs,
   busy,
   dirty,
   projectName,
@@ -43,28 +37,23 @@ export function TopBar({
       </div>
 
       <div className="filebar">
-        <span className="filebar__label">Project</span>
+        <span className="filebar__label">ETAB model</span>
         <input
           data-testid="project-path"
           className="filebar__path"
           value={path}
-          onChange={(event) => onPathChange(event.target.value)}
-          onKeyDown={(event) => !supportsNativeFileDialogs && event.key === "Enter" && onOpen()}
           placeholder="No project file selected"
-          readOnly={supportsNativeFileDialogs}
+          readOnly
           spellCheck={false}
         />
-        <button className="button button--secondary" onClick={onNew} disabled={busy}>
-          New
+        <button className="button button--secondary" onClick={onConnectPlc} disabled={busy}>
+          Connect PLC
         </button>
         <button data-testid="open-project" className="button button--secondary" onClick={onOpen} disabled={busy}>
           Open
         </button>
         <button data-testid="save-project" className="button button--primary" onClick={onSave} disabled={busy || !projectName}>
           Save
-        </button>
-        <button className="button button--secondary" onClick={onSaveAs} disabled={busy || !projectName}>
-          Save As
         </button>
       </div>
 

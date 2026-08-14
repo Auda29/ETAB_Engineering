@@ -17,6 +17,18 @@ public sealed record SaveProjectDialogRequest(string? SuggestedFileName);
 
 public sealed record ProjectFileDialogResponse(bool Canceled, string? Path);
 
+public sealed record ConnectedPlcProjectResponse(
+    string Path,
+    string ProjectRoot,
+    string PlcProjectPath,
+    bool Created,
+    JsonNode Document,
+    ValidationResponse Validation);
+
+public sealed record ConnectPlcProjectDialogResponse(
+    bool Canceled,
+    ConnectedPlcProjectResponse? Project);
+
 public sealed record NewProjectResponse(
     JsonNode Document,
     ValidationResponse Validation);

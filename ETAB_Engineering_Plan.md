@@ -221,7 +221,7 @@ Application/
 
 ### 6.2 Regeneration Boundary
 
-- `Generated/` is owned entirely by the generator.
+- By default `Generated/` is the generator boundary; the linked desktop workflow may use the PLC root directly, but only manifest-listed ETAB files are generator-owned there.
 - `Application/` is owned entirely by the PLC developer.
 - User files may be created as an initial scaffold at most once.
 - They are neither modified nor deleted afterward.
@@ -245,7 +245,7 @@ Application/
 - place units
 - display the hierarchy
 - connect relationships
-- open contextual node actions by right-clicking
+- open contextual node actions by right-clicking, including rename, relationships, commands, and area movement
 - select components
 - create machine areas represented by project-tree folders and canvas tabs
 - move nodes between areas and navigate cross-area relationships
@@ -354,7 +354,7 @@ Acceptance:
 
 ### Phase 2 – Visual Editor MVP (completed 2026-08-10)
 
-- [x] create a valid project from a minimal template and use native Open/Save As dialogs in the desktop application (follow-up 2026-08-13)
+- [x] connect an empty TwinCAT `.plcproj` through a native dialog and create/reopen its deterministic companion model without typed paths or filenames (follow-up 2026-08-14)
 - [x] drag-and-drop component palette with drop-position placement and keyboard fallback (follow-up 2026-08-14)
 - [x] machine canvas
 - [x] unit selection and property inspector
@@ -381,7 +381,7 @@ Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETA
 - [x] generate an optional PRG call structure (Phase 3B, 2026-08-13)
 - [x] safeguard renaming and deletion of generated project entries (Phase 3A, 2026-08-13)
 - [x] initially test integration only in a copy of the project (Phase 3A, 2026-08-13)
-- [x] select the target root, preview, and explicitly confirm generation in the editor (Phase 3C, 2026-08-13)
+- [x] derive the target root and `.plcproj` integration from the native PLC selection, preview, and explicitly confirm generation in the editor (Phase 3C plus TwinCAT-first follow-up, 2026-08-14)
 - [x] define the TwinCAT task-assignment policy and inspect the reference task (2026-08-13)
 
 Acceptance:
@@ -544,9 +544,10 @@ Binding decisions for Phase 3C:
 
 - The editor requires a saved ETAB model before generation; the submitted document must still match the model on disk byte-semantically.
 - The preview token binds the resolved target root, integration option, complete planned change set, content hashes, manifests, and proposed `.plcproj` update.
-- Changing the model path, model content, target root, or project-integration option invalidates the preview and disables Generate.
+- The desktop workflow obtains the model path, PLC root, output layout, and project integration from one native `.plcproj` selection; these values are read-only in the UI.
+- Changing model content invalidates the preview and disables Generate. Selecting another PLC project starts a freshly resolved editing context.
 - The service rebuilds and verifies the plan before execution; the core executor performs another target and hash preflight immediately before writing.
-- A final editor confirmation names the exact target root. The `.plcproj` remains a separate, explicit opt-in.
+- A final editor confirmation names the exact target root. The linked `.plcproj` participates automatically in the same transaction.
 
 Non-blocking decisions for later phases:
 

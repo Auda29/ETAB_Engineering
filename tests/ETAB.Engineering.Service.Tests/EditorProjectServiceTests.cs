@@ -49,6 +49,94 @@ public sealed class EditorProjectServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ConnectTwinCatPlcProjectAsync_CreatesCompanionModelAndGeneratesIntoPlcFolders()
+    {
+        var plcProjectPath = await CreateEmptyPlcProjectAsync("PLC.plcproj");
+        var handwrittenDirectory = Path.Combine(testRoot, "POUs");
+        Directory.CreateDirectory(handwrittenDirectory);
+        var handwrittenPath = Path.Combine(handwrittenDirectory, "Handwritten.txt");
+        await File.WriteAllTextAsync(handwrittenPath, "owned by the PLC developer\n");
+
+        var connected = await service.ConnectTwinCatPlcProjectAsync(plcProjectPath);
+
+        Assert.True(connected.Created);
+        Assert.True(connected.Validation.IsValid);
+        Assert.Equal(Path.Combine(testRoot, "PLC.etab.json"), connected.Path);
+        Assert.Equal(testRoot, connected.ProjectRoot);
+        Assert.Equal(plcProjectPath, connected.PlcProjectPath);
+        Assert.Equal("PLC", connected.Document["project"]!["name"]!.GetValue<string>());
+        Assert.Equal("PLC", connected.Document["project"]!["prefix"]!.GetValue<string>());
+        Assert.Equal(
+            "PLC.plcproj",
+            connected.Document["project"]!["twinCAT"]!["plcProject"]!.GetValue<string>());
+        Assert.Equal(
+            ".",
+            connected.Document["project"]!["generation"]!["generatedRoot"]!.GetValue<string>());
+
+        var preview = service.Preview(
+            connected.Document,
+            connected.Path,
+            connected.ProjectRoot,
+            integrateProject: true);
+
+        Assert.False(preview.HasConflicts);
+        Assert.Equal(testRoot, preview.GeneratedRoot);
+        Assert.All(preview.Artifacts, artifact =>
+            Assert.DoesNotContain("Generated/", artifact.RelativePath, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            preview.Artifacts,
+            artifact => artifact.RelativePath == "DUTs/Commands/E_PLC_MachineCommand.TcDUT");
+        Assert.Contains(
+            preview.Artifacts,
+            artifact => artifact.RelativePath == "POUs/FB_PLC_MachineUnitBase.TcPOU");
+        Assert.Contains(
+            preview.Artifacts,
+            artifact => artifact.RelativePath == "GVLs/GVL_PLC_Units.TcGVL");
+
+        var generated = service.Generate(
+            connected.Document,
+            connected.Path,
+            connected.ProjectRoot,
+            integrateProject: true,
+            preview.ConfirmationToken!,
+            confirmed: true);
+
+        Assert.True(generated.Success);
+        Assert.True(File.Exists(Path.Combine(
+            testRoot,
+            "DUTs",
+            "Commands",
+            "E_PLC_MachineCommand.TcDUT")));
+        Assert.True(File.Exists(Path.Combine(
+            testRoot,
+            "POUs",
+            "FB_PLC_MachineUnitBase.TcPOU")));
+        Assert.True(File.Exists(Path.Combine(testRoot, "GVLs", "GVL_PLC_Units.TcGVL")));
+        Assert.False(Directory.Exists(Path.Combine(testRoot, "Generated")));
+        Assert.Equal("owned by the PLC developer\n", await File.ReadAllTextAsync(handwrittenPath));
+        Assert.Contains(
+            "DUTs\\Commands\\E_PLC_MachineCommand.TcDUT",
+            await File.ReadAllTextAsync(plcProjectPath),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConnectTwinCatPlcProjectAsync_ReopensExistingCompanionWithoutReplacingStableIds()
+    {
+        var plcProjectPath = await CreateEmptyPlcProjectAsync("Cell One.plcproj");
+        var first = await service.ConnectTwinCatPlcProjectAsync(plcProjectPath);
+        var firstProjectId = first.Document["project"]!["id"]!.GetValue<string>();
+
+        var second = await service.ConnectTwinCatPlcProjectAsync(plcProjectPath);
+
+        Assert.False(second.Created);
+        Assert.Equal(first.Path, second.Path);
+        Assert.Equal(firstProjectId, second.Document["project"]!["id"]!.GetValue<string>());
+        Assert.Equal("Cell_One", second.Document["project"]!["name"]!.GetValue<string>());
+        Assert.Equal("CELLONE", second.Document["project"]!["prefix"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task OpenAsync_LoadsCompleteReferenceDocumentAndValidation()
     {
         var projectPath = CopyReferenceProject("BrushMachine.etab.json");
@@ -244,5 +332,19 @@ public sealed class EditorProjectServiceTests : IDisposable
         var target = Path.Combine(testRoot, fileName);
         File.Copy(source, target);
         return target;
+    }
+
+    private async Task<string> CreateEmptyPlcProjectAsync(string fileName)
+    {
+        var plcProjectPath = Path.Combine(testRoot, fileName);
+        await File.WriteAllTextAsync(
+            plcProjectPath,
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+            "<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n" +
+            "  <PropertyGroup><Name>Test</Name></PropertyGroup>\n" +
+            "  <ItemGroup />\n" +
+            "</Project>\n",
+            new UTF8Encoding(false));
+        return plcProjectPath;
     }
 }

@@ -6,7 +6,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>ETAB Engineering</AssemblyName>
     <RootNamespace>ETAB.Engineering.Desktop</RootNamespace>
-    <Version>0.1.0.5</Version>
+    <Version>0.1.0.6</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>

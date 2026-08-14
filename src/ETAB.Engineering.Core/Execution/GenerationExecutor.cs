@@ -171,7 +171,7 @@ public sealed class GenerationExecutor
             return issues;
         }
 
-        if (!IsStrictDescendant(plan.GeneratedRoot, plan.ProjectRoot))
+        if (!IsSameOrStrictDescendant(plan.GeneratedRoot, plan.ProjectRoot))
         {
             issues.Add(new GenerationExecutionIssue(
                 "GENERATED_ROOT_INVALID",
@@ -1049,6 +1049,13 @@ public sealed class GenerationExecutor
                !relative.StartsWith($"..{Path.DirectorySeparatorChar}", PathComparison) &&
                !relative.StartsWith($"..{Path.AltDirectorySeparatorChar}", PathComparison);
     }
+
+    private static bool IsSameOrStrictDescendant(string candidate, string parent) =>
+        string.Equals(
+            Path.GetFullPath(candidate).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            PathComparison) ||
+        IsStrictDescendant(candidate, parent);
 
     private static bool ContainsTraversalSegment(string path) =>
         path.Split(
