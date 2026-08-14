@@ -6,7 +6,7 @@ import { MachineCanvas } from "./components/MachineCanvas";
 import { Palette } from "./components/Palette";
 import { ProjectTree } from "./components/ProjectTree";
 import { TopBar } from "./components/TopBar";
-import type { EtabNode, EtabProjectDocument, NodeKind, PreviewResponse, ValidationResponse } from "./model";
+import type { EtabNode, EtabProjectDocument, NodeKind, PreviewResponse, RelationKind, ValidationResponse } from "./model";
 import { createNode } from "./modelFactory";
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
@@ -253,6 +253,34 @@ export default function App() {
     });
   }, [updateDocument]);
 
+  const addRelation = useCallback((sourceNodeId: string, targetNodeId: string, kind: RelationKind, label?: string) => {
+    updateDocument((draft) => {
+      draft.relations.push({
+        id: crypto.randomUUID().toLowerCase(),
+        kind,
+        sourceNodeId,
+        targetNodeId,
+        ...(label?.trim() ? { label: label.trim() } : {}),
+      });
+    });
+  }, [updateDocument]);
+
+  const updateRelation = useCallback((relationId: string, kind: RelationKind, label?: string) => {
+    updateDocument((draft) => {
+      const relation = draft.relations.find((item) => item.id === relationId);
+      if (!relation) return;
+      relation.kind = kind;
+      if (label?.trim()) relation.label = label.trim();
+      else delete relation.label;
+    });
+  }, [updateDocument]);
+
+  const deleteRelation = useCallback((relationId: string) => {
+    updateDocument((draft) => {
+      draft.relations = draft.relations.filter((relation) => relation.id !== relationId);
+    });
+  }, [updateDocument]);
+
   const refreshPreview = useCallback(async () => {
     if (!document) return;
     setPreviewBusy(true);
@@ -391,7 +419,15 @@ export default function App() {
           <Palette onAdd={addNode} />
           <ProjectTree document={document} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} />
         </aside>
-        <MachineCanvas document={document} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} onMoveNode={moveNode} />
+        <MachineCanvas
+          document={document}
+          selectedNodeId={selectedNodeId}
+          onSelect={setSelectedNodeId}
+          onMoveNode={moveNode}
+          onAddRelation={addRelation}
+          onUpdateRelation={updateRelation}
+          onDeleteRelation={deleteRelation}
+        />
         <Inspector document={document} selectedNodeId={selectedNodeId} updateDocument={updateDocument} updateNode={updateNode} deleteNode={deleteNode} />
       </div>
       <BottomPanel validation={validation} preview={preview} previewBusy={previewBusy} generateBusy={generateBusy} generationRoot={generationRoot} integrateProject={integrateProject} dirty={dirty} onGenerationRootChange={changeGenerationRoot} onIntegrateProjectChange={changeIntegrateProject} onPreview={refreshPreview} onGenerate={generateProject} onIssueSelect={selectIssue} />

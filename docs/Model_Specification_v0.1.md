@@ -266,23 +266,22 @@ aBrushSpeed : ARRAY[1..3] OF LREAL;
 
 Valid relationship types:
 
-| Type | Meaning |
-|---|---|
-| `contains` | hierarchical master/subunit assignment |
-| `commands` | source creates requests for the target |
-| `observes` | source reads the target's status |
-| `usesRecipe` | source uses a RecipeManager |
-| `usesLink` | source uses a MachineLink |
+| Type | Source kind | Target kind | Meaning |
+|---|---|---|---|
+| `contains` | `applicationUnit` | `applicationUnit` or `commandUnit` | hierarchical parent/child assignment |
+| `commands` | `applicationUnit` or `commandUnit` | `applicationUnit` or `commandUnit` | source creates requests for the target |
+| `observes` | `applicationUnit` or `commandUnit` | `applicationUnit` or `commandUnit` | source reads the target's status |
+| `usesRecipe` | `applicationUnit` or `commandUnit` | `recipeManager` | source uses a RecipeManager |
+| `usesLink` | `applicationUnit` or `commandUnit` | `machineLink` | source uses a MachineLink |
 
 ### Semantic Rules
 
 - Source and target must exist.
 - Self-relations are not permitted.
+- Duplicate relations with the same type, source, and target are not permitted.
 - `contains` must not form cycles.
 - A node has at most one parent through `contains`.
-- The target of `usesRecipe` is a `recipeManager`.
-- The target of `usesLink` is a `machineLink`.
-- The target of `commands` is an `applicationUnit` or `commandUnit`.
+- Source and target kinds must match the table above.
 
 Safety and collision enables are not relationship types in v0.1.
 

@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.2
+.\publish-installer-win-x64.ps1 -Version 0.1.0.3
 ```
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
@@ -51,10 +51,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -78,11 +78,11 @@ The release Setup EXE is not currently Authenticode-signed. Windows can therefor
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.2`, publish with:
+For version `0.1.0.3`, publish with:
 
 ```powershell
-git tag -a v0.1.0.2 -m "ETAB Engineering v0.1.0.2"
-git push origin v0.1.0.2
+git tag -a v0.1.0.3 -m "ETAB Engineering v0.1.0.3"
+git push origin v0.1.0.3
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -142,3 +142,15 @@ ed868602e79b3994aa8423cb1a02b930e5fb95965e7f0c889d31042004a0fa96
 ```
 
 Both checksum sidecars match their release files. The isolated installer test installed the application into a temporary per-user directory, ran the packaged desktop smoke test, uninstalled the application, and verified cleanup. No interactive editor window, browser, or Playwright test was used. Interactive acceptance of the native New, Open, Save, and Save As workflow remains a separate UI-validation step.
+
+## Validation Record for v0.1.0.3
+
+Local validation on 2026-08-14 passed the TypeScript check, all 57 core tests, all 8 editor-service tests, `dotnet format --verify-no-changes`, the complete Release build, and the packaged desktop smoke test. The final local 78,801,696-byte portable release candidate verified a lossless save/reopen round trip plus a 15-artifact BrushMachine preview. Its local SHA-256 value is:
+
+```text
+9b086b056c7fc6c92f9de8c871c3094cad3330c5c921b505f99ebb98fef9e6b5
+```
+
+The user then performed the interactive acceptance with a newly created project. The direct canvas workflow successfully created directed `commands`, `observes`, and `usesRecipe` relationships; the relation legend and inspector list rendered correctly; the model remained valid; and confirmed generation completed with 21 created artifacts. This manual acceptance used the packaged desktop editor and no Playwright automation.
+
+The `v0.1.0.3` tag workflow builds the final portable ZIP and installer from the release commit, repeats the complete automated suite and isolated installer smoke test, and publishes the authoritative final assets and checksum sidecars to the GitHub Release.

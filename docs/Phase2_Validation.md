@@ -24,17 +24,17 @@ The implemented editor provides:
 - native Windows Open, first-Save, and Save As dialogs in the desktop application, plus manual-path fallback for development browsers;
 - project save, dirty-state protection, `Ctrl+S`, and save validation feedback;
 - a palette for Application Unit, Command Unit, Recipe Manager, and Machine Link nodes;
-- a searchable hierarchy and a draggable machine canvas with SVG relationship paths;
+- a searchable hierarchy and a draggable machine canvas with directed SVG relationship paths;
 - project and node property inspection;
 - add, edit, delete, and reorder operations for commands and request/status fields;
-- relationship creation and removal for all model relationship kinds;
+- relationship creation, editing, and removal for all model relationship kinds;
 - generation flags and type-specific node settings;
 - debounced live schema and semantic validation through the service;
 - a read-only generation plan, artifact list, manifest, and complete generated-content viewer.
 
 ## Automated Verification
 
-The complete solution builds without warnings or errors. The test suite contains 35 core tests and 4 service tests, all passing.
+The complete solution builds without warnings or errors. The current test suite contains 57 core tests and 8 service tests, all passing.
 
 The service tests prove that:
 
@@ -68,6 +68,14 @@ The original BrushMachine reference file was not modified by this acceptance flo
 The first independent UI-validation pass identified that the editor always opened the same bundled BrushMachine path, required manual path editing, and offered neither New Project nor Save As. The desktop workflow now starts without a loaded document and provides explicit **New Project**, **Open Project**, and optional **Open BrushMachine example** actions. The top bar provides **New**, **Open**, **Save**, and **Save As**. Desktop file selection is implemented through native Windows dialogs; no arbitrary path must be typed.
 
 The minimal template is produced by the .NET service and validated through the shared Core before it reaches the editor. Its automated test proves a valid single-machine model, fresh project and node IDs on every creation, ETAB `0.1.0.3`, five standard commands, and a conflict-free five-artifact preview. The service suite now contains 8 passing tests. TypeScript checking and the complete Release build pass with zero warnings and zero errors. Interactive dialog acceptance remains assigned to the user's UI-validation session; no Playwright test was used.
+
+## Relationship Editing Follow-up – 2026-08-14
+
+Relationship editing is now available directly on the machine canvas. Each unit node exposes a **Connect** action. After selecting a source, the editor highlights only valid targets and dims invalid nodes. The endpoint pair then determines the available relationship types. Human-readable labels and descriptions are shown alongside the technical model names, direction arrows terminate at node boundaries, and a persistent legend explains the line colors.
+
+Clicking a relationship line or label opens an editor for changing its type or optional line label, or deleting it. The inspector remains available as the detailed list and creation view and uses the same filtered choices. The editor prevents self-relations, duplicates, invalid source/target kinds, multiple `contains` parents, and `contains` cycles. The Core validator enforces the same semantic boundary for manually edited or external project files through `RELATION_SOURCE_KIND`, `RELATION_TARGET_KIND`, `RELATION_DUPLICATE`, and the existing hierarchy diagnostics.
+
+Automated evidence includes TypeScript checking plus three new Core tests for invalid source kinds, invalid target kinds, and duplicate relationships. No browser automation or Playwright run was performed for this follow-up; interactive canvas acceptance remains part of the user's UI-validation session.
 
 ## Acceptance Conclusion
 

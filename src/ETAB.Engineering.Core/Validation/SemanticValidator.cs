@@ -347,6 +347,7 @@ internal sealed class SemanticValidator
         var nodesById = project.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         var parentByChild = new Dictionary<string, string>(StringComparer.Ordinal);
         var childrenByParent = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var relationKeys = new HashSet<(string Kind, string SourceId, string TargetId)>();
 
         for (var relationIndex = 0; relationIndex < project.Relations.Count; relationIndex++)
         {
@@ -354,6 +355,14 @@ internal sealed class SemanticValidator
             var relationPath = $"/relations/{relationIndex}";
             var sourceExists = nodesById.ContainsKey(relation.SourceNodeId);
             var targetExists = nodesById.ContainsKey(relation.TargetNodeId);
+
+            if (!relationKeys.Add((relation.Kind, relation.SourceNodeId, relation.TargetNodeId)))
+            {
+                issues.Add(new ValidationIssue(
+                    "RELATION_DUPLICATE",
+                    relationPath,
+                    $"Relation '{relation.Kind}' already exists between these nodes."));
+            }
 
             if (!sourceExists)
             {
@@ -384,7 +393,12 @@ internal sealed class SemanticValidator
                 continue;
             }
 
-            ValidateRelationTargetKind(relation, nodesById[relation.TargetNodeId], relationPath, issues);
+            ValidateRelationEndpointKinds(
+                relation,
+                nodesById[relation.SourceNodeId],
+                nodesById[relation.TargetNodeId],
+                relationPath,
+                issues);
 
             if (relation.Kind != "contains")
             {
@@ -415,21 +429,39 @@ internal sealed class SemanticValidator
         ValidateContainsCycles(project.Nodes, childrenByParent, issues);
     }
 
-    private static void ValidateRelationTargetKind(
+    private static void ValidateRelationEndpointKinds(
         EtabRelation relation,
+        EtabNode source,
         EtabNode target,
         string relationPath,
         ICollection<ValidationIssue> issues)
     {
-        var valid = relation.Kind switch
+        var sourceValid = relation.Kind switch
         {
-            "usesRecipe" => target.Kind == "recipeManager",
-            "usesLink" => target.Kind == "machineLink",
-            "commands" => target.Kind is "applicationUnit" or "commandUnit",
-            _ => true
+            "contains" => source.Kind == "applicationUnit",
+            "commands" or "observes" or "usesRecipe" or "usesLink" =>
+                source.Kind is "applicationUnit" or "commandUnit",
+            _ => false
         };
 
-        if (!valid)
+        if (!sourceValid)
+        {
+            issues.Add(new ValidationIssue(
+                "RELATION_SOURCE_KIND",
+                $"{relationPath}/sourceNodeId",
+                $"Relation '{relation.Kind}' cannot use node kind '{source.Kind}' as its source."));
+        }
+
+        var targetValid = relation.Kind switch
+        {
+            "contains" or "commands" or "observes" =>
+                target.Kind is "applicationUnit" or "commandUnit",
+            "usesRecipe" => target.Kind == "recipeManager",
+            "usesLink" => target.Kind == "machineLink",
+            _ => false
+        };
+
+        if (!targetValid)
         {
             issues.Add(new ValidationIssue(
                 "RELATION_TARGET_KIND",

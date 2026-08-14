@@ -47,7 +47,7 @@ Semantic validation covers:
 - coupling between request DUT and command enum,
 - protection of implicit request fields and embedded library-status fields,
 - MTP procedure IDs and local command references,
-- existing relationship endpoints, no self-relations, and appropriate target types,
+- existing relationship endpoints, no self-relations or duplicates, and appropriate source/target kinds,
 - at most one `contains` parent and no hierarchy cycles,
 - valid and unique layout references,
 - collision-free generated TwinCAT artifact names.

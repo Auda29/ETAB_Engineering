@@ -74,7 +74,7 @@ Validated rules:
 - layout entries reference existing nodes,
 - at most one parent per node,
 - no `contains` cycles,
-- relationship types match the target node,
+- relationship types match their source and target node kinds,
 - implicit request fields are not duplicated as payload,
 - a request DUT is generated only together with a command enum,
 - no collisions among generated artifact names,

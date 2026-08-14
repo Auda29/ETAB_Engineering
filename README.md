@@ -1,4 +1,4 @@
-# ETAB Engineering v0.1.0.2
+# ETAB Engineering v0.1.0.3
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
@@ -10,7 +10,7 @@ The model, rules, generation boundary, and reference classification have been de
 
 The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, and a qualified project instance GVL. An optional generated PRG can call explicitly selected instances. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
 
-The TypeScript visual editor and its loopback .NET service are implemented. The desktop starts with an explicit New/Open choice instead of loading a fixed example. New projects use a Core-validated minimal machine template; native Windows dialogs provide Open, first Save, and Save As without manual path entry. The editor otherwise provides a component palette, hierarchy, property and contract editors, relationships, a draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
+The TypeScript visual editor and its loopback .NET service are implemented. The desktop starts with an explicit New/Open choice instead of loading a fixed example. New projects use a Core-validated minimal machine template; native Windows dialogs provide Open, first Save, and Save As without manual path entry. The editor otherwise provides a component palette, hierarchy, property and contract editors, direct relationship creation and editing on the draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Relationship mode highlights only valid targets, offers only valid types for the selected endpoints, shows direction arrows and a legend, and prevents duplicate or cyclic hierarchy links before saving. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
@@ -69,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 15-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.2
+.\publish-installer-win-x64.ps1 -Version 0.1.0.3
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.2-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.3-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.

@@ -8,6 +8,11 @@ import type {
   RelationKind,
 } from "../model";
 import { applyKindDefaults, createCommand, createField, nodeKindLabels } from "../modelFactory";
+import {
+  getEligibleTargets,
+  getRelationDefinition,
+  getSourceRelationDefinitions,
+} from "../relationRules";
 import { Field, IconButton, NumberInput, SelectInput, TextArea, TextInput, Toggle } from "./FormFields";
 
 type DocumentMutation = (document: EtabProjectDocument) => void;
@@ -212,31 +217,64 @@ function PayloadEditor({
 
 function RelationEditor({ document, node, updateDocument }: { document: EtabProjectDocument; node: EtabNode; updateDocument: (mutation: DocumentMutation) => void }) {
   const [kind, setKind] = useState<RelationKind>("contains");
-  const [targetId, setTargetId] = useState(document.nodes.find((item) => item.id !== node.id)?.id ?? "");
+  const [targetId, setTargetId] = useState("");
   const [label, setLabel] = useState("");
+  const definitions = getSourceRelationDefinitions(node);
+  const targets = getEligibleTargets(document, node.id, kind);
+
   useEffect(() => {
-    if (!document.nodes.some((item) => item.id === targetId && item.id !== node.id)) {
-      setTargetId(document.nodes.find((item) => item.id !== node.id)?.id ?? "");
+    if (!definitions.some((definition) => definition.kind === kind) && definitions[0]) {
+      setKind(definitions[0].kind);
     }
-  }, [document.nodes, node.id, targetId]);
+  }, [definitions, kind]);
+
+  useEffect(() => {
+    if (!targets.some((target) => target.id === targetId)) {
+      setTargetId(targets[0]?.id ?? "");
+    }
+  }, [targetId, targets]);
+
   const byId = new Map(document.nodes.map((item) => [item.id, item]));
   const related = document.relations.filter((relation) => relation.sourceNodeId === node.id || relation.targetNodeId === node.id);
   return (
     <div className="editor-list" data-testid="relation-editor">
-      <div className="relation-create">
-        <div><h3>New relationship</h3><p>Source is the selected node.</p></div>
-        <Field label="Kind"><SelectInput value={kind} onChange={(event) => setKind(event.target.value as RelationKind)}>{["contains", "commands", "observes", "usesRecipe", "usesLink"].map((value) => <option key={value}>{value}</option>)}</SelectInput></Field>
-        <Field label="Target"><SelectInput value={targetId} onChange={(event) => setTargetId(event.target.value)}>{document.nodes.filter((item) => item.id !== node.id).map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}</SelectInput></Field>
-        <Field label="Label"><TextInput value={label} onChange={(event) => setLabel(event.target.value)} /></Field>
-        <button className="button button--primary" disabled={!targetId} onClick={() => {
-          updateDocument((draft) => draft.relations.push({ id: crypto.randomUUID().toLowerCase(), kind, sourceNodeId: node.id, targetNodeId: targetId, ...(label.trim() ? { label: label.trim() } : {}) }));
-          setLabel("");
-        }}>Add relationship</button>
-      </div>
+      {definitions.length > 0 ? (
+        <div className="relation-create">
+          <div>
+            <h3>New relationship</h3>
+            <p><strong>{node.displayName}</strong> is the source. Only valid types and targets are offered.</p>
+          </div>
+          <Field label="Relationship type" hint={getRelationDefinition(kind).description}>
+            <SelectInput value={kind} onChange={(event) => setKind(event.target.value as RelationKind)}>
+              {definitions.map((definition) => (
+                <option key={definition.kind} value={definition.kind}>{definition.label} ({definition.kind})</option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Target">
+            <SelectInput value={targetId} onChange={(event) => setTargetId(event.target.value)} disabled={targets.length === 0}>
+              {targets.length === 0 && <option value="">No valid target available</option>}
+              {targets.map((target) => <option key={target.id} value={target.id}>{target.displayName} · {nodeKindLabels[target.kind]}</option>)}
+            </SelectInput>
+          </Field>
+          <Field label="Optional line label"><TextInput value={label} placeholder={getRelationDefinition(kind).label} onChange={(event) => setLabel(event.target.value)} /></Field>
+          <button className="button button--primary" disabled={!targetId} onClick={() => {
+            updateDocument((draft) => draft.relations.push({ id: crypto.randomUUID().toLowerCase(), kind, sourceNodeId: node.id, targetNodeId: targetId, ...(label.trim() ? { label: label.trim() } : {}) }));
+            setLabel("");
+          }}>Add relationship</button>
+        </div>
+      ) : (
+        <EmptyList>{nodeKindLabels[node.kind]} nodes can be relationship targets, but not sources.</EmptyList>
+      )}
       {related.map((relation) => (
         <div className="relation-card" key={relation.id}>
-          <span className={`relation-chip relation-chip--${relation.kind}`}>{relation.kind}</span>
-          <div><strong>{byId.get(relation.sourceNodeId)?.displayName ?? "Unknown"}</strong><span>→</span><strong>{byId.get(relation.targetNodeId)?.displayName ?? "Unknown"}</strong>{relation.label && <small>{relation.label}</small>}</div>
+          <span className={`relation-chip relation-chip--${relation.kind}`} title={relation.kind}>{getRelationDefinition(relation.kind).label}</span>
+          <div>
+            <strong>{byId.get(relation.sourceNodeId)?.displayName ?? "Unknown"}</strong>
+            <span>→</span>
+            <strong>{byId.get(relation.targetNodeId)?.displayName ?? "Unknown"}</strong>
+            <small>{relation.label || relation.kind}</small>
+          </div>
           <IconButton label="Delete relationship" danger onClick={() => updateDocument((draft) => { draft.relations = draft.relations.filter((item) => item.id !== relation.id); })}>×</IconButton>
         </div>
       ))}

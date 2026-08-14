@@ -101,6 +101,46 @@ public sealed class ProjectValidatorTests
     }
 
     [Fact]
+    public void RecipeManagerCannotBeRelationSource()
+    {
+        var project = ParseProject();
+        var recipeManagerId = project["nodes"]![5]!["id"]!.GetValue<string>();
+        project["relations"]![11]!["sourceNodeId"] = recipeManagerId;
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "RELATION_SOURCE_KIND");
+    }
+
+    [Fact]
+    public void ContainsCannotTargetMachineLink()
+    {
+        var project = ParseProject();
+        var machineLinkId = project["nodes"]![6]!["id"]!.GetValue<string>();
+        project["relations"]![0]!["targetNodeId"] = machineLinkId;
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "RELATION_TARGET_KIND");
+    }
+
+    [Fact]
+    public void DuplicateRelationIsRejected()
+    {
+        var project = ParseProject();
+        var duplicate = project["relations"]![11]!.DeepClone().AsObject();
+        duplicate["id"] = "99999999-9999-4999-8999-999999999999";
+        project["relations"]!.AsArray().Add(duplicate);
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "RELATION_DUPLICATE");
+    }
+
+    [Fact]
     public void InvertedArrayBounds_AreRejectedSemantically()
     {
         var project = ParseProject();

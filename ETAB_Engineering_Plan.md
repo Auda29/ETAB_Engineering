@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: implementation; Phase 0, Phase 1, Phase 2, and Phase 3A/3B/3C generation and project integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; the generated copy opens and builds successfully in XAE; runtime acceptance remains open
-- As of: 2026-08-13
+- As of: 2026-08-14
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
 - Reference project: `AutomationBase Beispiel`
@@ -355,13 +355,13 @@ Acceptance:
 - [x] unit selection and property inspector
 - [x] command editor
 - [x] request/status field editor
-- [x] relationships
+- [x] direct canvas relationships with filtered endpoints/types, direction arrows, editing, deletion, and legend (follow-up 2026-08-14)
 - [x] live validation
 - [x] generation preview
 
 Acceptance: BrushMachine can be modeled visually, saved, closed, and reopened without data loss.
 
-Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETAB.Engineering.Core`; editor validation and preview do not duplicate generator logic. Browser acceptance covered editing all Phase 2 contract types, invalid-to-valid live feedback, relationship creation, canvas movement, an 18-artifact read-only preview, and a successful save/reopen round-trip.
+Evidence: `docs/Phase2_Validation.md`. The local .NET service and CLI share `ETAB.Engineering.Core`; editor validation and preview do not duplicate generator logic. Browser acceptance covered editing all Phase 2 contract types, invalid-to-valid live feedback, relationship creation, canvas movement, an 18-artifact read-only preview, and a successful save/reopen round-trip. The 2026-08-14 follow-up added the direct filtered canvas workflow and strengthened Core validation for source kinds and duplicates; interactive acceptance of this follow-up remains assigned to the user's UI-validation session.
 
 ### Phase 3 – TwinCAT Project Integration
 
