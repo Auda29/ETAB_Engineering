@@ -266,6 +266,17 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains(
             "eMotionUnitEtabCommand := ETAB.E_ETAB_UnitCommand.User;",
             program);
+        Assert.Contains(
+            "stMotionUnitOptions : ETAB.ST_ETAB_ApplicationUnitOptions;",
+            program);
+        Assert.Contains(
+            "stRecipeManagerOptions : ETAB.ST_ETAB_RecipeOptions;",
+            program);
+        Assert.Contains(
+            "stCellLinkOptions : ETAB.ST_ETAB_MachineLinkOptions;",
+            program);
+        Assert.DoesNotContain("stOptions := (", program);
+        Assert.DoesNotContain("stRx := (", program);
         Assert.Contains("nStartState := 1", program);
         Assert.Contains(
             "GVL_BM_Units.stMotionUnitStatus.stUnit := GVL_BM_Units.fbMotionUnit.stStatus;",
@@ -279,6 +290,29 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains("stMotionUnitStatus : ST_BM_MotionStatus;", gvl);
         Assert.Contains("stRecipeManagerData : ST_BM_ProductRecipe;", gvl);
         Assert.Contains("stCellLinkTx : ETAB.ST_ETAB_MachineLinkData;", gvl);
+    }
+
+    [Fact]
+    public void RuntimeExecution_UsesTypedFallbackInsteadOfAnonymousStructures()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        project["nodes"]![5]!["generate"]!["requestType"] = false;
+        project["nodes"]![5]!["generate"]!["statusType"] = true;
+        project["nodes"]![6]!["generate"]!["requestType"] = false;
+        project["nodes"]![6]!["generate"]!["statusType"] = true;
+
+        var program = Generate(project).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.ProgramCallStructure).Content;
+
+        Assert.Contains(
+            "stCellLinkRx : ETAB.ST_ETAB_MachineLinkData;",
+            program);
+        Assert.Contains("stCellLinkRx.nHeartbeat := 0;", program);
+        Assert.Contains("stRx := stCellLinkRx", program);
+        Assert.Contains("pData := 0", program);
+        Assert.DoesNotContain("stOptions := (", program);
+        Assert.DoesNotContain("stRx := (", program);
     }
 
     [Fact]
