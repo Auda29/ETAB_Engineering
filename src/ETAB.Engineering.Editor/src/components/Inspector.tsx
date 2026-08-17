@@ -123,6 +123,7 @@ function ProjectInspector({
         <Field label="PLC output" hint="ETAB writes directly to the TwinCAT DUTs, POUs and GVLs folders."><TextInput value={project.generation.generatedRoot === "." ? "TwinCAT PLC project folders" : project.generation.generatedRoot} readOnly /></Field>
         <Field label="Application root" hint="Managed automatically by the project template."><TextInput value={project.generation.applicationRoot} readOnly /></Field>
         <div className="field field--wide"><Toggle label="Create user stubs" checked={project.generation.createUserStubs} onChange={(checked) => update((draft) => { draft.generation.createUserStubs = checked; })} /><Toggle label="Generate PRG call structure" checked={project.generation.programCallStructure ?? false} onChange={(checked) => update((draft) => { draft.generation.programCallStructure = checked; })} /></div>
+        <Field label="PLC relation adapter" hint="Creates explicit command and status adapters. Enabling it also enables PLC instances for all currently related nodes." wide><Toggle label="Generate relation wiring" checked={project.generation.relationWiring ?? false} onChange={(checked) => updateDocument((draft) => { draft.project.generation.relationWiring = checked; if (checked) { const relatedIds = new Set(draft.relations.flatMap((relation) => [relation.sourceNodeId, relation.targetNodeId])); draft.nodes.forEach((node) => { if (relatedIds.has(node.id)) node.generate.instance = true; }); } })} /></Field>
       </div>
     </aside>
   );
@@ -265,7 +266,12 @@ function RelationEditor({ document, node, updateDocument }: { document: EtabProj
           </Field>
           <Field label="Optional line label"><TextInput value={label} placeholder={getRelationDefinition(kind).label} onChange={(event) => setLabel(event.target.value)} /></Field>
           <button className="button button--primary" disabled={!targetId} onClick={() => {
-            updateDocument((draft) => draft.relations.push({ id: crypto.randomUUID().toLowerCase(), kind, sourceNodeId: node.id, targetNodeId: targetId, ...(label.trim() ? { label: label.trim() } : {}) }));
+            updateDocument((draft) => {
+              draft.relations.push({ id: crypto.randomUUID().toLowerCase(), kind, sourceNodeId: node.id, targetNodeId: targetId, ...(label.trim() ? { label: label.trim() } : {}) });
+              if (draft.project.generation.relationWiring) {
+                draft.nodes.filter((item) => item.id === node.id || item.id === targetId).forEach((item) => { item.generate.instance = true; });
+              }
+            });
             setLabel("");
           }}>Add relationship</button>
         </div>
@@ -295,9 +301,10 @@ function NodeSettings({ node, update }: { node: EtabNode; update: (mutation: Nod
       <section className="settings-card">
         <h3>Generated artifacts</h3>
         {(["commandEnum", "requestType", "statusType", "baseFunctionBlock", "instance"] as const).map((key) => (
-          <Toggle key={key} label={splitCamel(key)} checked={node.generate[key]} disabled={key === "baseFunctionBlock" && node.kind !== "applicationUnit"} onChange={(checked) => update((draft) => { draft.generate[key] = checked; if (key === "instance" && !checked) { delete draft.generate.instanceType; draft.generate.callInProgram = false; } })} />
+          <Toggle key={key} label={splitCamel(key)} checked={node.generate[key]} disabled={key === "baseFunctionBlock" && node.kind !== "applicationUnit"} onChange={(checked) => update((draft) => { draft.generate[key] = checked; if (key === "instance" && !checked) { delete draft.generate.instanceType; delete draft.generate.relationStatusMember; draft.generate.callInProgram = false; } })} />
         ))}
-        {node.generate.instance && <Field label="Instance type"><TextInput value={node.generate.instanceType ?? ""} onChange={(event) => update((draft) => setOptional(draft.generate, "instanceType", event.target.value))} /></Field>}
+        {node.generate.instance && <Field label="Instance type"><TextInput value={node.generate.instanceType ?? ""} onChange={(event) => update((draft) => { setOptional(draft.generate, "instanceType", event.target.value); if (!event.target.value.trim()) delete draft.generate.relationStatusMember; })} /></Field>}
+        {node.generate.instance && node.generate.instanceType && (node.kind === "recipeManager" || node.kind === "machineLink") && <Field label="Relation status output" hint="Leave empty for stStatus. Custom wrapper FBs may expose another IEC member."><TextInput placeholder="stStatus" value={node.generate.relationStatusMember ?? ""} onChange={(event) => update((draft) => setOptional(draft.generate, "relationStatusMember", event.target.value))} /></Field>}
         {node.generate.instance && <Toggle label="Call instance in generated PRG" checked={node.generate.callInProgram ?? false} onChange={(checked) => update((draft) => { draft.generate.callInProgram = checked; })} />}
         {node.generate.instance && <p className="settings-note">Leave the type empty to use the generated base FB or the ETAB library type.</p>}
       </section>

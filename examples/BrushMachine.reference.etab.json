@@ -19,7 +19,8 @@
         "generatedRoot": "Generated",
         "applicationRoot": "Application",
         "createUserStubs": false,
-        "programCallStructure": false
+        "programCallStructure": false,
+        "relationWiring": true
     }
   },
   "nodes": [
@@ -742,7 +743,8 @@
         "statusType": false,
         "baseFunctionBlock": false,
         "instance": true,
-        "instanceType": "FB_BM_RecipeService"
+        "instanceType": "FB_BM_RecipeService",
+        "relationStatusMember": "stManagerStatus"
       },
       "commands": [],
       "requestPayload": [],

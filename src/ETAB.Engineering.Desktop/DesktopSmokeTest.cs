@@ -45,8 +45,8 @@ internal static class DesktopSmokeTest
                 IntegrateProject: false),
             cancellationToken);
         Require(preview.Validation.IsValid, "The bundled BrushMachine preview is invalid.");
-        Require(preview.Artifacts.Count == 15,
-            $"Expected 15 preview artifacts, received {preview.Artifacts.Count}.");
+        Require(preview.Artifacts.Count == 16,
+            $"Expected 16 preview artifacts, received {preview.Artifacts.Count}.");
 
         var temporaryRoot = Path.Combine(
             Path.GetTempPath(),

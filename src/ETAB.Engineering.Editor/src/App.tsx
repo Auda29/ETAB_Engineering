@@ -381,6 +381,11 @@ export default function App() {
         targetNodeId,
         ...(label?.trim() ? { label: label.trim() } : {}),
       });
+      if (draft.project.generation.relationWiring) {
+        draft.nodes
+          .filter((node) => node.id === sourceNodeId || node.id === targetNodeId)
+          .forEach((node) => { node.generate.instance = true; });
+      }
     });
   }, [updateDocument]);
 

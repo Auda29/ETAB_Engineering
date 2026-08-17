@@ -158,6 +158,9 @@
             },
             "programCallStructure": {
               "type": "boolean"
+            },
+            "relationWiring": {
+              "type": "boolean"
             }
           }
         }
@@ -329,6 +332,9 @@
         },
         "instanceType": {
           "$ref": "#/$defs/dataType"
+        },
+        "relationStatusMember": {
+          "$ref": "#/$defs/iecIdentifier"
         },
         "callInProgram": {
           "type": "boolean"

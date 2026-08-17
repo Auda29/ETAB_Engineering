@@ -8,7 +8,7 @@ namespace ETAB.Engineering.Core.Manifest;
 public static class GenerationManifestSerializer
 {
     public const string CurrentManifestVersion = "0.1";
-    public const string CurrentGeneratorVersion = "0.1.0.6";
+    public const string CurrentGeneratorVersion = "0.1.0.7-preview.1";
     public const string FileName = "etab-generation-manifest.json";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

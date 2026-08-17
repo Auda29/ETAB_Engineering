@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
-    [string]$Version = '0.1.0.6',
+    [ValidatePattern('^\d+\.\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
+    [string]$Version = '0.1.0.7-preview.1',
 
     [string]$OutputDirectory = '',
 
@@ -33,6 +33,7 @@ $outputRoot = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
     [IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputDirectory))
 }
 $portablePackageName = "ETAB-Engineering-v$Version-win-x64"
+$numericVersion = $Version.Split('-', 2)[0]
 $portableZip = Join-Path $outputRoot "$portablePackageName.zip"
 $portableChecksum = "$portableZip.sha256"
 $installerName = "ETAB-Engineering-v$Version-win-x64-setup.exe"
@@ -211,12 +212,14 @@ try {
     $installerDefinition = Join-Path $repositoryRoot 'installer\ETAB Engineering.iss'
     $previousEnvironment = @{
         Version = $env:ETAB_INSTALLER_VERSION
+        VersionInfo = $env:ETAB_INSTALLER_VERSION_INFO
         Source = $env:ETAB_INSTALLER_SOURCE
         Bootstrapper = $env:ETAB_WEBVIEW2_BOOTSTRAPPER
         Output = $env:ETAB_INSTALLER_OUTPUT
     }
     try {
         $env:ETAB_INSTALLER_VERSION = $Version
+        $env:ETAB_INSTALLER_VERSION_INFO = $numericVersion
         $env:ETAB_INSTALLER_SOURCE = $payloadRoot
         $env:ETAB_WEBVIEW2_BOOTSTRAPPER = $bootstrapper
         $env:ETAB_INSTALLER_OUTPUT = $stagingDirectory
@@ -228,6 +231,7 @@ try {
         }
     } finally {
         $env:ETAB_INSTALLER_VERSION = $previousEnvironment.Version
+        $env:ETAB_INSTALLER_VERSION_INFO = $previousEnvironment.VersionInfo
         $env:ETAB_INSTALLER_SOURCE = $previousEnvironment.Source
         $env:ETAB_WEBVIEW2_BOOTSTRAPPER = $previousEnvironment.Bootstrapper
         $env:ETAB_INSTALLER_OUTPUT = $previousEnvironment.Output

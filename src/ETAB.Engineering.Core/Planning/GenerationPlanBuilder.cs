@@ -649,6 +649,9 @@ public sealed class GenerationPlanBuilder
             case "instance-gvl":
                 kind = GeneratedArtifactKind.InstanceGlobalVariableList;
                 return true;
+            case "relation-wiring":
+                kind = GeneratedArtifactKind.RelationWiring;
+                return true;
             case "program-call-structure":
                 kind = GeneratedArtifactKind.ProgramCallStructure;
                 return true;

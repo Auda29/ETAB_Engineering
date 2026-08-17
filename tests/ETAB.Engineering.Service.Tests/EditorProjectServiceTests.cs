@@ -194,7 +194,7 @@ public sealed class EditorProjectServiceTests : IDisposable
         var preview = service.Preview(opened.Document, projectPath, testRoot);
 
         Assert.True(preview.Validation.IsValid);
-        Assert.Equal(15, preview.Artifacts.Count);
+        Assert.Equal(16, preview.Artifacts.Count);
         Assert.All(preview.Changes, change => Assert.Equal("create", change.ChangeKind));
         Assert.Equal("create", preview.Manifest!.ChangeKind);
         Assert.NotNull(preview.ConfirmationToken);
@@ -217,7 +217,7 @@ public sealed class EditorProjectServiceTests : IDisposable
             confirmed: true);
 
         Assert.True(generated.Success);
-        Assert.Equal(15, generated.Created);
+        Assert.Equal(16, generated.Created);
         Assert.True(generated.ManifestChanged);
         Assert.False(generated.ProjectFileChanged);
         var repeated = service.Preview(opened.Document, projectPath, testRoot);

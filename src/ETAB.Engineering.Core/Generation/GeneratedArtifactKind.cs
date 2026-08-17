@@ -7,6 +7,7 @@ public enum GeneratedArtifactKind
     StatusDut,
     BaseFunctionBlock,
     InstanceGlobalVariableList,
+    RelationWiring,
     ProgramCallStructure
 }
 
@@ -19,6 +20,7 @@ public static class GeneratedArtifactKindExtensions
         GeneratedArtifactKind.StatusDut => "status-dut",
         GeneratedArtifactKind.BaseFunctionBlock => "base-function-block",
         GeneratedArtifactKind.InstanceGlobalVariableList => "instance-gvl",
+        GeneratedArtifactKind.RelationWiring => "relation-wiring",
         GeneratedArtifactKind.ProgramCallStructure => "program-call-structure",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };

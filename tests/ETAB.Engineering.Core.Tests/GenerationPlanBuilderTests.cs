@@ -34,7 +34,7 @@ public sealed class GenerationPlanBuilderTests
 
         Assert.False(plan.HasConflicts);
         Assert.Equal(GenerationChangeKind.Create, plan.Manifest.ChangeKind);
-        Assert.Equal(15, plan.Changes.Count);
+        Assert.Equal(16, plan.Changes.Count);
         Assert.All(plan.Changes, change => Assert.Equal(GenerationChangeKind.Create, change.ChangeKind));
         Assert.False(Directory.Exists(Path.Combine(temporary.Path, "Generated")));
     }
@@ -71,7 +71,7 @@ public sealed class GenerationPlanBuilderTests
             plan.Changes,
             change => change.ChangeKind == GenerationChangeKind.Update);
         Assert.Equal("ST_BM_ProcessStatus", update.PlannedArtifact!.Name);
-        Assert.Equal(14, plan.Changes.Count(
+        Assert.Equal(15, plan.Changes.Count(
             change => change.ChangeKind == GenerationChangeKind.Unchanged));
     }
 

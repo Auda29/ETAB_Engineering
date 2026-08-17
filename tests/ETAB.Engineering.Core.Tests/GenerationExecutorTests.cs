@@ -38,14 +38,14 @@ public sealed class GenerationExecutorTests
         var firstExecution = _executor.Execute(initialPlan);
 
         Assert.True(firstExecution.Success, FormatIssues(firstExecution));
-        Assert.Equal(15, firstExecution.Created);
+        Assert.Equal(16, firstExecution.Created);
         Assert.Equal(0, firstExecution.Updated);
         Assert.Equal(0, firstExecution.Renamed);
         Assert.Equal(0, firstExecution.Deleted);
 
         var generatedRoot = Path.Combine(temporary.Path, "Generated");
         Assert.Equal(
-            16,
+            17,
             Directory.GetFiles(generatedRoot, "*", SearchOption.AllDirectories).Length);
         Assert.Empty(Directory.GetDirectories(generatedRoot, ".etab-*"));
 
@@ -69,7 +69,7 @@ public sealed class GenerationExecutorTests
         var manifestJson = File.ReadAllText(
             Path.Combine(generatedRoot, GenerationManifestSerializer.FileName));
         var manifest = GenerationManifestSerializer.Deserialize(manifestJson);
-        Assert.Equal(15, manifest.Artifacts.Count);
+        Assert.Equal(16, manifest.Artifacts.Count);
 
         var twinCatIds = new List<string>();
         foreach (var artifact in manifest.Artifacts)

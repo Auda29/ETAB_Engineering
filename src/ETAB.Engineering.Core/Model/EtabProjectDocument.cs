@@ -60,6 +60,8 @@ public sealed class GenerationSettings
     public bool CreateUserStubs { get; init; }
 
     public bool ProgramCallStructure { get; init; }
+
+    public bool RelationWiring { get; init; }
 }
 
 public sealed class EtabNode
@@ -110,6 +112,8 @@ public sealed class NodeGenerationSettings
     public bool Instance { get; init; }
 
     public string? InstanceType { get; init; }
+
+    public string? RelationStatusMember { get; init; }
 
     public bool CallInProgram { get; init; }
 }

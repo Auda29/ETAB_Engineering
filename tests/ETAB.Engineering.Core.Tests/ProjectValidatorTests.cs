@@ -238,6 +238,61 @@ public sealed class ProjectValidatorTests
         Assert.Contains(result.Issues, issue => issue.Code == "PROGRAM_CALL_WITHOUT_INSTANCE");
     }
 
+    [Fact]
+    public void RelationWiringRequiresSourceAndTargetInstances()
+    {
+        var project = ParseProject();
+        var sourceGenerate = project["nodes"]![4]!["generate"]!.AsObject();
+        sourceGenerate["instance"] = false;
+        sourceGenerate["callInProgram"] = false;
+        sourceGenerate.Remove("instanceType");
+        var targetGenerate = project["nodes"]![1]!["generate"]!.AsObject();
+        targetGenerate["instance"] = false;
+        targetGenerate["callInProgram"] = false;
+        targetGenerate.Remove("instanceType");
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            result.Issues,
+            issue => issue.Code == "RELATION_SOURCE_INSTANCE_REQUIRED");
+        Assert.Contains(
+            result.Issues,
+            issue => issue.Code == "RELATION_TARGET_INSTANCE_REQUIRED");
+    }
+
+    [Fact]
+    public void LogicalRelationsMayRemainWithoutInstancesWhenWiringIsDisabled()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["relationWiring"] = false;
+        var generate = project["nodes"]![4]!["generate"]!.AsObject();
+        generate["instance"] = false;
+        generate["callInProgram"] = false;
+        generate.Remove("instanceType");
+
+        var result = Validate(project);
+
+        Assert.True(
+            result.IsValid,
+            string.Join(Environment.NewLine, result.Issues.Select(issue => issue.Message)));
+    }
+
+    [Fact]
+    public void CustomRelationStatusMemberIsLimitedToWrapperNodeKinds()
+    {
+        var project = ParseProject();
+        project["nodes"]![0]!["generate"]!["relationStatusMember"] = "stCustomStatus";
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            result.Issues,
+            issue => issue.Code == "RELATION_STATUS_NODE_KIND");
+    }
+
     private static JsonObject ParseProject() =>
         JsonNode.Parse(ValidProjectJson)!.AsObject();
 

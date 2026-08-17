@@ -24,6 +24,7 @@ export interface EtabProject {
     applicationRoot: string;
     createUserStubs: boolean;
     programCallStructure?: boolean;
+    relationWiring?: boolean;
   };
 }
 
@@ -53,6 +54,7 @@ export interface NodeGenerationSettings {
   baseFunctionBlock: boolean;
   instance: boolean;
   instanceType?: string;
+  relationStatusMember?: string;
   callInProgram?: boolean;
 }
 

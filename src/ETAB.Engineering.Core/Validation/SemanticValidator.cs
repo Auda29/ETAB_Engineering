@@ -284,6 +284,21 @@ internal sealed class SemanticValidator
                 $"{nodePath}/generate/instanceType",
                 "An explicit instanceType is valid only when instance generation is enabled."));
         }
+        if (!node.Generate.Instance && !string.IsNullOrWhiteSpace(node.Generate.RelationStatusMember))
+        {
+            issues.Add(new ValidationIssue(
+                "RELATION_STATUS_WITHOUT_INSTANCE",
+                $"{nodePath}/generate/relationStatusMember",
+                "A relation status output is valid only when instance generation is enabled."));
+        }
+        if (!string.IsNullOrWhiteSpace(node.Generate.RelationStatusMember) &&
+            node.Kind is not ("recipeManager" or "machineLink"))
+        {
+            issues.Add(new ValidationIssue(
+                "RELATION_STATUS_NODE_KIND",
+                $"{nodePath}/generate/relationStatusMember",
+                "A custom relation status output is supported only for RecipeManager and MachineLink nodes."));
+        }
         if (!node.Generate.Instance && node.Generate.CallInProgram)
         {
             issues.Add(new ValidationIssue(
@@ -349,6 +364,22 @@ internal sealed class SemanticValidator
         var childrenByParent = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var relationKeys = new HashSet<(string Kind, string SourceId, string TargetId)>();
 
+        if (project.Project.Generation.RelationWiring && project.Relations.Count > 0)
+        {
+            var reservedInstance = project.Nodes
+                .Select((node, index) => (node, index))
+                .FirstOrDefault(item =>
+                    item.node.Generate.Instance &&
+                    IecNameComparer.Equals(item.node.Name, "EtabRelationWiring"));
+            if (reservedInstance.node is not null)
+            {
+                issues.Add(new ValidationIssue(
+                    "RELATION_WIRING_INSTANCE_COLLISION",
+                    $"/nodes/{reservedInstance.index}/name",
+                    "Generated relation wiring reserves the PLC instance name 'fbEtabRelationWiring'."));
+            }
+        }
+
         for (var relationIndex = 0; relationIndex < project.Relations.Count; relationIndex++)
         {
             var relation = project.Relations[relationIndex];
@@ -399,6 +430,25 @@ internal sealed class SemanticValidator
                 nodesById[relation.TargetNodeId],
                 relationPath,
                 issues);
+
+            if (project.Project.Generation.RelationWiring)
+            {
+                if (!nodesById[relation.SourceNodeId].Generate.Instance)
+                {
+                    issues.Add(new ValidationIssue(
+                        "RELATION_SOURCE_INSTANCE_REQUIRED",
+                        $"{relationPath}/sourceNodeId",
+                        "Generated relation wiring requires the source node to generate a PLC instance."));
+                }
+
+                if (!nodesById[relation.TargetNodeId].Generate.Instance)
+                {
+                    issues.Add(new ValidationIssue(
+                        "RELATION_TARGET_INSTANCE_REQUIRED",
+                        $"{relationPath}/targetNodeId",
+                        "Generated relation wiring requires the target node to generate a PLC instance."));
+                }
+            }
 
             if (relation.Kind != "contains")
             {

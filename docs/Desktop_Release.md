@@ -21,10 +21,10 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.6
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.1
 ```
 
-This local command creates unsigned development artifacts because no private signing identity is stored in the repository. The authoritative public artifacts are built and signed in GitHub Actions. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for signing and package that exact bundle afterward.
+This local command creates unsigned development artifacts because no private signing identity is stored in the repository. Stable public releases are built and signed in GitHub Actions. An explicitly versioned `-preview.N` prerelease may remain unsigned while signing is deferred, but it is marked accordingly in GitHub and can trigger a Windows unknown-publisher warning. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for optional signing and package that exact bundle afterward.
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
 
@@ -46,17 +46,17 @@ The smoke test verifies that the packaged executable:
 - serves the bundled React entry point,
 - opens the bundled BrushMachine project,
 - validates it through the shared core,
-- produces a read-only preview containing 15 artifacts,
+- produces a read-only preview containing 16 artifacts,
 - saves and reopens a temporary project without data loss,
 - shuts down its loopback service cleanly.
 
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -70,7 +70,7 @@ The ZIP contains one root directory so it can be extracted without scattering fi
 - Setup installs WebView2 Runtime only when registry detection reports that it is missing.
 - Silent installation uses the standard Inno Setup flags, for example `setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`.
 
-Every new GitHub Release produced by the configured workflow contains an Authenticode-signed application executable and Setup EXE. Both signatures use a SHA-256 file digest and the Microsoft Artifact Signing RFC 3161 timestamp service. The workflow rejects a missing, invalid, or non-timestamped signature. Previously published unsigned assets are not modified retroactively. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
+Every stable GitHub Release produced by the configured workflow contains an Authenticode-signed application executable and Setup EXE. Both signatures use a SHA-256 file digest and the Microsoft Artifact Signing RFC 3161 timestamp service. The workflow rejects a missing, invalid, or non-timestamped signature for stable versions. While signing is deferred, only an explicit `vX.Y.Z.W-preview.N` tag may take the unsigned path; it is published as a GitHub prerelease with an unknown-publisher warning. Previously published unsigned assets are not modified retroactively. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
 
 Authenticode establishes the verified publisher and file integrity. A newly established publisher can still receive a temporary SmartScreen reputation warning until Microsoft has accumulated sufficient reputation for the signing identity and downloads. Every release must therefore use the same public-trust certificate profile.
 
@@ -97,32 +97,31 @@ Perform this account setup once before running the updated workflow:
    - `AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME`
    - `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
 
-The endpoint must match the Azure region that contains the account and certificate profile. The workflow validates that all six settings exist before building and fails closed if signing cannot be completed.
+The endpoint must match the Azure region that contains the account and certificate profile. A partial configuration always fails closed. When all six settings are absent, only a `-preview.N` version may continue unsigned; a stable version is rejected. Once all values are present, signing and signature verification are mandatory for every run.
 
 The GitHub configuration can be entered through **Settings → Environments → release-signing**. Keep these values out of tracked files. OIDC removes the need for an `AZURE_CLIENT_SECRET`.
 
 ## GitHub Release Workflow
 
-`.github/workflows/desktop-release.yml` runs on Windows and installs an official Inno Setup compiler only after validating its publisher signature. Its signed release sequence is:
+`.github/workflows/desktop-release.yml` runs on Windows and installs an official Inno Setup compiler only after validating its publisher signature. Its release sequence is:
 
 1. build, test, and smoke-test an unpacked portable bundle,
-2. authenticate to Azure through GitHub OIDC,
-3. sign `ETAB Engineering.exe` with Microsoft Artifact Signing,
-4. require a valid timestamped signature before ZIP creation,
-5. build the installer exclusively from that signed ZIP,
-6. sign the final Setup EXE with the same certificate profile,
-7. require valid timestamped signatures, run the isolated signed-installer test, and regenerate the Setup checksum after signing,
+2. validate the release class and Artifact Signing configuration,
+3. for configured signing, authenticate through GitHub OIDC, sign `ETAB Engineering.exe`, and require its valid timestamped signature before ZIP creation,
+4. build the installer exclusively from the verified ZIP,
+5. for configured signing, sign the final Setup EXE and require its valid timestamped signature,
+6. run the isolated installer test and regenerate the Setup checksum after optional preview signing,
 8. verify both SHA-256 sidecars before any release upload.
 
-- `workflow_dispatch` builds, signs, and verifies the four files without creating a Release.
-- A pushed `v*` tag derives the package version from the tag, builds and verifies both signed distributions, and creates or updates the corresponding GitHub Release with all four files attached directly.
+- `workflow_dispatch` builds and verifies the four files without creating a Release. Stable versions require signing; explicit preview versions may run unsigned.
+- A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly. An unsigned preview is marked as a prerelease and carries a warning in its release notes.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For version `0.1.0.6`, publish with:
+For preview version `0.1.0.7-preview.1`, publish with:
 
 ```powershell
-git tag -a v0.1.0.6 -m "ETAB Engineering v0.1.0.6"
-git push origin v0.1.0.6
+git tag -a v0.1.0.7-preview.1 -m "ETAB Engineering v0.1.0.7-preview.1"
+git push origin v0.1.0.7-preview.1
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -135,7 +134,7 @@ Local validation on 2026-08-13 produced a 76,249,815-byte ZIP with 564 archive e
 3c68250dae4aef96cc19b57889a2d3eca34c98ecdbf550de723e7c477e8e21e4
 ```
 
-The current executable smoke test passes with 15 preview artifacts, including the generated instance GVL, and a lossless save/reopen round trip. The previously extracted WPF application also started successfully and visibly rendered the complete BrushMachine editor with 7 nodes, 12 relationships, and a valid model.
+The current executable smoke test expects 16 preview artifacts, including the generated instance GVL and relation adapter, and a lossless save/reopen round trip. The previously extracted WPF application also started successfully and visibly rendered the complete BrushMachine editor with 7 nodes, 12 relationships, and a valid model.
 
 The installer build produced a 55,798,857-byte Setup EXE with this SHA-256 value:
 
@@ -240,3 +239,9 @@ The `v0.1.0.5` tag workflow builds the authoritative portable ZIP and installer 
 Local validation on 2026-08-14 passed the TypeScript check, all 59 Core tests, all 10 editor-service tests, and the complete Release build with zero warnings and zero errors. This release introduces the TwinCAT-first startup workflow: selecting an empty `.plcproj` creates or reopens its deterministic companion ETAB model, assigns paths without manual filename entry, and binds project integration automatically. Generated artifacts are written directly into the PLC project's `DUTs`, `POUs`, and `GVLs` hierarchy while ownership remains limited to manifest-listed files. The same release adds node renaming through the canvas context menu.
 
 The automated service workflow creates an empty PLC project, connects it, previews and executes direct-root generation, verifies the `.plcproj` entries, preserves an unrelated handwritten file, and proves that reconnecting keeps stable model IDs. No browser automation or Playwright run was used. The `v0.1.0.6` tag workflow performs the authoritative portable bundle, installer, isolated installation, packaged smoke test, uninstall verification, checksum, and GitHub Release publication steps.
+
+## Validation Record for v0.1.0.7-preview.1
+
+Local validation on 2026-08-17 passed the TypeScript check and production build, all 65 Core tests, all 10 editor-service tests, .NET formatting verification, and PowerShell/YAML syntax checks. The packaged executable and isolated installed executable both passed the desktop smoke test with 16 preview artifacts and a lossless save/reopen round trip. The installer test also completed its silent per-user install and uninstall cleanup. No browser automation or Playwright run was used.
+
+The local portable ZIP is 78,832,528 bytes with SHA-256 `4bdfe635771097c5228ef0adfad2245aedd3e2123bab532b8d3a18c1d2526c7d`. The local Setup EXE is 55,937,521 bytes with SHA-256 `671772a6f5059035fa5c3a929757e80ba2dbdf4a7aca84638fadef764a6a4917`. This prerelease remains deliberately unsigned while Artifact Signing is deferred and is intended for functional relation-wiring acceptance. Stable releases remain blocked without valid timestamped signatures. A TwinCAT XAE compile of a generated project remains a separate user acceptance step.

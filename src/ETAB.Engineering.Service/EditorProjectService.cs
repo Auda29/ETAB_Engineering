@@ -59,7 +59,8 @@ public sealed class EditorProjectService
                   "generatedRoot": "Generated",
                   "applicationRoot": "Application",
                   "createUserStubs": false,
-                  "programCallStructure": false
+                  "programCallStructure": false,
+                  "relationWiring": true
                 }
               },
               "nodes": [

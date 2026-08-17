@@ -6,7 +6,7 @@ on:
       version:
         description: Release version without the leading v
         required: true
-        default: 0.1.0.6
+        default: 0.1.0.7-preview.1
         type: string
   push:
     tags:
@@ -93,6 +93,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) {
             throw 'A release version is required.'
           }
+          $isPreview = $version -match '^\d+\.\d+\.\d+\.\d+-preview\.\d+$'
 
           $packageName = "ETAB-Engineering-v$version-win-x64"
           $bundleDirectory = Join-Path $env:RUNNER_TEMP $packageName
@@ -100,6 +101,7 @@ jobs:
           $installerPath = Join-Path $PWD "artifacts\$packageName-setup.exe"
 
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_IS_PREVIEW=$($isPreview.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "PORTABLE_BUNDLE_DIRECTORY=$bundleDirectory" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "PORTABLE_EXECUTABLE=$portableExecutable" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "INSTALLER_PATH=$installerPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -122,6 +124,17 @@ jobs:
             AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME = $env:SIGNING_ACCOUNT_NAME
             AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME = $env:SIGNING_PROFILE_NAME
           }
+          $configured = @($requiredValues.GetEnumerator() |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.Value) })
+          if ($configured.Count -eq 0) {
+            if ($env:RELEASE_IS_PREVIEW -ne 'true') {
+              throw 'Artifact Signing is required for stable releases. Only an explicitly versioned preview release may be published unsigned.'
+            }
+            'SIGN_RELEASE=false' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Warning 'Artifact Signing is not configured. Publishing an explicitly marked unsigned preview build.'
+            exit 0
+          }
+
           $missing = @($requiredValues.GetEnumerator() |
             Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } |
             ForEach-Object { $_.Key })
@@ -136,6 +149,8 @@ jobs:
             throw 'AZURE_ARTIFACT_SIGNING_ENDPOINT must be the HTTPS endpoint of the configured Artifact Signing region.'
           }
 
+          'SIGN_RELEASE=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Build and test portable bundle before signing
         shell: pwsh
         run: |
@@ -146,6 +161,7 @@ jobs:
             -SkipArchive
 
       - name: Sign in to Azure with GitHub OIDC
+        if: env.SIGN_RELEASE == 'true'
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -153,6 +169,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign ETAB Engineering executable
+        if: env.SIGN_RELEASE == 'true'
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
@@ -165,27 +182,36 @@ jobs:
           description: ETAB Engineering
           description-url: https://github.com/${{ github.repository }}
 
-      - name: Verify and package signed portable bundle
+      - name: Verify and package portable bundle
         shell: pwsh
         run: |
-          .\publish-win-x64.ps1 `
-            -Version $env:RELEASE_VERSION `
-            -OutputDirectory (Join-Path $PWD 'artifacts') `
-            -BundleDirectory $env:PORTABLE_BUNDLE_DIRECTORY `
-            -SkipBuild `
-            -RequireSignature
+          $arguments = @{
+            Version = $env:RELEASE_VERSION
+            OutputDirectory = (Join-Path $PWD 'artifacts')
+            BundleDirectory = $env:PORTABLE_BUNDLE_DIRECTORY
+            SkipBuild = $true
+          }
+          if ($env:SIGN_RELEASE -eq 'true') {
+            $arguments.RequireSignature = $true
+          }
+          .\publish-win-x64.ps1 @arguments
 
-      - name: Build installer from signed portable bundle
+      - name: Build installer from portable bundle
         shell: pwsh
         run: |
-          .\publish-installer-win-x64.ps1 `
-            -Version $env:RELEASE_VERSION `
-            -OutputDirectory (Join-Path $PWD 'artifacts') `
-            -SkipPortableBuild `
-            -SkipInstallerTest `
-            -RequirePortableSignature
+          $arguments = @{
+            Version = $env:RELEASE_VERSION
+            OutputDirectory = (Join-Path $PWD 'artifacts')
+            SkipPortableBuild = $true
+            SkipInstallerTest = $true
+          }
+          if ($env:SIGN_RELEASE -eq 'true') {
+            $arguments.RequirePortableSignature = $true
+          }
+          .\publish-installer-win-x64.ps1 @arguments
 
       - name: Sign ETAB Engineering installer
+        if: env.SIGN_RELEASE == 'true'
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
@@ -198,7 +224,7 @@ jobs:
           description: ETAB Engineering installer
           description-url: https://github.com/${{ github.repository }}/releases
 
-      - name: Verify signed release and regenerate checksums
+      - name: Verify release and regenerate checksums
         shell: pwsh
         run: |
           function Assert-ReleaseSignature {
@@ -236,8 +262,15 @@ jobs:
             }
           }
 
-          Assert-ReleaseSignature -Path $env:PORTABLE_EXECUTABLE
-          Assert-ReleaseSignature -Path $env:INSTALLER_PATH
+          if ($env:SIGN_RELEASE -eq 'true') {
+            Assert-ReleaseSignature -Path $env:PORTABLE_EXECUTABLE
+            Assert-ReleaseSignature -Path $env:INSTALLER_PATH
+          } else {
+            if ($env:RELEASE_IS_PREVIEW -ne 'true') {
+              throw 'Unsigned artifacts are forbidden for stable releases.'
+            }
+            Write-Warning 'Verifying an explicitly marked unsigned preview build.'
+          }
 
           $installerName = [IO.Path]::GetFileName($env:INSTALLER_PATH)
           $installerHash = (Get-FileHash -LiteralPath $env:INSTALLER_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -274,10 +307,25 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:GITHUB_REF_NAME @assets --clobber
           } else {
-            gh release create $env:GITHUB_REF_NAME @assets `
-              --verify-tag `
-              --generate-notes `
-              --title "ETAB Engineering $env:GITHUB_REF_NAME"
+            $releaseArguments = @(
+              'release', 'create', $env:GITHUB_REF_NAME
+            ) + $assets + @(
+              '--verify-tag',
+              '--generate-notes',
+              '--title', "ETAB Engineering $env:GITHUB_REF_NAME"
+            )
+            if ($env:RELEASE_IS_PREVIEW -eq 'true') {
+              $previewNote = if ($env:SIGN_RELEASE -eq 'true') {
+                'Signed preview build for functional testing.'
+              } else {
+                'Unsigned preview build for functional testing. Windows SmartScreen may show an unknown-publisher warning.'
+              }
+              $releaseArguments += @(
+                '--prerelease',
+                '--notes', $previewNote
+              )
+            }
+            & gh @releaseArguments
           }
           if ($LASTEXITCODE -ne 0) {
             throw "GitHub Release publication failed with exit code $LASTEXITCODE."

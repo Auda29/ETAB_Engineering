@@ -120,6 +120,7 @@ Each node explicitly defines:
 - `baseFunctionBlock`
 - `instance`
 - optional `instanceType` for a project-specific function-block type
+- optional `relationStatusMember` when a custom RecipeManager or MachineLink wrapper exposes its ETAB status under a member other than `stStatus`
 - optional `callInProgram` selection for the generated PRG
 
 Invalid combinations are rejected semantically. For example, a `recipeManager` does not generate a project-specific command enum in the MVP.
@@ -284,6 +285,21 @@ Valid relationship types:
 - Source and target kinds must match the table above.
 
 Safety and collision enables are not relationship types in v0.1.
+
+### 8.1 Optional PLC Relation Wiring
+
+`project.generation.relationWiring = true` generates `FB_<prefix>_Relations` and its qualified `GVL_<prefix>_Units.fbEtabRelationWiring` instance. Every relation endpoint must then have `generate.instance = true`; otherwise semantic validation rejects the model. Omitting the option or setting it to `false` keeps relations as logical documentation only for backward compatibility.
+
+The generated adapter has a deliberately narrow runtime contract:
+
+- `contains` assigns `rUnit.ipMasterUnit` for ApplicationUnit children; CommandUnit children remain structural because they have no ET state-model parent reference.
+- `commands` creates an explicit method that forwards `bExecute`, `ETAB.E_ETAB_UnitCommand`, and `nCommandID` to the target's standard `StartCommand` API.
+- `observes` creates an explicit method returning the target's standard ApplicationUnit or CommandUnit status.
+- `usesRecipe` and `usesLink` create explicit methods returning the target manager/link status.
+
+The default status member for RecipeManager and MachineLink instances is `stStatus`. A custom wrapper may select another IEC member with `generate.relationStatusMember`; the BrushMachine recipe wrapper uses `stManagerStatus`.
+
+The adapter never selects a command, maps request payload fields, drives recipe or link inputs, derives interlocks, or creates safety, motion, process, recovery, or I/O behavior. Those decisions remain handwritten project logic. If the optional generated PRG is enabled, relation wiring is called before selected unit instances so ApplicationUnit parent references are assigned first; otherwise project code may call `fbEtabRelationWiring()` explicitly.
 
 ## 9. Layout
 

@@ -53,7 +53,7 @@ export function createNode(kind: NodeKind, document: EtabProjectDocument): EtabN
       requestType: kind === "applicationUnit" || kind === "commandUnit",
       statusType: true,
       baseFunctionBlock: kind === "applicationUnit",
-      instance: false,
+      instance: document.project.generation.relationWiring ?? false,
     },
     commands: [],
     requestPayload: [],
@@ -69,6 +69,7 @@ export function createNode(kind: NodeKind, document: EtabProjectDocument): EtabN
 export function applyKindDefaults(node: EtabNode, kind: NodeKind): void {
   node.kind = kind;
   delete node.generate.instanceType;
+  delete node.generate.relationStatusMember;
   node.generate.callInProgram = false;
   delete node.applicationUnit;
   delete node.commandUnit;

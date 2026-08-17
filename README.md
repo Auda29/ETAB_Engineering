@@ -1,14 +1,14 @@
-# ETAB Engineering v0.1.0.6
+# ETAB Engineering v0.1.0.7-preview.1
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. The generated copy was subsequently opened and built successfully in TwinCAT XAE by the user. Runtime and machine acceptance remain separate. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 3D adds opt-in PLC relation wiring with explicit command and status adapters while preserving the safety boundary. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. The generated copy was subsequently opened and built successfully in TwinCAT XAE by the user. Runtime and machine acceptance remain separate. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
-The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, and a qualified project instance GVL. An optional generated PRG can call explicitly selected instances. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
+The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, a qualified project instance GVL, and an opt-in `FB_<prefix>_Relations` adapter. The adapter exposes explicit command routing and typed status reads and wires ApplicationUnit hierarchy without inventing process, motion, safety, recipe, or machine-link input logic. An optional generated PRG can call explicitly selected instances. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
 
 The TypeScript visual editor and its loopback .NET service are implemented. Its desktop workflow starts from an empty PLC project created in TwinCAT: the startup screen selects the `.plcproj` through a native Windows dialog, creates or reopens a deterministic companion `<PLC name>.etab.json`, and assigns the PLC directory, project filename, direct TwinCAT output layout, and `.plcproj` integration automatically. Project paths, filenames, and generation targets are display-only in the UI. The editor otherwise provides a drag-and-drop component palette, hierarchy, property and contract editors, direct relationship creation and editing on the draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Palette components are placed at their drop position; Enter or Space provides keyboard placement with automatic positioning. Persistent machine areas appear as canvas tabs and project-tree folders; nodes can be moved between them, and global relationships may cross area boundaries. The **All** view renders the complete graph, while individual tabs provide cross-area navigation. Right-clicking a node opens a contextual action menu for renaming its display, PLC, and generated-symbol names, starting a valid relationship, adding a generated command, or moving the node to another area. Canvas controls and Ctrl+mouse-wheel zoom only the node workspace from 50 to 160 percent; WebView page zoom is disabled. A header toggle switches the complete editor between dark and light themes and persists the preference locally, including on the startup screen. Relationship mode highlights only valid targets, offers only valid types for the selected endpoints, shows direction arrows and a legend, and prevents duplicate or cyclic hierarchy links before saving. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
 
@@ -62,30 +62,30 @@ For a new model, first create an empty PLC project in TwinCAT. On the ETAB start
 
 To generate from the editor, save the ETAB model, open **Generation preview**, and select **Refresh preview**. The target and linked `.plcproj` are read-only and already follow the startup selection. Inspect the complete conflict-protected plan and then select **Generate**. Generated DUTs, POUs, and GVLs are written to the corresponding TwinCAT directories and added to the `.plcproj` in the same transaction. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
 
-Use `examples/BrushMachine.reference.etab.json` to exercise the complete 15-artifact generator output. For integration with the existing `AutomationBase Beispiel`, open `examples/BrushMachine.integration.etab.json`; it keeps the three existing command enums, three request DUTs, and aggregate machine-status DUT externally owned and proposes eight non-conflicting generated artifacts.
+Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-artifact generator output, including `FB_BM_Relations`. For integration with the existing `AutomationBase Beispiel`, open `examples/BrushMachine.integration.etab.json`; it keeps the three existing command enums, three request DUTs, and aggregate machine-status DUT externally owned and proposes nine non-conflicting generated artifacts.
 
 ### Windows Desktop Release
 
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.6
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.1
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.6-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.
 
 As a portable alternative, extract the complete ZIP and start `ETAB Engineering.exe`. WebView2 Runtime must already be present when using the ZIP directly. Neither distribution requires the .NET SDK, Node.js, a terminal, or a separately started service on the target computer.
 
-After its one-time signing setup, the GitHub Actions workflow `Desktop release` creates authoritative signed releases through Microsoft Artifact Signing. It builds and smoke-tests an unpacked bundle, signs `ETAB Engineering.exe` with SHA-256 and an RFC 3161 timestamp, verifies that signature, and only then creates the portable ZIP. The installer is built from that signed ZIP, signed separately, verified, smoke-tested, and hashed after signing. A new `v*` tag attaches the signed ZIP, signed Setup EXE, and both final checksums directly to a GitHub Release. A manual workflow run performs the same signed build without creating a Release. Previously published assets are not changed retroactively. The required Azure and GitHub environment configuration is documented in [Windows Desktop Release](docs/Desktop_Release.md#artifact-signing-setup).
+After its one-time signing setup, the GitHub Actions workflow `Desktop release` creates authoritative signed releases through Microsoft Artifact Signing. Stable `v*` tags fail closed when signing is absent or incomplete. Explicit `vX.Y.Z.W-preview.N` tags may publish a clearly marked unsigned prerelease for functional testing while signing is deferred; Windows SmartScreen can therefore show an unknown-publisher warning for those preview assets. The workflow still builds, installs, smoke-tests, uninstalls, and verifies both checksums. A manual workflow run performs the same package validation without creating a Release. Previously published assets are not changed retroactively. The required Azure and GitHub environment configuration is documented in [Windows Desktop Release](docs/Desktop_Release.md#artifact-signing-setup).
 
 ## Documents
 
@@ -103,6 +103,7 @@ After its one-time signing setup, the GitHub Actions workflow `Desktop release` 
 - [Phase 3A TwinCAT Project Integration Validation](docs/Phase3A_Validation.md)
 - [Phase 3B Instance and PRG Validation](docs/Phase3B_Validation.md)
 - [Phase 3C Editor Generation Validation](docs/Phase3C_Validation.md)
+- [Phase 3D Relation Wiring Validation](docs/Phase3D_Relation_Wiring.md)
 - [Phase 4A Golden-Sample Reconciliation](docs/Phase4A_Reconciliation.md)
 - [Phase 4B Project-Copy Generation](docs/Phase4B_CopyGeneration.md)
 - [Windows Desktop Release](docs/Desktop_Release.md)

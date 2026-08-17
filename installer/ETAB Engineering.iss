@@ -1,10 +1,14 @@
 #define AppVersion GetEnv("ETAB_INSTALLER_VERSION")
+#define AppVersionInfo GetEnv("ETAB_INSTALLER_VERSION_INFO")
 #define PayloadRoot GetEnv("ETAB_INSTALLER_SOURCE")
 #define BootstrapperPath GetEnv("ETAB_WEBVIEW2_BOOTSTRAPPER")
 #define InstallerOutputDir GetEnv("ETAB_INSTALLER_OUTPUT")
 
 #if AppVersion == ""
   #error ETAB_INSTALLER_VERSION is required.
+#endif
+#if AppVersionInfo == ""
+  #error ETAB_INSTALLER_VERSION_INFO is required.
 #endif
 #if PayloadRoot == ""
   #error ETAB_INSTALLER_SOURCE is required.
@@ -25,7 +29,7 @@ AppPublisher=Auda29
 AppPublisherURL=https://github.com/Auda29/ETAB_Engineering
 AppSupportURL=https://github.com/Auda29/ETAB_Engineering/issues
 AppUpdatesURL=https://github.com/Auda29/ETAB_Engineering/releases
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppVersionInfo}
 VersionInfoCompany=Auda29
 VersionInfoDescription=ETAB Engineering Windows x64 installer
 VersionInfoProductName=ETAB Engineering

@@ -60,7 +60,7 @@ public sealed class TwinCatProjectIntegrationTests
             .Select(element => (string?)element.Attribute("Include"))
             .Where(include => include?.StartsWith("Generated\\", StringComparison.Ordinal) == true)
             .ToArray();
-        Assert.Equal(15, generatedCompiles.Length);
+        Assert.Equal(16, generatedCompiles.Length);
         Assert.Single(
             document.Descendants(ns + "PlaceholderReference"),
             element => (string?)element.Attribute("Include") == "ETAB");
@@ -69,7 +69,7 @@ public sealed class TwinCatProjectIntegrationTests
             element => (string?)element.Attribute("Include") == "ETAB");
 
         var integrationManifest = ReadIntegrationManifest(temporary.Path);
-        Assert.Equal(15, integrationManifest.ManagedCompileIncludes.Count);
+        Assert.Equal(16, integrationManifest.ManagedCompileIncludes.Count);
         Assert.Equal(7, integrationManifest.ManagedFolderIncludes.Count);
         Assert.NotNull(integrationManifest.ManagedPlaceholderReference);
         Assert.NotNull(integrationManifest.ManagedPlaceholderResolution);
@@ -218,9 +218,9 @@ public sealed class TwinCatProjectIntegrationTests
         var execution = _executor.Execute(plan);
 
         Assert.False(plan.HasConflicts, FormatIssues(plan));
-        Assert.Equal(8, plan.Changes.Count);
+        Assert.Equal(9, plan.Changes.Count);
         Assert.True(execution.Success, FormatIssues(execution));
-        Assert.Equal(8, execution.Created);
+        Assert.Equal(9, execution.Created);
         Assert.Equal(
             "E_BM_MotionCommand",
             XDocument.Load(existingPath).Descendants("DUT").Single().Attribute("Name")?.Value);

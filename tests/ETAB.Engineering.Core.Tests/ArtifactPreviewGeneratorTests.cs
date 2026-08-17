@@ -35,7 +35,7 @@ public sealed class ArtifactPreviewGeneratorTests
     {
         var preview = Generate(ParseProject());
 
-        Assert.Equal(15, preview.Artifacts.Count);
+        Assert.Equal(16, preview.Artifacts.Count);
         Assert.Equal(
             [
                 "Generated/DUTs/Status/ST_BM_MachineStatus.TcDUT",
@@ -52,6 +52,7 @@ public sealed class ArtifactPreviewGeneratorTests
                 "Generated/DUTs/Requests/ST_BM_WorkpieceRequest.TcDUT",
                 "Generated/DUTs/Status/ST_BM_WorkpieceStatus.TcDUT",
                 "Generated/POUs/FB_BM_WorkpieceUnitBase.TcPOU",
+                "Generated/POUs/FB_BM_Relations.TcPOU",
                 "Generated/GVLs/GVL_BM_Units.TcGVL"
             ],
             preview.Artifacts.Select(artifact => artifact.RelativePath));
@@ -70,14 +71,15 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains("fbProcessCycle : FB_BM_ProcessCycle;", artifact.Content);
         Assert.Contains("fbRecipeManager : FB_BM_RecipeService;", artifact.Content);
         Assert.Contains("fbCellLink : FB_BM_CellInterface;", artifact.Content);
+        Assert.Contains("fbEtabRelationWiring : FB_BM_Relations;", artifact.Content);
     }
 
     [Fact]
-    public void IntegrationProject_KeepsExistingDutsExternalAndGeneratesEightArtifacts()
+    public void IntegrationProject_KeepsExistingDutsExternalAndGeneratesNineArtifacts()
     {
         var preview = Generate(ParseIntegrationProject());
 
-        Assert.Equal(8, preview.Artifacts.Count);
+        Assert.Equal(9, preview.Artifacts.Count);
         Assert.DoesNotContain(
             preview.Artifacts,
             artifact => artifact.Kind is GeneratedArtifactKind.CommandEnum or
@@ -92,12 +94,59 @@ public sealed class ArtifactPreviewGeneratorTests
     }
 
     [Fact]
+    public void RelationWiring_ProvidesExplicitAdaptersForEveryRelationKind()
+    {
+        var artifact = Generate(ParseProject()).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.RelationWiring);
+
+        Assert.Equal("FB_BM_Relations", artifact.Name);
+        Assert.Contains(
+            "GVL_BM_Units.fbMotionUnit.rUnit.ipMasterUnit := GVL_BM_Units.fbMachine.rUnit;",
+            artifact.Content);
+        Assert.Contains(
+            "METHOD PUBLIC Command_ProcessCycle_To_MotionUnit : BOOL",
+            artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbMotionUnit.StartCommand(", artifact.Content);
+        Assert.Contains(
+            "METHOD PUBLIC Observe_ProcessCycle_To_MotionUnit : ETAB.ST_ETAB_ApplicationUnitStatus",
+            artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbMotionUnit.refApplicationStatus;", artifact.Content);
+        Assert.Contains(
+            "METHOD PUBLIC Recipe_ProcessCycle_To_RecipeManager : ETAB.ST_ETAB_RecipeStatus",
+            artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbRecipeManager.stManagerStatus;", artifact.Content);
+        Assert.Contains(
+            "METHOD PUBLIC Link_Machine_To_CellLink : ETAB.ST_ETAB_MachineLinkStatus",
+            artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbCellLink.stStatus;", artifact.Content);
+        Assert.Contains("contains: Machine -> ProcessCycle is structural only", artifact.Content);
+    }
+
+    [Fact]
+    public void RelationWiring_IsOptInForExistingModels()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!.AsObject().Remove("relationWiring");
+
+        var preview = Generate(project);
+
+        Assert.DoesNotContain(
+            preview.Artifacts,
+            item => item.Kind == GeneratedArtifactKind.RelationWiring);
+        Assert.DoesNotContain(
+            "fbEtabRelationWiring",
+            preview.Artifacts.Single(
+                item => item.Kind == GeneratedArtifactKind.InstanceGlobalVariableList).Content);
+    }
+
+    [Fact]
     public void InstanceTypeDefaultsToGeneratedBaseOrEtabLibraryType()
     {
         var project = ParseProject();
         project["nodes"]![1]!["generate"]!.AsObject().Remove("instanceType");
         project["nodes"]![4]!["generate"]!.AsObject().Remove("instanceType");
         project["nodes"]![5]!["generate"]!.AsObject().Remove("instanceType");
+        project["nodes"]![5]!["generate"]!.AsObject().Remove("relationStatusMember");
         project["nodes"]![6]!["generate"]!.AsObject().Remove("instanceType");
 
         var content = Generate(project).Artifacts.Single(
@@ -123,7 +172,11 @@ public sealed class ArtifactPreviewGeneratorTests
 
         Assert.Equal("PRG_BM_Generated", artifact.Name);
         Assert.Contains("PROGRAM PRG_BM_Generated", artifact.Content);
+        Assert.Contains("GVL_BM_Units.fbEtabRelationWiring();", artifact.Content);
         Assert.Contains("GVL_BM_Units.fbMachine();", artifact.Content);
+        Assert.True(
+            artifact.Content.IndexOf("fbEtabRelationWiring()", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbMachine()", StringComparison.Ordinal));
         Assert.True(
             artifact.Content.IndexOf("fbMachine()", StringComparison.Ordinal) <
             artifact.Content.IndexOf("fbMotionUnit()", StringComparison.Ordinal));
@@ -139,16 +192,35 @@ public sealed class ArtifactPreviewGeneratorTests
 
         var originalProjectArtifacts = Generate(original).Artifacts
             .Where(item => item.Kind is GeneratedArtifactKind.InstanceGlobalVariableList or
+                GeneratedArtifactKind.RelationWiring or
                 GeneratedArtifactKind.ProgramCallStructure)
             .Select(item => $"{item.Kind}|{item.TwinCatGuid:D}|{item.Sha256}|{item.Content}")
             .ToArray();
         var modifiedProjectArtifacts = Generate(modified).Artifacts
             .Where(item => item.Kind is GeneratedArtifactKind.InstanceGlobalVariableList or
+                GeneratedArtifactKind.RelationWiring or
                 GeneratedArtifactKind.ProgramCallStructure)
             .Select(item => $"{item.Kind}|{item.TwinCatGuid:D}|{item.Sha256}|{item.Content}")
             .ToArray();
 
         Assert.Equal(originalProjectArtifacts, modifiedProjectArtifacts);
+    }
+
+    [Fact]
+    public void RelationOrderChanges_DoNotAffectRelationWiring()
+    {
+        var original = ParseProject();
+        var modified = original.DeepClone().AsObject();
+        Reverse(modified["relations"]!.AsArray());
+
+        var originalArtifact = Generate(original).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.RelationWiring);
+        var modifiedArtifact = Generate(modified).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.RelationWiring);
+
+        Assert.Equal(originalArtifact.TwinCatGuid, modifiedArtifact.TwinCatGuid);
+        Assert.Equal(originalArtifact.Sha256, modifiedArtifact.Sha256);
+        Assert.Equal(originalArtifact.Content, modifiedArtifact.Content);
     }
 
     [Theory]
