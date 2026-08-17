@@ -148,11 +148,22 @@ public sealed class GenerationPlanBuilder
                 continue;
             }
 
-            changes.Add(IsOccupied(targetPath!)
-                ? Conflict(
+            if (IsOccupied(targetPath!) && artifact.PreserveUserEdits && File.Exists(targetPath))
+            {
+                changes.Add(Planned(
+                    GenerationChangeKind.Unchanged,
                     artifact,
-                    "The target path is occupied by a file that is not managed by a manifest.")
-                : Planned(GenerationChangeKind.Create, artifact));
+                    artifact.RelativePath,
+                    ComputeFileHash(targetPath)));
+            }
+            else
+            {
+                changes.Add(IsOccupied(targetPath!)
+                    ? Conflict(
+                        artifact,
+                        "The target path is occupied by a file that is not managed by a manifest.")
+                    : Planned(GenerationChangeKind.Create, artifact));
+            }
         }
 
         var hasConflicts = changes.Any(change => change.ChangeKind == GenerationChangeKind.Conflict);
@@ -200,7 +211,10 @@ public sealed class GenerationPlanBuilder
                      .Where(artifact => !plannedIdentities.Contains(ArtifactIdentity.FromManifest(artifact)))
                      .OrderBy(artifact => artifact.RelativePath, StringComparer.Ordinal))
         {
-            changes.Add(PlanDeletedArtifact(paths, existing));
+            if (!existing.PreserveUserEdits)
+            {
+                changes.Add(PlanDeletedArtifact(paths, existing));
+            }
         }
 
         return changes;
@@ -217,6 +231,15 @@ public sealed class GenerationPlanBuilder
                 out var pathError))
         {
             return Conflict(artifact, pathError!);
+        }
+
+        if (IsOccupied(targetPath!) && artifact.PreserveUserEdits && File.Exists(targetPath))
+        {
+            return Planned(
+                GenerationChangeKind.Unchanged,
+                artifact,
+                artifact.RelativePath,
+                ComputeFileHash(targetPath));
         }
 
         return IsOccupied(targetPath!)
@@ -251,6 +274,23 @@ public sealed class GenerationPlanBuilder
         if (!TryComputeFileHash(oldPath!, out var actualHash, out var hashError))
         {
             return Conflict(artifact, hashError!, existing.RelativePath);
+        }
+
+        if (artifact.PreserveUserEdits)
+        {
+            if (!PathComparer.Equals(existing.RelativePath, artifact.RelativePath))
+            {
+                return Conflict(
+                    artifact,
+                    "The user-owned function block path changed. Rename it explicitly before regenerating.",
+                    existing.RelativePath);
+            }
+
+            return Planned(
+                GenerationChangeKind.Unchanged,
+                artifact,
+                existing.RelativePath,
+                actualHash);
         }
 
         if (!string.Equals(actualHash, existing.ContentHash, StringComparison.OrdinalIgnoreCase))
@@ -645,6 +685,9 @@ public sealed class GenerationPlanBuilder
                 return true;
             case "base-function-block":
                 kind = GeneratedArtifactKind.BaseFunctionBlock;
+                return true;
+            case "user-function-block":
+                kind = GeneratedArtifactKind.UserFunctionBlock;
                 return true;
             case "instance-gvl":
                 kind = GeneratedArtifactKind.InstanceGlobalVariableList;

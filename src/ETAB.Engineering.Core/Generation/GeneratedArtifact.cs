@@ -7,4 +7,5 @@ public sealed record GeneratedArtifact(
     Guid TwinCatGuid,
     string RelativePath,
     string Content,
-    string Sha256);
+    string Sha256,
+    bool PreserveUserEdits = false);

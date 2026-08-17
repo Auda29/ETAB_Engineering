@@ -3,6 +3,10 @@ using System.Text;
 
 namespace ETAB.Engineering.Core.Generation;
 
+internal sealed record GeneratedCommandRoute(
+    string SourceCommandName,
+    string TargetCommandName);
+
 internal sealed record GeneratedRelationBinding(
     string RelationId,
     string Kind,
@@ -11,8 +15,18 @@ internal sealed record GeneratedRelationBinding(
     string MemberName,
     string SourceInstanceName,
     string TargetInstanceName,
+    string SourceKind,
     string TargetKind,
     string TargetStatusMember,
+    string? SourceCommandType,
+    string? SourceRequestVariable,
+    string? TargetCommandType,
+    string? TargetRequestType,
+    string? TargetRequestVariable,
+    string? TargetStatusType,
+    string? TargetStatusVariable,
+    string? TargetStatusValueMember,
+    IReadOnlyList<GeneratedCommandRoute> CommandRoutes,
     Guid MemberGuid);
 
 internal static class TwinCatRelationRenderer
@@ -60,7 +74,8 @@ internal static class TwinCatRelationRenderer
         var hasCyclicAssignment = false;
         foreach (var binding in containsBindings)
         {
-            if (binding.TargetKind == "applicationUnit")
+            if (binding.SourceKind == "applicationUnit" &&
+                binding.TargetKind == "applicationUnit")
             {
                 hasCyclicAssignment = true;
                 implementation.AppendLine(
@@ -75,6 +90,45 @@ internal static class TwinCatRelationRenderer
                     $"(* contains: {binding.SourceName} -> {binding.TargetName} is structural only; " +
                     "Command Units have no ET state-model parent reference. *)");
             }
+        }
+
+
+        foreach (var binding in bindings.Where(
+                     item => item.Kind == "commands" && item.CommandRoutes.Count > 0))
+        {
+            if (binding.SourceCommandType is null ||
+                binding.SourceRequestVariable is null ||
+                binding.TargetCommandType is null ||
+                binding.TargetRequestType is null ||
+                binding.TargetRequestVariable is null)
+            {
+                continue;
+            }
+
+            hasCyclicAssignment = true;
+            var sourceRequest = $"{gvlName}.{binding.SourceRequestVariable}";
+            var targetRequest = $"{gvlName}.{binding.TargetRequestVariable}";
+            implementation.AppendLine(
+                $"(* command routes: {binding.SourceName} -> {binding.TargetName} *)");
+            implementation.AppendLine($"IF {sourceRequest}.bExecute THEN");
+            implementation.AppendLine($"    CASE {sourceRequest}.eCommand OF");
+            foreach (var route in binding.CommandRoutes)
+            {
+                implementation.AppendLine(
+                    $"        {binding.SourceCommandType}.{route.SourceCommandName}:");
+                implementation.AppendLine($"            {targetRequest}.bExecute := TRUE;");
+                implementation.AppendLine(
+                    $"            {targetRequest}.eCommand := " +
+                    $"{binding.TargetCommandType}.{route.TargetCommandName};");
+                implementation.AppendLine(
+                    $"            {targetRequest}.nCommandID := {sourceRequest}.nCommandID;");
+            }
+            implementation.AppendLine("    ELSE");
+            implementation.AppendLine($"        {targetRequest}.bExecute := FALSE;");
+            implementation.AppendLine("    END_CASE");
+            implementation.AppendLine("ELSE");
+            implementation.AppendLine($"    {targetRequest}.bExecute := FALSE;");
+            implementation.AppendLine("END_IF");
         }
 
         if (!hasCyclicAssignment)
@@ -93,6 +147,11 @@ internal static class TwinCatRelationRenderer
     {
         var declaration = binding.Kind switch
         {
+            "commands" when binding.TargetRequestType is not null =>
+                $"METHOD PUBLIC {binding.MemberName} : BOOL\n" +
+                "VAR_INPUT\n" +
+                $"    stRequest : {binding.TargetRequestType};\n" +
+                "END_VAR\n",
             "commands" =>
                 $"METHOD PUBLIC {binding.MemberName} : BOOL\n" +
                 "VAR_INPUT\n" +
@@ -101,15 +160,15 @@ internal static class TwinCatRelationRenderer
                 "    nCommandID : UDINT;\n" +
                 "END_VAR\n",
             "observes" =>
-                $"METHOD PUBLIC {binding.MemberName} : {StatusType(binding)}\n" +
+                $"METHOD PUBLIC {binding.MemberName} : {ResolvedStatusType(binding)}\n" +
                 "VAR_INPUT\n" +
                 "END_VAR\n",
             "usesRecipe" =>
-                $"METHOD PUBLIC {binding.MemberName} : ETAB.ST_ETAB_RecipeStatus\n" +
+                $"METHOD PUBLIC {binding.MemberName} : {ResolvedStatusType(binding)}\n" +
                 "VAR_INPUT\n" +
                 "END_VAR\n",
             "usesLink" =>
-                $"METHOD PUBLIC {binding.MemberName} : ETAB.ST_ETAB_MachineLinkStatus\n" +
+                $"METHOD PUBLIC {binding.MemberName} : {ResolvedStatusType(binding)}\n" +
                 "VAR_INPUT\n" +
                 "END_VAR\n",
             _ => throw new InvalidOperationException(
@@ -117,14 +176,21 @@ internal static class TwinCatRelationRenderer
         };
         var implementation = binding.Kind switch
         {
+            "commands" when binding.TargetRequestVariable is not null =>
+                $"{gvlName}.{binding.TargetRequestVariable} := stRequest;\n" +
+                $"{binding.MemberName} := {CommandBusyExpression(gvlName, binding)};\n",
             "commands" =>
                 $"{binding.MemberName} := {gvlName}.{binding.TargetInstanceName}.StartCommand(\n" +
                 "    bExecute := bExecute,\n" +
                 "    eCommand := eCommand,\n" +
                 "    nCommandID := nCommandID);\n",
+            "observes" when binding.TargetStatusVariable is not null =>
+                $"{binding.MemberName} := {gvlName}.{binding.TargetStatusVariable};\n",
             "observes" =>
                 $"{binding.MemberName} := {gvlName}.{binding.TargetInstanceName}." +
                 $"{binding.TargetStatusMember};\n",
+            "usesRecipe" or "usesLink" when binding.TargetStatusVariable is not null =>
+                $"{binding.MemberName} := {gvlName}.{binding.TargetStatusVariable};\n",
             "usesRecipe" or "usesLink" =>
                 $"{binding.MemberName} := {gvlName}.{binding.TargetInstanceName}." +
                 $"{binding.TargetStatusMember};\n",
@@ -141,10 +207,30 @@ internal static class TwinCatRelationRenderer
         xml.Append("    </Method>\n");
     }
 
-    private static string StatusType(GeneratedRelationBinding binding) =>
-        binding.TargetKind == "applicationUnit"
-            ? "ETAB.ST_ETAB_ApplicationUnitStatus"
-            : "ETAB.ST_ETAB_CommandStatus";
+    private static string ResolvedStatusType(GeneratedRelationBinding binding) =>
+        binding.TargetStatusType ?? binding.TargetKind switch
+        {
+            "applicationUnit" => "ETAB.ST_ETAB_ApplicationUnitStatus",
+            "commandUnit" => "ETAB.ST_ETAB_CommandStatus",
+            "recipeManager" => "ETAB.ST_ETAB_RecipeStatus",
+            "machineLink" => "ETAB.ST_ETAB_MachineLinkStatus",
+            _ => throw new InvalidOperationException(
+                $"Unsupported relation status kind '{binding.TargetKind}'.")
+        };
+
+    private static string CommandBusyExpression(
+        string gvlName,
+        GeneratedRelationBinding binding)
+    {
+        if (binding.TargetStatusVariable is not null &&
+            binding.TargetStatusValueMember is not null)
+        {
+            return $"{gvlName}.{binding.TargetStatusVariable}." +
+                   $"{binding.TargetStatusValueMember}.bBusy";
+        }
+
+        return $"{gvlName}.{binding.TargetInstanceName}.refStatus.bBusy";
+    }
 
     private static string EscapeCData(string value) =>
         value.Replace("]]>", "]]]]><![CDATA[>", StringComparison.Ordinal);

@@ -8,7 +8,7 @@ namespace ETAB.Engineering.Core.Manifest;
 public static class GenerationManifestSerializer
 {
     public const string CurrentManifestVersion = "0.1";
-    public const string CurrentGeneratorVersion = "0.1.0.7-preview.2";
+    public const string CurrentGeneratorVersion = "0.1.0.7-preview.3";
     public const string FileName = "etab-generation-manifest.json";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -41,7 +41,8 @@ public static class GenerationManifestSerializer
                     Name = artifact.Name,
                     TwinCatGuid = artifact.TwinCatGuid.ToString("D"),
                     RelativePath = artifact.RelativePath,
-                    ContentHash = artifact.Sha256
+                    ContentHash = artifact.Sha256,
+                    PreserveUserEdits = artifact.PreserveUserEdits
                 })
                 .ToList()
         };

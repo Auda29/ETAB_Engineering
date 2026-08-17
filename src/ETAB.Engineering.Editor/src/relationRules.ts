@@ -26,7 +26,7 @@ export const relationDefinitions: RelationDefinition[] = [
   {
     kind: "commands",
     label: "Commands",
-    description: "The source unit sends commands or requests to the target unit.",
+    description: "The source can map explicit request commands to the target; an unconfigured line stays passive.",
     sourceKinds: unitKinds,
     targetKinds: unitKinds,
   },

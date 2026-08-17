@@ -199,7 +199,9 @@ internal sealed class SemanticValidator
         string nodePath,
         ICollection<ValidationIssue> issues)
     {
-        if (node.Generate.RequestType && !node.Generate.CommandEnum)
+        if (node.Generate.RequestType &&
+            node.Kind is "applicationUnit" or "commandUnit" &&
+            !node.Generate.CommandEnum)
         {
             issues.Add(new ValidationIssue(
                 "REQUEST_WITHOUT_COMMAND_ENUM",
@@ -207,9 +209,18 @@ internal sealed class SemanticValidator
                 "A generated request type requires a generated command enum."));
         }
 
-        var reservedNames = new HashSet<string>(
-            ["bExecute", "eCommand", "nCommandID"],
-            IecNameComparer);
+        var reservedNames = node.Kind switch
+        {
+            "applicationUnit" or "commandUnit" =>
+                new HashSet<string>(["bExecute", "eCommand", "nCommandID"], IecNameComparer),
+            "recipeManager" =>
+                new HashSet<string>(["bExecute", "eCommand", "bExternalValid", "sSaveAsFileName"], IecNameComparer),
+            "machineLink" =>
+                new HashSet<string>(
+                    ["bEnable", "bLocalReqToken", "bLocalBusy", "bLocalError", "nLocalState", "stRx", "bBridgeOk"],
+                    IecNameComparer),
+            _ => []
+        };
 
         for (var fieldIndex = 0; fieldIndex < node.RequestPayload.Count; fieldIndex++)
         {
@@ -236,7 +247,7 @@ internal sealed class SemanticValidator
 
         var reservedNames = node.Kind switch
         {
-            "applicationUnit" => node.Generate.CommandEnum && node.Generate.RequestType
+            "applicationUnit" => node.Commands.Count > 0
                 ? new HashSet<string>(["stUnit", "stOperation"], IecNameComparer)
                 : new HashSet<string>(["stUnit"], IecNameComparer),
             "commandUnit" => new HashSet<string>(["stCommand"], IecNameComparer),
@@ -367,6 +378,7 @@ internal sealed class SemanticValidator
         var parentByChild = new Dictionary<string, string>(StringComparer.Ordinal);
         var childrenByParent = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var relationKeys = new HashSet<(string Kind, string SourceId, string TargetId)>();
+        var routedTargetOwners = new Dictionary<string, string>(StringComparer.Ordinal);
 
         if (project.Project.Generation.RelationWiring && project.Relations.Count > 0)
         {
@@ -434,6 +446,40 @@ internal sealed class SemanticValidator
                 nodesById[relation.TargetNodeId],
                 relationPath,
                 issues);
+            ValidateCommandRoutes(
+                relation,
+                nodesById[relation.SourceNodeId],
+                nodesById[relation.TargetNodeId],
+                relationPath,
+                issues);
+            if (relation.Kind == "commands" && relation.CommandRoutes is { Count: > 0 })
+            {
+                if (!project.Project.Generation.RelationWiring)
+                {
+                    issues.Add(new ValidationIssue(
+                        "COMMAND_ROUTES_WIRING_REQUIRED",
+                        $"{relationPath}/commandRoutes",
+                        "Automatic command routes require generated relation wiring."));
+                }
+                if (!project.Project.Generation.RuntimeExecution)
+                {
+                    issues.Add(new ValidationIssue(
+                        "COMMAND_ROUTES_RUNTIME_REQUIRED",
+                        $"{relationPath}/commandRoutes",
+                        "Automatic command routes require generated runtime execution."));
+                }
+                if (routedTargetOwners.TryGetValue(relation.TargetNodeId, out var owner))
+                {
+                    issues.Add(new ValidationIssue(
+                        "COMMAND_ROUTE_TARGET_AMBIGUOUS",
+                        $"{relationPath}/targetNodeId",
+                        $"Automatic command routing already drives this target from relation '{owner}'."));
+                }
+                else
+                {
+                    routedTargetOwners.Add(relation.TargetNodeId, relation.Id);
+                }
+            }
 
             if (project.Project.Generation.RelationWiring)
             {
@@ -481,6 +527,81 @@ internal sealed class SemanticValidator
         }
 
         ValidateContainsCycles(project.Nodes, childrenByParent, issues);
+    }
+
+    private static void ValidateCommandRoutes(
+        EtabRelation relation,
+        EtabNode source,
+        EtabNode target,
+        string relationPath,
+        ICollection<ValidationIssue> issues)
+    {
+        var routes = relation.CommandRoutes ?? [];
+        if (routes.Count == 0)
+        {
+            return;
+        }
+
+        if (relation.Kind != "commands")
+        {
+            issues.Add(new ValidationIssue(
+                "COMMAND_ROUTES_RELATION_KIND",
+                $"{relationPath}/commandRoutes",
+                "Command routes are valid only on commands relations."));
+            return;
+        }
+
+        if (!source.Generate.CommandEnum || !source.Generate.RequestType ||
+            !target.Generate.CommandEnum || !target.Generate.RequestType)
+        {
+            issues.Add(new ValidationIssue(
+                "COMMAND_ROUTES_CONTRACT_REQUIRED",
+                $"{relationPath}/commandRoutes",
+                "Automatic command routing requires generated command enums and request types on both nodes."));
+        }
+
+        var sourceCommands = source.Commands
+            .Select(command => command.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var targetCommands = target.Commands
+            .Select(command => command.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var routeIds = new HashSet<string>(StringComparer.Ordinal);
+        var routedSources = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var index = 0; index < routes.Count; index++)
+        {
+            var route = routes[index];
+            var path = $"{relationPath}/commandRoutes/{index}";
+            if (!routeIds.Add(route.Id))
+            {
+                issues.Add(new ValidationIssue(
+                    "COMMAND_ROUTE_ID_DUPLICATE",
+                    $"{path}/id",
+                    $"Command route ID '{route.Id}' is duplicated in this relation."));
+            }
+            if (!sourceCommands.Contains(route.SourceCommandId))
+            {
+                issues.Add(new ValidationIssue(
+                    "COMMAND_ROUTE_SOURCE_MISSING",
+                    $"{path}/sourceCommandId",
+                    "The source command does not exist on the relation source node."));
+            }
+            if (!targetCommands.Contains(route.TargetCommandId))
+            {
+                issues.Add(new ValidationIssue(
+                    "COMMAND_ROUTE_TARGET_MISSING",
+                    $"{path}/targetCommandId",
+                    "The target command does not exist on the relation target node."));
+            }
+            if (!routedSources.Add(route.SourceCommandId))
+            {
+                issues.Add(new ValidationIssue(
+                    "COMMAND_ROUTE_SOURCE_DUPLICATE",
+                    $"{path}/sourceCommandId",
+                    "A source command can map to only one target command per relation."));
+            }
+        }
     }
 
     private static void ValidateRelationEndpointKinds(
@@ -650,6 +771,11 @@ internal sealed class SemanticValidator
             if (node.Generate.BaseFunctionBlock)
             {
                 names.Add(($"FB_{project.Project.Prefix}_{node.SymbolStem}UnitBase", "base function block"));
+                if (project.Project.Generation.CreateUserStubs &&
+                    string.IsNullOrWhiteSpace(node.Generate.InstanceType))
+                {
+                    names.Add(($"FB_{project.Project.Prefix}_{node.SymbolStem}Unit", "user function block"));
+                }
             }
 
             foreach (var (name, kind) in names)

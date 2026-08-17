@@ -106,11 +106,14 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains(
             "METHOD PUBLIC Command_ProcessCycle_To_MotionUnit : BOOL",
             artifact.Content);
-        Assert.Contains("GVL_BM_Units.fbMotionUnit.StartCommand(", artifact.Content);
+        Assert.Contains("stRequest : ST_BM_MotionRequest;", artifact.Content);
         Assert.Contains(
-            "METHOD PUBLIC Observe_ProcessCycle_To_MotionUnit : ETAB.ST_ETAB_ApplicationUnitStatus",
+            "GVL_BM_Units.stMotionUnitRequest := stRequest;",
             artifact.Content);
-        Assert.Contains("GVL_BM_Units.fbMotionUnit.refApplicationStatus;", artifact.Content);
+        Assert.Contains(
+            "METHOD PUBLIC Observe_ProcessCycle_To_MotionUnit : ST_BM_MotionStatus",
+            artifact.Content);
+        Assert.Contains("GVL_BM_Units.stMotionUnitStatus;", artifact.Content);
         Assert.Contains(
             "METHOD PUBLIC Recipe_ProcessCycle_To_RecipeManager : ETAB.ST_ETAB_RecipeStatus",
             artifact.Content);
@@ -120,6 +123,43 @@ public sealed class ArtifactPreviewGeneratorTests
             artifact.Content);
         Assert.Contains("GVL_BM_Units.fbCellLink.stStatus;", artifact.Content);
         Assert.Contains("contains: Machine -> ProcessCycle is structural only", artifact.Content);
+    }
+
+    [Fact]
+    public void CommandRoutes_MapConfiguredSourceRequestsToTargetRequests()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        var source = project["nodes"]![4]!;
+        var target = project["nodes"]![1]!;
+        source["generate"]!["commandEnum"] = true;
+        source["generate"]!["requestType"] = true;
+        var relation = project["relations"]!.AsArray().Single(item =>
+            item!["kind"]!.GetValue<string>() == "commands" &&
+            item["sourceNodeId"]!.GetValue<string>() == source["id"]!.GetValue<string>() &&
+            item["targetNodeId"]!.GetValue<string>() == target["id"]!.GetValue<string>());
+        relation!["commandRoutes"] = new JsonArray
+        {
+            new JsonObject
+            {
+                ["id"] = "99999999-0000-4000-8000-000000000001",
+                ["sourceCommandId"] = source["commands"]![1]!["id"]!.GetValue<string>(),
+                ["targetCommandId"] = target["commands"]![1]!["id"]!.GetValue<string>()
+            }
+        };
+
+        var artifact = Generate(project).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.RelationWiring);
+
+        Assert.Contains("command routes: ProcessCycle -> MotionUnit", artifact.Content);
+        Assert.Contains("CASE GVL_BM_Units.stProcessCycleRequest.eCommand OF", artifact.Content);
+        Assert.Contains("E_BM_CycleCommand.Cycle:", artifact.Content);
+        Assert.Contains(
+            "GVL_BM_Units.stMotionUnitRequest.eCommand := E_BM_MotionCommand.HomeAll;",
+            artifact.Content);
+        Assert.Contains(
+            "GVL_BM_Units.stMotionUnitRequest.nCommandID := GVL_BM_Units.stProcessCycleRequest.nCommandID;",
+            artifact.Content);
     }
 
     [Fact]
@@ -194,7 +234,73 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Contains("GVL_BM_Units.fbEtabRelationWiring();", artifact.Content);
         Assert.True(
             artifact.Content.IndexOf("fbEtabRelationWiring()", StringComparison.Ordinal) <
-            artifact.Content.IndexOf("fbMachine()", StringComparison.Ordinal));
+            artifact.Content.IndexOf("fbCellLink(", StringComparison.Ordinal));
+        Assert.True(
+            artifact.Content.IndexOf("fbCellLink(", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbMachine(", StringComparison.Ordinal));
+        Assert.True(
+            artifact.Content.IndexOf("fbMachine(", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbMotionUnit(", StringComparison.Ordinal));
+        Assert.True(
+            artifact.Content.IndexOf("fbRecipeManager(", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbProcessCycle(", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RuntimeExecution_BindsRequestsOptionsAndStatuses()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        project["nodes"]![5]!["generate"]!["requestType"] = true;
+        project["nodes"]![5]!["generate"]!["statusType"] = true;
+        project["nodes"]![6]!["generate"]!["requestType"] = true;
+        project["nodes"]![6]!["generate"]!["statusType"] = true;
+
+        var preview = Generate(project);
+        var program = preview.Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.ProgramCallStructure).Content;
+        var gvl = preview.Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.InstanceGlobalVariableList).Content;
+
+        Assert.Contains("CASE GVL_BM_Units.stMotionUnitRequest.eCommand OF", program);
+        Assert.Contains(
+            "eMotionUnitEtabCommand := ETAB.E_ETAB_UnitCommand.User;",
+            program);
+        Assert.Contains("nStartState := 1", program);
+        Assert.Contains(
+            "GVL_BM_Units.stMotionUnitStatus.stUnit := GVL_BM_Units.fbMotionUnit.stStatus;",
+            program);
+        Assert.Contains("pData := ADR(GVL_BM_Units.stRecipeManagerData)", program);
+        Assert.Contains("sFileName := 'BrushMachineRecipe.xml'", program);
+        Assert.Contains(
+            "eBridgeType := ETAB.E_ETAB_MachineLinkBridgeType.ExternalBridge",
+            program);
+        Assert.Contains("stMotionUnitRequest : ST_BM_MotionRequest;", gvl);
+        Assert.Contains("stMotionUnitStatus : ST_BM_MotionStatus;", gvl);
+        Assert.Contains("stRecipeManagerData : ST_BM_ProductRecipe;", gvl);
+        Assert.Contains("stCellLinkTx : ETAB.ST_ETAB_MachineLinkData;", gvl);
+    }
+
+    [Fact]
+    public void CreateUserStubs_UsesPreservedDerivedFunctionBlocks()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["createUserStubs"] = true;
+        project["nodes"]![1]!["generate"]!.AsObject().Remove("instanceType");
+
+        var preview = Generate(project);
+        var stub = preview.Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.UserFunctionBlock &&
+                    item.SourceModelId == "20000000-0000-4000-8000-000000000001");
+        var gvl = preview.Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.InstanceGlobalVariableList).Content;
+
+        Assert.True(stub.PreserveUserEdits);
+        Assert.Equal(
+            "Generated/Application/FB_BM_MotionUnit.TcPOU",
+            stub.RelativePath);
+        Assert.Contains("This file is user-owned and is never overwritten", stub.Content);
+        Assert.Contains("fbMotionUnit : FB_BM_MotionUnit;", gvl);
     }
 
     [Fact]

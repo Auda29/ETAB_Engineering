@@ -243,6 +243,17 @@ public sealed class EtabRelation
     public required string TargetNodeId { get; init; }
 
     public string? Label { get; init; }
+
+    public List<EtabCommandRoute>? CommandRoutes { get; init; }
+}
+
+public sealed class EtabCommandRoute
+{
+    public required string Id { get; init; }
+
+    public required string SourceCommandId { get; init; }
+
+    public required string TargetCommandId { get; init; }
 }
 
 public sealed class EtabLayout

@@ -81,6 +81,47 @@ internal static class TwinCatPouRenderer
         return xml.ToString();
     }
 
+    public static string RenderApplicationUnitUserStub(
+        string functionBlockName,
+        string baseFunctionBlockName,
+        string sourceId,
+        Guid twinCatGuid,
+        Guid hookGuid,
+        string productVersion)
+    {
+        var declaration =
+            $"(* Created once by ETAB Engineering; source-id: {sourceId}. This file is user-owned and is never overwritten. *)\n" +
+            $"FUNCTION_BLOCK {functionBlockName} EXTENDS {baseFunctionBlockName}\n";
+        const string implementation =
+            "SUPER^();\n";
+        const string hookDeclaration =
+            "METHOD PROTECTED OnExecuteOperation\n" +
+            "VAR_INPUT\n" +
+            "END_VAR\n";
+        const string hookImplementation =
+            ";(* Add project-specific cyclic operation logic here. *)\n";
+
+        var escapedName = SecurityElement.Escape(functionBlockName);
+        var escapedVersion = SecurityElement.Escape(productVersion);
+        var xml = new StringBuilder();
+        xml.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+        xml.Append($"<TcPlcObject Version=\"1.1.0.1\" ProductVersion=\"{escapedVersion}\">\n");
+        xml.Append($"  <POU Name=\"{escapedName}\" Id=\"{{{twinCatGuid:D}}}\" SpecialFunc=\"None\">\n");
+        xml.Append($"    <Declaration><![CDATA[{EscapeCData(declaration)}]]></Declaration>\n");
+        xml.Append("    <Implementation>\n");
+        xml.Append($"      <ST><![CDATA[{EscapeCData(implementation)}]]></ST>\n");
+        xml.Append("    </Implementation>\n");
+        xml.Append($"    <Method Name=\"OnExecuteOperation\" Id=\"{{{hookGuid:D}}}\">\n");
+        xml.Append($"      <Declaration><![CDATA[{EscapeCData(hookDeclaration)}]]></Declaration>\n");
+        xml.Append("      <Implementation>\n");
+        xml.Append($"        <ST><![CDATA[{EscapeCData(hookImplementation)}]]></ST>\n");
+        xml.Append("      </Implementation>\n");
+        xml.Append("    </Method>\n");
+        xml.Append("  </POU>\n");
+        xml.Append("</TcPlcObject>\n");
+        return NormalizeLineEndings(xml.ToString());
+    }
+
     private static string EscapeCData(string value) =>
         value.Replace("]]>", "]]]]><![CDATA[>", StringComparison.Ordinal);
 

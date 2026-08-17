@@ -26,7 +26,7 @@ Default path:
 Application/
 ```
 
-The generator does not modify or delete any existing file there.
+The generator does not modify or delete any existing file there. In direct TwinCAT output mode (`generatedRoot = "."`) user stubs are created below this application root. In isolated CLI output mode they remain inside the transaction boundary as `Generated/Application/...`.
 
 An initial user scaffold may optionally be generated only when:
 
@@ -35,6 +35,8 @@ An initial user scaffold may optionally be generated only when:
 - no naming collision exists.
 
 Generation of initial user scaffolds is disabled by default.
+
+User scaffolds carry `preserveUserEdits = true` in the generation manifest. Once the file exists, its actual hash is used only for preflight race detection; content differences never schedule an update. Removing the node or disabling scaffolding removes ETAB's compile ownership but leaves the user file on disk. A path-changing symbol rename is blocked until the user-owned file is renamed explicitly.
 
 ## 3. Manifest
 
@@ -129,6 +131,8 @@ Phase 3B adds the project-level artifact kinds `instance-gvl` and `program-call-
 Runtime task integration is part of the same preflight, staging, write, and rollback transaction as generated artifacts and the `.plcproj`. The complete proposed `.TcTTO` content and its hash are included in preview confirmation. A changed task invalidates the preview. Existing calls remain unmanaged, multiple or modified managed calls are conflicts, and the project-integration manifest records only the task path and generated program name owned by ETAB.
 
 Phase 3D adds the opt-in project-level artifact kind `relation-wiring`. `FB_<prefix>_Relations` is emitted only when `relationWiring = true` and the model contains relations. Its methods are deterministic in `kind`, `sourceNodeId`, `targetNodeId`, and relation-ID order. Generated names are bounded to 80 IEC characters with a stable relation-ID suffix when necessary. The adapter instance is added to the qualified unit GVL. When the optional PRG exists, that instance is called before selected node instances. Relation wiring participates in the same manifest, compiled-object collision scan, confirmation token, project integration, staging, rollback, rename, and deletion rules as every other managed artifact.
+
+With generated runtime execution, `contains` creates parent-before-child ordering, while `usesRecipe` and `usesLink` include and schedule the dependency before its consumer. Configured `commandRoutes` execute inside relation wiring and copy only `bExecute`, the explicitly selected target enum value, and `nCommandID`; custom request payload is never guessed or overwritten. Missing routes remain passive typed adapters. More than one automatic routing relation for the same target is a validation conflict.
 
 Phase 3C exposes this same transaction through the editor. The editor first requests a target-aware preview and receives a confirmation token derived from the resolved root, integration option, complete plan, expected and proposed hashes, artifacts, and manifests. Generate is permitted only for a saved model whose current document still matches the file on disk, a conflict-free plan, the exact token, and an explicit confirmation. Any changed model, target, integration option, or filesystem state invalidates the plan or is rejected by the executor preflight.
 

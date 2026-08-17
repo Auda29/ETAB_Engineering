@@ -123,11 +123,11 @@ Each node explicitly defines:
 - optional `relationStatusMember` when a custom RecipeManager or MachineLink wrapper exposes its ETAB status under a member other than `stStatus`
 - optional `callInProgram` selection for the generated PRG
 
-Invalid combinations are rejected semantically. For example, a `recipeManager` does not generate a project-specific command enum in the MVP.
+Invalid combinations are rejected semantically. A `recipeManager` and `machineLink` do not generate project-specific command enums; their optional request DUTs instead embed the corresponding ETAB library command or link input contract.
 
 A disabled artifact flag means that ETAB Engineering does not own or emit that artifact. This supports integration with existing PLC contracts: `examples/BrushMachine.integration.etab.json` disables the three command enums, three request DUTs, and aggregate machine-status DUT that are already compiled from handwritten project paths. The full reference model remains available separately as the complete generator example.
 
-Phase 3B collects all enabled instances in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB when available; otherwise the matching ETAB library FB is used. The legacy project-wide `programCallStructure` option creates `PRG_<prefix>_Generated` without assigning it to a task. The preferred `runtimeExecution` option creates the same PRG and, during linked project integration, manages exactly one corresponding `PouCall` in the detected TwinCAT task. The PRG invokes relation wiring first and then only ApplicationUnit and CommandUnit nodes selected with `callInProgram`.
+Phase 3B collects all enabled instances and their generated request/status contracts in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB, or its one-time user stub when `createUserStubs` is enabled; the remaining kinds use the matching ETAB library FB. The legacy project-wide `programCallStructure` option emits no-argument calls without assigning the PRG to a task. The preferred `runtimeExecution` option generates typed runtime bindings and, during linked project integration, manages exactly one corresponding `PouCall` in the detected TwinCAT task. The PRG invokes relation wiring first, maps request commands, applies node settings, calls the ETAB FBs in dependency order, and publishes generated status contracts.
 
 Task selection is deterministic. A project with one compiled `.TcTTO` uses that task. With multiple task objects, exactly one must already call `MAIN`; otherwise generation is blocked as ambiguous. Existing `PouCall` entries are preserved. ETAB owns only the generated call recorded in the project-integration manifest and removes only that call when runtime execution is disabled.
 
@@ -177,7 +177,7 @@ Valid ETAB targets:
 
 - The stable command `id` is globally unique; `name` and `enumValue` are unique within a node.
 - If `commandEnum = true`, exactly one `NoAction` with value `0` exists.
-- Project-specific typed commands are always mapped to `User` in v0.1.
+- Every project command maps explicitly to one ETAB target through `etabCommand`; domain-specific operations normally use `User`.
 - Direct mapping to `Stop` or `Abort` is intended only for actual ETAB unit commands.
 - Numeric values are sorted in ascending order during generation; equal values make the model invalid.
 
@@ -185,7 +185,7 @@ Valid ETAB targets:
 
 ### 7.1 Implicit Request Header
 
-When `requestType = true`, the generator automatically creates:
+For `applicationUnit` and `commandUnit`, `requestType = true` creates:
 
 ```iecst
 bExecute   : BOOL;
@@ -194,6 +194,8 @@ nCommandID : UDINT;
 ```
 
 These fields must therefore not be defined again under `requestPayload`.
+
+`recipeManager` instead receives `bExecute`, `ETAB.E_ETAB_RecipeCommand`, external-validation state, and an optional Save-As filename. `machineLink` receives enable, local token/busy/error/state, Rx data, and bridge availability. Both kinds may still add project fields through `requestPayload` without generating a project command enum.
 
 ### 7.2 Generated Status Contract
 
@@ -205,7 +207,7 @@ For an `applicationUnit`, the fixed header is:
 stUnit : ETAB.ST_ETAB_ApplicationUnitStatus;
 ```
 
-If the unit also has a project-specific command enum and request contract, the status of the domain-specific command is added separately:
+If the unit defines project commands, the status of the domain-specific command is added separately:
 
 ```iecst
 stOperation : ETAB.ST_ETAB_CommandStatus;
@@ -295,13 +297,13 @@ Safety and collision enables are not relationship types in v0.1.
 The generated adapter has a deliberately narrow runtime contract:
 
 - `contains` assigns `rUnit.ipMasterUnit` for ApplicationUnit children; CommandUnit children remain structural because they have no ET state-model parent reference.
-- `commands` creates an explicit method that forwards `bExecute`, `ETAB.E_ETAB_UnitCommand`, and `nCommandID` to the target's standard `StartCommand` API.
-- `observes` creates an explicit method returning the target's standard ApplicationUnit or CommandUnit status.
-- `usesRecipe` and `usesLink` create explicit methods returning the target manager/link status.
+- `commands` creates a typed method that accepts the target's generated request DUT. Optional `commandRoutes` require runtime execution and copy execute, the configured target enum literal, and command ID from a source request to the target request before cyclic calls.
+- `observes` returns the target's generated status DUT when available, otherwise its configured ETAB status member.
+- `usesRecipe` and `usesLink` return the generated target status when available and make the target a runtime dependency of the source.
 
 The default status member for RecipeManager and MachineLink instances is `stStatus`. A custom wrapper may select another IEC member with `generate.relationStatusMember`; the BrushMachine recipe wrapper uses `stManagerStatus`.
 
-The adapter never selects a command, maps request payload fields, drives recipe or link inputs, derives interlocks, or creates safety, motion, process, recovery, or I/O behavior. Those decisions remain handwritten project logic. If the optional generated PRG is enabled, relation wiring is called before selected unit instances so ApplicationUnit parent references are assigned first; otherwise project code may call `fbEtabRelationWiring()` explicitly.
+The adapter selects a target command only when a specific `commandRoutes` entry exists. It never maps custom request payload fields, derives interlocks, or creates safety, motion, process, recovery, or I/O behavior. Those decisions remain handwritten project logic. With `runtimeExecution`, relation wiring runs first, dependency targets run before consumers, and ApplicationUnit parents run before children. Otherwise project code may call `fbEtabRelationWiring()` explicitly.
 
 ## 9. Layout
 

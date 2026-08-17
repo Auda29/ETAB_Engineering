@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: implementation; Phase 0, Phase 1, Phase 2, Phase 3A/3B/3C generation and project integration, Phase 3D relation wiring, and Phase 3E opt-in runtime task integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; the generated copy opens and builds successfully in XAE; runtime and machine acceptance remain open
+- Status: implementation; Phase 0, Phase 1, Phase 2, Phase 3A/3B/3C generation and project integration, Phase 3D relation wiring, and Phase 3E typed runtime binding/task integration completed; Phase 4A collision analysis and Phase 4B external-ownership copy generation completed; the preceding generated copy opens and builds successfully in XAE; compile and runtime acceptance of the new request/status bindings remains open
 - As of: 2026-08-17
 - Working title: `ETAB Engineering`
 - Target environment: TwinCAT 3 and `ET_AutomationBase`
@@ -397,7 +397,7 @@ Phase 3B evidence: `docs/Phase3B_Validation.md`. The generator creates one quali
 
 Phase 3C evidence: `docs/Phase3C_Validation.md`. The editor exposes the exact target root, optional `.plcproj` integration, the complete shared-core plan, and a separate Generate action. Generation requires a saved model, a conflict-free current preview, an exact confirmation token, and a final user confirmation. The later Phase 4B integration-copy workflow supplied the user-confirmed successful XAE build evidence without writing the original project.
 
-Phase 3E evidence: `docs/Phase3E_Runtime_Execution.md`. The preferred runtime option generates the PRG, previews the complete task change, selects a unique task deterministically, preserves handwritten calls, and manages one manifest-owned `PouCall` in the existing transaction. Automated stale-preview and injected-failure tests prove task preflight and rollback. An isolated copy of the user's successfully built `TwinCAT Project5` was generated and rechecked as synchronized; compiling that task-integrated copy in XAE remains user acceptance.
+Phase 3E evidence: `docs/Phase3E_Runtime_Execution.md`. The preferred runtime option generates the PRG, previews the complete task change, selects a unique task deterministically, preserves handwritten calls, and manages one manifest-owned `PouCall` in the existing transaction. It now additionally maps generated requests to ETAB calls, applies node options, publishes generated statuses, schedules hierarchy/dependencies deterministically, supports explicit automatic command routes, and preserves one-time user stubs. Automated tests cover these bindings plus stale-preview, task preflight, rollback, and user-edit preservation. A rebuilt CLI preview against the user's existing `TwinCAT Project5` was read-only; compiling the new generated bindings in XAE remains user acceptance.
 
 Task policy: task modification is opt-in through `runtimeExecution`. ETAB then generates one PRG, detects the single task or the unique task already calling `MAIN`, and manages exactly one manifest-owned `PouCall`. Existing task calls are preserved and ambiguous selection blocks generation. The legacy `programCallStructure` option emits the PRG without task integration. The BrushMachine reference keeps both options disabled because its existing `PlcTask.TcTTO` calls `MAIN`, which calls the handwritten application FB.
 
@@ -538,7 +538,7 @@ Binding decisions for Phase 3B:
 
 - Nodes with `instance = true` are collected in one qualified `GVL_<prefix>_Units` object in deterministic node order.
 - `instanceType` is optional. If omitted, ApplicationUnits use their generated base FB when available and the remaining node kinds use the corresponding ETAB library FB.
-- The optional `PRG_<prefix>_Generated` artifact is controlled by legacy project setting `programCallStructure` or preferred setting `runtimeExecution` and calls only nodes explicitly selected with `callInProgram`.
+- The optional `PRG_<prefix>_Generated` artifact is controlled by legacy project setting `programCallStructure` or preferred setting `runtimeExecution`. Legacy mode retains selected no-argument calls; runtime mode calls selected nodes plus required `contains`, `usesRecipe`, `usesLink`, and configured command-route dependencies in deterministic order.
 - `runtimeExecution` adds the PRG to the deterministically detected TwinCAT task in the same previewed transaction; `programCallStructure` alone remains PRG-only.
 - Project-specific FB interfaces are not inferred. Selecting a custom `instanceType` for PRG invocation is valid only when that FB can be called without mandatory `VAR_IN_OUT` arguments.
 - ETAB manages only its manifest-recorded `PouCall` in a `.TcTTO` task. Existing calls remain untouched, task changes invalidate stale previews, and rollback restores the original task on failure.

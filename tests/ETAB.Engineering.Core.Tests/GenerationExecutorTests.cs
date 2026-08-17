@@ -106,7 +106,7 @@ public sealed class GenerationExecutorTests
         var changedPlan = BuildPlan(temporary.Path, modified);
 
         Assert.Equal(
-            1,
+            3,
             changedPlan.Changes.Count(change => change.ChangeKind == GenerationChangeKind.Update));
         Assert.Equal(
             4,
@@ -118,7 +118,7 @@ public sealed class GenerationExecutorTests
         var execution = _executor.Execute(changedPlan);
 
         Assert.True(execution.Success, FormatIssues(execution));
-        Assert.Equal(1, execution.Updated);
+        Assert.Equal(3, execution.Updated);
         Assert.Equal(4, execution.Renamed);
         Assert.Equal(1, execution.Deleted);
         Assert.False(File.Exists(Resolve(
@@ -137,6 +137,34 @@ public sealed class GenerationExecutorTests
         Assert.All(
             synchronizedPlan.Changes,
             change => Assert.Equal(GenerationChangeKind.Unchanged, change.ChangeKind));
+    }
+
+    [Fact]
+    public void UserOwnedStub_IsCreatedOnceAndManualEditsArePreserved()
+    {
+        using var temporary = new TemporaryDirectory();
+        var project = ParseProject();
+        project["project"]!["generation"]!["createUserStubs"] = true;
+        project["nodes"]![1]!["generate"]!.AsObject().Remove("instanceType");
+
+        var first = _executor.Execute(BuildPlan(temporary.Path, project));
+        Assert.True(first.Success, FormatIssues(first));
+        var stubPath = Resolve(
+            temporary.Path,
+            "Generated/Application/FB_BM_MotionUnit.TcPOU");
+        File.AppendAllText(stubPath, "(* user edit *)\n", Encoding.UTF8);
+        var edited = File.ReadAllText(stubPath);
+
+        var plan = BuildPlan(temporary.Path, project);
+        var stubChange = plan.Changes.Single(
+            change => change.ArtifactKind == GeneratedArtifactKind.UserFunctionBlock &&
+                      change.SourceModelId == "20000000-0000-4000-8000-000000000001");
+        Assert.False(plan.HasConflicts);
+        Assert.Equal(GenerationChangeKind.Unchanged, stubChange.ChangeKind);
+
+        var second = _executor.Execute(plan);
+        Assert.True(second.Success, FormatIssues(second));
+        Assert.Equal(edited, File.ReadAllText(stubPath));
     }
 
     [Fact]

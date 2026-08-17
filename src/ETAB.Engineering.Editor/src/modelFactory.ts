@@ -90,7 +90,7 @@ export function applyKindDefaults(node: EtabNode, kind: NodeKind): void {
     node.generate.baseFunctionBlock = false;
   } else if (kind === "recipeManager") {
     node.recipeManager = {
-      dataType: "ST_ProjectRecipe",
+      dataType: "BYTE",
       filePath: "C:\\TwinCAT\\Recipes",
       fileName: "Recipe.xml",
       xPath: "/Recipe",
@@ -114,7 +114,7 @@ export function applyKindDefaults(node: EtabNode, kind: NodeKind): void {
 
 function disableCommandGeneration(node: EtabNode): void {
   node.generate.commandEnum = false;
-  node.generate.requestType = false;
+  node.generate.requestType = true;
   node.generate.baseFunctionBlock = false;
 }
 

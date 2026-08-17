@@ -307,7 +307,13 @@ code { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
 .relation-create p { margin: 0; color: var(--muted); font-size: 9px; }
 .relation-create > .button { grid-column: 1 / -1; justify-self: end; }
 .relation-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; padding: 9px; background: #141e1f; border: 1px solid #283839; border-radius: 6px; }
-.relation-card > div { display: flex; min-width: 0; align-items: center; gap: 5px; font-size: 9px; }
+.relation-card > div { min-width: 0; font-size: 9px; }
+.relation-card__body { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.relation-card__summary { display: flex; min-width: 0; align-items: center; gap: 5px; }
+.command-routes { display: grid; gap: 6px; padding-top: 7px; border-top: 1px solid var(--line); }
+.command-routes__heading, .command-route { display: flex; align-items: center; gap: 6px; }
+.command-routes__heading { justify-content: space-between; color: var(--muted); }
+.command-route .select { min-width: 0; }
 .relation-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .relation-card small { display: block; color: var(--muted); }
 .relation-chip { padding: 3px 5px; color: #b7c5c2; background: #293637; border-radius: 3px; font: 8px "Cascadia Code", monospace; }

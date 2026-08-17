@@ -5,6 +5,11 @@ namespace ETAB.Engineering.Core.Generation;
 
 internal sealed record GeneratedInstance(string Name, string TypeName);
 
+internal sealed record GeneratedGlobalVariable(
+    string Name,
+    string TypeName,
+    string? Initializer = null);
+
 internal static class TwinCatGvlRenderer
 {
     public static string RenderInstances(
@@ -12,7 +17,8 @@ internal static class TwinCatGvlRenderer
         string sourceId,
         Guid twinCatGuid,
         string productVersion,
-        IReadOnlyList<GeneratedInstance> instances)
+        IReadOnlyList<GeneratedInstance> instances,
+        IReadOnlyList<GeneratedGlobalVariable> variables)
     {
         var declaration = new StringBuilder();
         declaration.AppendLine(
@@ -22,6 +28,13 @@ internal static class TwinCatGvlRenderer
         foreach (var instance in instances)
         {
             declaration.AppendLine($"    {instance.Name} : {instance.TypeName};");
+        }
+        foreach (var variable in variables)
+        {
+            var initializer = string.IsNullOrWhiteSpace(variable.Initializer)
+                ? string.Empty
+                : $" := {variable.Initializer}";
+            declaration.AppendLine($"    {variable.Name} : {variable.TypeName}{initializer};");
         }
         declaration.AppendLine("END_VAR");
 

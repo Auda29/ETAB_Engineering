@@ -4,6 +4,7 @@ import type {
   EtabField,
   EtabNode,
   EtabProjectDocument,
+  EtabRelation,
   NodeKind,
   RelationKind,
 } from "../model";
@@ -281,16 +282,88 @@ function RelationEditor({ document, node, updateDocument }: { document: EtabProj
       {related.map((relation) => (
         <div className="relation-card" key={relation.id}>
           <span className={`relation-chip relation-chip--${relation.kind}`} title={relation.kind}>{getRelationDefinition(relation.kind).label}</span>
-          <div>
-            <strong>{byId.get(relation.sourceNodeId)?.displayName ?? "Unknown"}</strong>
-            <span>→</span>
-            <strong>{byId.get(relation.targetNodeId)?.displayName ?? "Unknown"}</strong>
-            <small>{relation.label || relation.kind}</small>
+          <div className="relation-card__body">
+            <div className="relation-card__summary">
+              <strong>{byId.get(relation.sourceNodeId)?.displayName ?? "Unknown"}</strong>
+              <span>→</span>
+              <strong>{byId.get(relation.targetNodeId)?.displayName ?? "Unknown"}</strong>
+              <small>{relation.label || relation.kind}</small>
+            </div>
+            {relation.kind === "commands" && (
+              <CommandRouteEditor
+                relation={relation}
+                source={byId.get(relation.sourceNodeId)}
+                target={byId.get(relation.targetNodeId)}
+                updateDocument={updateDocument}
+              />
+            )}
           </div>
           <IconButton label="Delete relationship" danger onClick={() => updateDocument((draft) => { draft.relations = draft.relations.filter((item) => item.id !== relation.id); })}>×</IconButton>
         </div>
       ))}
       {related.length === 0 && <EmptyList>No relationships touch this node.</EmptyList>}
+    </div>
+  );
+}
+
+function CommandRouteEditor({ relation, source, target, updateDocument }: {
+  relation: EtabRelation;
+  source?: EtabNode;
+  target?: EtabNode;
+  updateDocument: (mutation: DocumentMutation) => void;
+}) {
+  if (!source || !target) return null;
+  const routes = relation.commandRoutes ?? [];
+  const canRoute = source.commands.length > 0 && target.commands.length > 0;
+  const patchRoute = (routeId: string, key: "sourceCommandId" | "targetCommandId", value: string) => updateDocument((draft) => {
+    const route = draft.relations.find((item) => item.id === relation.id)?.commandRoutes?.find((item) => item.id === routeId);
+    if (route) route[key] = value;
+  });
+
+  return (
+    <div className="command-routes">
+      <div className="command-routes__heading">
+        <span>Automatic command routing</span>
+        <button className="button" disabled={!canRoute} onClick={() => updateDocument((draft) => {
+          const draftRelation = draft.relations.find((item) => item.id === relation.id);
+          const draftSource = draft.nodes.find((item) => item.id === relation.sourceNodeId);
+          const draftTarget = draft.nodes.find((item) => item.id === relation.targetNodeId);
+          if (!draftRelation || !draftSource?.commands[0] || !draftTarget?.commands[0]) return;
+          draftRelation.commandRoutes ??= [];
+          draftRelation.commandRoutes.push({
+            id: crypto.randomUUID().toLowerCase(),
+            sourceCommandId: draftSource.commands[0].id,
+            targetCommandId: draftTarget.commands[0].id,
+          });
+          draftSource.generate.commandEnum = true;
+          draftSource.generate.requestType = true;
+          draftSource.generate.instance = true;
+          draftSource.generate.callInProgram = true;
+          draftTarget.generate.commandEnum = true;
+          draftTarget.generate.requestType = true;
+          draftTarget.generate.instance = true;
+          draftTarget.generate.callInProgram = true;
+          draft.project.generation.relationWiring = true;
+          draft.project.generation.runtimeExecution = true;
+          draft.project.generation.programCallStructure = true;
+        })}>Add route</button>
+      </div>
+      {!canRoute && <small>Add commands to both nodes before configuring automatic routing.</small>}
+      {routes.map((route) => (
+        <div className="command-route" key={route.id}>
+          <SelectInput aria-label="Source command" value={route.sourceCommandId} onChange={(event) => patchRoute(route.id, "sourceCommandId", event.target.value)}>
+            {source.commands.map((command) => <option key={command.id} value={command.id}>{command.displayName}</option>)}
+          </SelectInput>
+          <span>→</span>
+          <SelectInput aria-label="Target command" value={route.targetCommandId} onChange={(event) => patchRoute(route.id, "targetCommandId", event.target.value)}>
+            {target.commands.map((command) => <option key={command.id} value={command.id}>{command.displayName}</option>)}
+          </SelectInput>
+          <IconButton label="Delete command route" danger onClick={() => updateDocument((draft) => {
+            const draftRelation = draft.relations.find((item) => item.id === relation.id);
+            if (draftRelation?.commandRoutes) draftRelation.commandRoutes = draftRelation.commandRoutes.filter((item) => item.id !== route.id);
+          })}>×</IconButton>
+        </div>
+      ))}
     </div>
   );
 }

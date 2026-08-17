@@ -121,6 +121,13 @@ export interface EtabRelation {
   sourceNodeId: string;
   targetNodeId: string;
   label?: string;
+  commandRoutes?: EtabCommandRoute[];
+}
+
+export interface EtabCommandRoute {
+  id: string;
+  sourceCommandId: string;
+  targetCommandId: string;
 }
 
 export interface EtabLayout {

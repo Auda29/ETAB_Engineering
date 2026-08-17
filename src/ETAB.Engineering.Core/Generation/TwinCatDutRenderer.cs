@@ -43,6 +43,7 @@ internal static class TwinCatDutRenderer
     public static string RenderRequestDut(
         string typeName,
         string commandEnumName,
+        EtabNode node,
         string sourceId,
         Guid twinCatGuid,
         string productVersion,
@@ -52,9 +53,35 @@ internal static class TwinCatDutRenderer
         AppendGeneratedMarker(declaration, sourceId, GeneratedArtifactKind.RequestDut);
         declaration.AppendLine($"TYPE {typeName} :");
         declaration.AppendLine("STRUCT");
-        declaration.AppendLine("    bExecute : BOOL;");
-        declaration.AppendLine($"    eCommand : {commandEnumName};");
-        declaration.AppendLine("    nCommandID : UDINT;");
+        switch (node.Kind)
+        {
+            case "applicationUnit":
+            case "commandUnit":
+                declaration.AppendLine("    bExecute : BOOL;");
+                declaration.AppendLine($"    eCommand : {commandEnumName};");
+                declaration.AppendLine("    nCommandID : UDINT;");
+                break;
+
+            case "recipeManager":
+                declaration.AppendLine("    bExecute : BOOL;");
+                declaration.AppendLine("    eCommand : ETAB.E_ETAB_RecipeCommand;");
+                declaration.AppendLine("    bExternalValid : BOOL := TRUE;");
+                declaration.AppendLine("    sSaveAsFileName : Tc2_System.T_MaxString;");
+                break;
+
+            case "machineLink":
+                declaration.AppendLine("    bEnable : BOOL := TRUE;");
+                declaration.AppendLine("    bLocalReqToken : BOOL;");
+                declaration.AppendLine("    bLocalBusy : BOOL;");
+                declaration.AppendLine("    bLocalError : BOOL;");
+                declaration.AppendLine("    nLocalState : DINT;");
+                declaration.AppendLine("    stRx : ETAB.ST_ETAB_MachineLinkData;");
+                declaration.AppendLine("    bBridgeOk : BOOL := TRUE;");
+                break;
+
+            default:
+                throw new InvalidOperationException($"Unsupported node kind '{node.Kind}'.");
+        }
         AppendFields(declaration, payload);
         declaration.AppendLine("END_STRUCT");
         declaration.AppendLine("END_TYPE");

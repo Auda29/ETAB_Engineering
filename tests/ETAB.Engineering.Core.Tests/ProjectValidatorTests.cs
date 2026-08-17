@@ -312,6 +312,57 @@ public sealed class ProjectValidatorTests
             issue => issue.Code == "RELATION_STATUS_NODE_KIND");
     }
 
+    [Fact]
+    public void CommandRoutesRequireExistingCommandsAndGeneratedContracts()
+    {
+        var project = ParseProject();
+        var relation = project["relations"]!.AsArray().First(item =>
+            item!["kind"]!.GetValue<string>() == "commands");
+        relation!["commandRoutes"] = new JsonArray
+        {
+            new JsonObject
+            {
+                ["id"] = "99999999-0000-4000-8000-000000000010",
+                ["sourceCommandId"] = "ffffffff-ffff-4fff-8fff-ffffffffffff",
+                ["targetCommandId"] = project["nodes"]![1]!["commands"]![0]!["id"]!.GetValue<string>()
+            }
+        };
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "COMMAND_ROUTES_CONTRACT_REQUIRED");
+        Assert.Contains(result.Issues, issue => issue.Code == "COMMAND_ROUTE_SOURCE_MISSING");
+    }
+
+    [Fact]
+    public void AutomaticCommandRoutesRequireRelationWiring()
+    {
+        var project = ParseProject();
+        var source = project["nodes"]![4]!;
+        var target = project["nodes"]![1]!;
+        source["generate"]!["commandEnum"] = true;
+        source["generate"]!["requestType"] = true;
+        project["project"]!["generation"]!["relationWiring"] = false;
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        var relation = project["relations"]!.AsArray().First(item =>
+            item!["kind"]!.GetValue<string>() == "commands");
+        relation!["commandRoutes"] = new JsonArray
+        {
+            new JsonObject
+            {
+                ["id"] = "99999999-0000-4000-8000-000000000011",
+                ["sourceCommandId"] = source["commands"]![0]!["id"]!.GetValue<string>(),
+                ["targetCommandId"] = target["commands"]![0]!["id"]!.GetValue<string>()
+            }
+        };
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "COMMAND_ROUTES_WIRING_REQUIRED");
+    }
+
     private static JsonObject ParseProject() =>
         JsonNode.Parse(ValidProjectJson)!.AsObject();
 

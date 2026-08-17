@@ -28,4 +28,6 @@ public sealed class GenerationManifestArtifact
     public required string RelativePath { get; init; }
 
     public required string ContentHash { get; init; }
+
+    public bool PreserveUserEdits { get; init; }
 }

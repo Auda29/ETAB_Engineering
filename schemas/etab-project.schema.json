@@ -668,6 +668,32 @@
         "label": {
           "type": "string",
           "maxLength": 160
+        },
+        "commandRoutes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commandRoute"
+          }
+        }
+      }
+    },
+    "commandRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceCommandId",
+        "targetCommandId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId"
+        },
+        "sourceCommandId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "targetCommandId": {
+          "$ref": "#/$defs/stableId"
         }
       }
     },
