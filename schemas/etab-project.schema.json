@@ -161,6 +161,9 @@
             },
             "relationWiring": {
               "type": "boolean"
+            },
+            "runtimeExecution": {
+              "type": "boolean"
             }
           }
         }

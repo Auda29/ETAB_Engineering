@@ -128,6 +128,8 @@ internal static class Program
         plan.Manifest.ChangeKind == GenerationChangeKind.Unchanged &&
         (plan.ProjectFile is null ||
          plan.ProjectFile.ChangeKind == GenerationChangeKind.Unchanged) &&
+        (plan.TaskFile is null ||
+         plan.TaskFile.ChangeKind == GenerationChangeKind.Unchanged) &&
         (plan.ProjectIntegrationManifest is null ||
          plan.ProjectIntegrationManifest.ChangeKind == GenerationChangeKind.Unchanged) &&
         plan.Changes.All(change => change.ChangeKind == GenerationChangeKind.Unchanged);
@@ -161,6 +163,16 @@ internal static class Program
                 $"Project integration manifest: " +
                 $"[{plan.ProjectIntegrationManifest.ChangeKind.ToContractName()}] " +
                 plan.ProjectIntegrationManifest.RelativePath);
+        }
+        if (plan.TaskFile is not null)
+        {
+            Console.WriteLine(
+                $"TwinCAT task: [{plan.TaskFile.ChangeKind.ToContractName()}] " +
+                plan.TaskFile.RelativePath);
+            if (!string.IsNullOrWhiteSpace(plan.TaskFile.Message))
+            {
+                Console.WriteLine($"  {plan.TaskFile.Message}");
+            }
         }
 
         foreach (var issue in plan.Issues)
@@ -215,6 +227,12 @@ internal static class Program
             Console.WriteLine();
             Console.WriteLine($"--- {plan.ProjectIntegrationManifest.RelativePath} ---");
             Console.Write(plan.ProjectIntegrationManifest.ProposedContent);
+        }
+        if (plan.TaskFile is not null)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- {plan.TaskFile.RelativePath} ---");
+            Console.Write(plan.TaskFile.ProposedContent);
         }
     }
 

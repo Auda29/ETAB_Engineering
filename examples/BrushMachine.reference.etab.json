@@ -20,7 +20,8 @@
         "applicationRoot": "Application",
         "createUserStubs": false,
         "programCallStructure": false,
-        "relationWiring": true
+        "relationWiring": true,
+        "runtimeExecution": false
     }
   },
   "nodes": [

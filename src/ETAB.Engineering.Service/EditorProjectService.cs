@@ -60,7 +60,8 @@ public sealed class EditorProjectService
                   "applicationRoot": "Application",
                   "createUserStubs": false,
                   "programCallStructure": false,
-                  "relationWiring": true
+                  "relationWiring": true,
+                  "runtimeExecution": false
                 }
               },
               "nodes": [
@@ -312,6 +313,7 @@ public sealed class EditorProjectService
                 null,
                 null,
                 null,
+                null,
                 integrateProject,
                 []);
         }
@@ -358,6 +360,13 @@ public sealed class EditorProjectService
                     plan.ProjectFile.RelativePath,
                     plan.ProjectFile.Message,
                     plan.ProjectFile.ProposedContent),
+            plan.TaskFile is null
+                ? null
+                : new ManifestPreviewResponse(
+                    plan.TaskFile.ChangeKind.ToContractName(),
+                    plan.TaskFile.RelativePath,
+                    plan.TaskFile.Message,
+                    plan.TaskFile.ProposedContent),
             plan.ProjectIntegrationManifest is null
                 ? null
                 : new ManifestPreviewResponse(
@@ -437,6 +446,8 @@ public sealed class EditorProjectService
 
         var projectFileChanged = plan.ProjectFile is not null &&
                                  plan.ProjectFile.ChangeKind != GenerationChangeKind.Unchanged;
+        var taskFileChanged = plan.TaskFile is not null &&
+                              plan.TaskFile.ChangeKind != GenerationChangeKind.Unchanged;
         var manifestChanged = plan.Manifest.ChangeKind != GenerationChangeKind.Unchanged ||
                               (plan.ProjectIntegrationManifest is not null &&
                                plan.ProjectIntegrationManifest.ChangeKind != GenerationChangeKind.Unchanged);
@@ -449,6 +460,7 @@ public sealed class EditorProjectService
             result.Renamed,
             result.Deleted,
             projectFileChanged,
+            taskFileChanged,
             manifestChanged,
             result.Issues.Select(issue => new GenerationExecutionIssueResponse(
                 issue.Code,
@@ -525,6 +537,14 @@ public sealed class EditorProjectService
             AppendTokenValue(signature, plan.ProjectFile.AbsolutePath);
             AppendTokenValue(signature, plan.ProjectFile.ExpectedExistingHash);
             AppendTokenValue(signature, plan.ProjectFile.ProposedHash);
+        }
+        if (plan.TaskFile is not null)
+        {
+            AppendTokenValue(signature, plan.TaskFile.ChangeKind.ToContractName());
+            AppendTokenValue(signature, plan.TaskFile.RelativePath);
+            AppendTokenValue(signature, plan.TaskFile.AbsolutePath);
+            AppendTokenValue(signature, plan.TaskFile.ExpectedExistingHash);
+            AppendTokenValue(signature, plan.TaskFile.ProposedHash);
         }
         if (plan.ProjectIntegrationManifest is not null)
         {

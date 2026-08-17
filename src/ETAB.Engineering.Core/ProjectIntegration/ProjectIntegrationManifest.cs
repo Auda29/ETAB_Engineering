@@ -15,6 +15,8 @@ public sealed class ProjectIntegrationManifest
     public ManagedPlaceholderReference? ManagedPlaceholderReference { get; init; }
 
     public ManagedPlaceholderResolution? ManagedPlaceholderResolution { get; init; }
+
+    public ManagedTaskPouCall? ManagedTaskPouCall { get; init; }
 }
 
 public sealed class ManagedPlaceholderReference
@@ -31,4 +33,11 @@ public sealed class ManagedPlaceholderResolution
     public required string Include { get; init; }
 
     public required string Resolution { get; init; }
+}
+
+public sealed class ManagedTaskPouCall
+{
+    public required string TaskFile { get; init; }
+
+    public required string ProgramName { get; init; }
 }

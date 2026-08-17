@@ -39,9 +39,11 @@ export function BottomPanel({
     ? preview?.manifest
     : selectedArtifact === "__project"
       ? preview?.projectFile
-      : selectedArtifact === "__integration-manifest"
-        ? preview?.projectIntegrationManifest
-        : undefined;
+      : selectedArtifact === "__task"
+        ? preview?.taskFile
+        : selectedArtifact === "__integration-manifest"
+          ? preview?.projectIntegrationManifest
+          : undefined;
   const canGenerate = Boolean(
     preview?.confirmationToken &&
     !preview.hasConflicts &&
@@ -116,6 +118,7 @@ export function BottomPanel({
                   ))}
                   {preview.manifest && <button className={`change-row change-row--${preview.manifest.changeKind}`} onClick={() => setSelectedArtifact("__manifest")}><span>{preview.manifest.changeKind}</span><code>{preview.manifest.relativePath}</code><small>manifest</small></button>}
                   {preview.projectFile && <button className={`change-row change-row--${preview.projectFile.changeKind}`} onClick={() => setSelectedArtifact("__project")}><span>{preview.projectFile.changeKind}</span><code>{preview.projectFile.relativePath}</code><small>PLC project</small></button>}
+                  {preview.taskFile && <button className={`change-row change-row--${preview.taskFile.changeKind}`} onClick={() => setSelectedArtifact("__task")}><span>{preview.taskFile.changeKind}</span><code>{preview.taskFile.relativePath}</code><small>runtime task</small></button>}
                   {preview.projectIntegrationManifest && <button className={`change-row change-row--${preview.projectIntegrationManifest.changeKind}`} onClick={() => setSelectedArtifact("__integration-manifest")}><span>{preview.projectIntegrationManifest.changeKind}</span><code>{preview.projectIntegrationManifest.relativePath}</code><small>project manifest</small></button>}
                 </div>
               </div>

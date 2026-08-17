@@ -65,7 +65,9 @@ public sealed class ArtifactPreviewGenerator
                 generatedRoot,
                 instances));
         }
-        if (instances.Count > 0 && project.Project.Generation.ProgramCallStructure)
+        if (instances.Count > 0 &&
+            (project.Project.Generation.ProgramCallStructure ||
+             project.Project.Generation.RuntimeExecution))
         {
             var calledInstances = orderedNodes
                 .Where(node => node.Generate.Instance && node.Generate.CallInProgram)

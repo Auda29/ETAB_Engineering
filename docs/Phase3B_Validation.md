@@ -9,7 +9,7 @@ Phase 3B adds two project-level generated artifact types:
 
 The GVL uses `{attribute 'qualified_only'}`. Instance names are derived from stable IEC node names and emitted in deterministic node order. Each node may explicitly bind a project FB through `instanceType`; otherwise the generator selects its generated ApplicationUnit base FB or the corresponding ETAB library FB.
 
-The PRG calls only instances explicitly selected with `callInProgram`. This avoids automatically invoking configuration scaffolds or FBs that require mandatory `VAR_IN_OUT` arguments. The generator does not add the PRG to a TwinCAT task.
+The PRG calls only instances explicitly selected with `callInProgram`. This avoids automatically invoking configuration scaffolds or FBs that require mandatory `VAR_IN_OUT` arguments. Phase 3B originally stopped at PRG generation; the later opt-in task integration is documented in `Phase3E_Runtime_Execution.md`.
 
 ## Validation and Safety Rules
 
@@ -55,4 +55,4 @@ The reference model keeps `programCallStructure = false`, so it does not introdu
 
 ## Acceptance Boundary
 
-This validates deterministic generation and file/project planning only. It does not prove TwinCAT XAE open, task assignment, a complete PLC compile, simulation, or machine behavior. The existing reference project also has handwritten object names that overlap other generated artifacts; Phase 4 golden-sample reconciliation remains necessary before complete-project compile acceptance.
+This Phase 3B record validates deterministic generation and file/project planning only. Task assignment was added and tested later in Phase 3E. A complete PLC compile, simulation, and machine behavior remain separate acceptance levels. The existing reference project also has handwritten object names that overlap other generated artifacts; Phase 4 golden-sample reconciliation remains necessary before complete-project compile acceptance.

@@ -25,6 +25,7 @@ export interface EtabProject {
     createUserStubs: boolean;
     programCallStructure?: boolean;
     relationWiring?: boolean;
+    runtimeExecution?: boolean;
   };
 }
 
@@ -219,6 +220,7 @@ export interface PreviewResponse {
   manifest?: { changeKind: string; relativePath: string; message?: string; content: string };
   projectFile?: { changeKind: string; relativePath: string; message?: string; content: string };
   projectIntegrationManifest?: { changeKind: string; relativePath: string; message?: string; content: string };
+  taskFile?: { changeKind: string; relativePath: string; message?: string; content: string };
   confirmationToken?: string;
   integrateProject: boolean;
   issues: ValidationIssue[];
@@ -232,6 +234,7 @@ export interface GenerateProjectResponse {
   renamed: number;
   deleted: number;
   projectFileChanged: boolean;
+  taskFileChanged: boolean;
   manifestChanged: boolean;
   issues: Array<{ code: string; message: string }>;
 }

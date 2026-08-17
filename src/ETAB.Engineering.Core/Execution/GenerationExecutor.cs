@@ -17,6 +17,8 @@ public sealed class GenerationExecutor
 
     private const string StagedProjectFileName = ".etab-project/plc-project.staged";
     private const string BackedUpProjectFileName = ".etab-project/plc-project.backup";
+    private const string StagedTaskFileName = ".etab-project/plc-task.staged";
+    private const string BackedUpTaskFileName = ".etab-project/plc-task.backup";
 
     private readonly Action<int>? _afterArtifactOperation;
 
@@ -45,6 +47,8 @@ public sealed class GenerationExecutor
                             plan.Manifest.ChangeKind != GenerationChangeKind.Unchanged ||
                             (plan.ProjectFile is not null &&
                              plan.ProjectFile.ChangeKind != GenerationChangeKind.Unchanged) ||
+                            (plan.TaskFile is not null &&
+                             plan.TaskFile.ChangeKind != GenerationChangeKind.Unchanged) ||
                             (plan.ProjectIntegrationManifest is not null &&
                              plan.ProjectIntegrationManifest.ChangeKind != GenerationChangeKind.Unchanged);
         if (!requiresWrite)
@@ -94,6 +98,17 @@ public sealed class GenerationExecutor
                 backups,
                 writtenTargets);
             if (plan.ProjectFile?.ChangeKind == GenerationChangeKind.Update)
+            {
+                _afterArtifactOperation?.Invoke(++appliedArtifactOperations);
+            }
+
+            ApplyTaskFileChange(
+                plan,
+                stagingRoot,
+                backupRoot,
+                backups,
+                writtenTargets);
+            if (plan.TaskFile?.ChangeKind == GenerationChangeKind.Update)
             {
                 _afterArtifactOperation?.Invoke(++appliedArtifactOperations);
             }
@@ -201,6 +216,7 @@ public sealed class GenerationExecutor
         }
 
         ValidateProjectFileChange(plan, issues);
+        ValidateTaskFileChange(plan, issues);
         ValidateManifestChange(plan, issues);
         ValidateProjectIntegrationManifestChange(plan, issues);
         return issues;
@@ -334,6 +350,55 @@ public sealed class GenerationExecutor
                 issues.Add(new GenerationExecutionIssue(
                     "CHANGE_KIND_INVALID",
                     $"Unsupported change kind '{change.ChangeKind}'."));
+                break;
+        }
+    }
+
+    private static void ValidateTaskFileChange(
+        GenerationPlan plan,
+        ICollection<GenerationExecutionIssue> issues)
+    {
+        if (plan.TaskFile is null)
+        {
+            return;
+        }
+
+        if (!TryResolveTaskFilePath(plan, out var expectedPath, out var pathError) ||
+            !string.Equals(expectedPath, plan.TaskFile.AbsolutePath, PathComparison))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "PLC_TASK_PATH_INVALID",
+                pathError ?? "The planned TwinCAT task path does not match the project root."));
+            return;
+        }
+
+        if (ContainsReparsePointBelowRoot(plan.ProjectRoot, expectedPath!))
+        {
+            issues.Add(new GenerationExecutionIssue(
+                "REPARSE_POINT_BLOCKED",
+                $"TwinCAT task path '{plan.TaskFile.RelativePath}' traverses a reparse point."));
+            return;
+        }
+
+        switch (plan.TaskFile.ChangeKind)
+        {
+            case GenerationChangeKind.Update:
+            case GenerationChangeKind.Unchanged:
+                VerifyExistingFile(
+                    expectedPath!,
+                    plan.TaskFile.ExpectedExistingHash,
+                    plan.TaskFile.RelativePath,
+                    issues);
+                break;
+            case GenerationChangeKind.Conflict:
+                issues.Add(new GenerationExecutionIssue(
+                    "GENERATION_CONFLICT",
+                    "The TwinCAT task is in conflict."));
+                break;
+            default:
+                issues.Add(new GenerationExecutionIssue(
+                    "PLC_TASK_CHANGE_INVALID",
+                    $"Unsupported TwinCAT task change '{plan.TaskFile.ChangeKind}'."));
                 break;
         }
     }
@@ -544,6 +609,26 @@ public sealed class GenerationExecutor
             }
         }
 
+        if (plan.TaskFile?.ChangeKind == GenerationChangeKind.Update)
+        {
+            var stagedTaskFile = Path.GetFullPath(
+                StagedTaskFileName.Replace('/', Path.DirectorySeparatorChar),
+                stagingRoot);
+            EnsureStrictDescendant(stagedTaskFile, stagingRoot);
+            Directory.CreateDirectory(Path.GetDirectoryName(stagedTaskFile)!);
+            File.WriteAllText(
+                stagedTaskFile,
+                plan.TaskFile.ProposedContent,
+                Utf8WithoutBom);
+            if (!string.Equals(
+                    ComputeFileHash(stagedTaskFile),
+                    plan.TaskFile.ProposedHash,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new IOException("Staged TwinCAT task content hash mismatch.");
+            }
+        }
+
         if (plan.ProjectIntegrationManifest?.ChangeKind is
             GenerationChangeKind.Create or GenerationChangeKind.Update)
         {
@@ -633,6 +718,42 @@ public sealed class GenerationExecutor
                 throw new InvalidOperationException(
                     $"Cannot execute change kind '{change.ChangeKind}'.");
         }
+    }
+
+    private static void ApplyTaskFileChange(
+        GenerationPlan plan,
+        string stagingRoot,
+        string backupRoot,
+        ICollection<(string BackupPath, string OriginalPath)> backups,
+        ICollection<string> writtenTargets)
+    {
+        if (plan.TaskFile is null ||
+            plan.TaskFile.ChangeKind == GenerationChangeKind.Unchanged)
+        {
+            return;
+        }
+        if (plan.TaskFile.ChangeKind != GenerationChangeKind.Update)
+        {
+            throw new InvalidOperationException(
+                $"Cannot execute TwinCAT task change '{plan.TaskFile.ChangeKind}'.");
+        }
+
+        var targetPath = plan.TaskFile.AbsolutePath;
+        EnsureTaskFileTarget(plan, targetPath);
+        var backupPath = Path.GetFullPath(
+            BackedUpTaskFileName.Replace('/', Path.DirectorySeparatorChar),
+            backupRoot);
+        EnsureStrictDescendant(backupPath, backupRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+        File.Move(targetPath, backupPath);
+        backups.Add((backupPath, targetPath));
+
+        var stagedPath = Path.GetFullPath(
+            StagedTaskFileName.Replace('/', Path.DirectorySeparatorChar),
+            stagingRoot);
+        EnsureStrictDescendant(stagedPath, stagingRoot);
+        File.Move(stagedPath, targetPath);
+        writtenTargets.Add(targetPath);
     }
 
     private static void ApplyManifestChange(
@@ -987,6 +1108,60 @@ public sealed class GenerationExecutor
         }
     }
 
+    private static bool TryResolveTaskFilePath(
+        GenerationPlan plan,
+        out string? path,
+        out string? error)
+    {
+        path = null;
+        error = null;
+        if (plan.TaskFile is null)
+        {
+            error = "The generation plan contains no TwinCAT task change.";
+            return false;
+        }
+
+        try
+        {
+            var platformPath = plan.TaskFile.RelativePath
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+            if (Path.IsPathRooted(platformPath) ||
+                ContainsTraversalSegment(platformPath) ||
+                !platformPath.EndsWith(".TcTTO", StringComparison.OrdinalIgnoreCase))
+            {
+                error = "The TwinCAT task path must be a safe relative .TcTTO path.";
+                return false;
+            }
+
+            var candidate = Path.GetFullPath(platformPath, plan.ProjectRoot);
+            if (!IsStrictDescendant(candidate, plan.ProjectRoot))
+            {
+                error = "The TwinCAT task must be inside the selected project root.";
+                return false;
+            }
+
+            path = candidate;
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    private static void EnsureTaskFileTarget(GenerationPlan plan, string path)
+    {
+        if (!TryResolveTaskFilePath(plan, out var expected, out var error) ||
+            !string.Equals(expected, path, PathComparison))
+        {
+            throw new InvalidOperationException(
+                error ?? $"Unexpected TwinCAT task target '{path}'.");
+        }
+    }
+
     private static void EnsureRollbackTarget(GenerationPlan plan, string target)
     {
         if (IsStrictDescendant(target, plan.GeneratedRoot))
@@ -998,6 +1173,13 @@ public sealed class GenerationExecutor
             string.Equals(target, plan.ProjectFile.AbsolutePath, PathComparison))
         {
             EnsureProjectFileTarget(plan, target);
+            return;
+        }
+
+        if (plan.TaskFile is not null &&
+            string.Equals(target, plan.TaskFile.AbsolutePath, PathComparison))
+        {
+            EnsureTaskFileTarget(plan, target);
             return;
         }
 

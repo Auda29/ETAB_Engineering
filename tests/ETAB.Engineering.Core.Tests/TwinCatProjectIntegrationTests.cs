@@ -130,6 +130,185 @@ public sealed class TwinCatProjectIntegrationTests
     }
 
     [Fact]
+    public void RuntimeExecution_AssignsGeneratedProgramToDetectedTaskAndBecomesNoOp()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(taskIncludes: ["PlcTask.TcTTO"]));
+        WriteTaskFile(temporary.Path, "PlcTask.TcTTO", ["MAIN", "HandwrittenProgram"]);
+        var project = Validate(EnableRuntimeExecution(ParseProject()));
+
+        var plan = BuildPlan(temporary.Path, project);
+
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        Assert.Equal(GenerationChangeKind.Update, plan.TaskFile!.ChangeKind);
+        Assert.Equal("PlcTask.TcTTO", plan.TaskFile.RelativePath);
+        Assert.Contains("add PRG_BM_Generated to task PlcTask", plan.TaskFile.Message);
+        Assert.True(_executor.Execute(plan).Success);
+
+        var task = XDocument.Load(Path.Combine(temporary.Path, "PlcTask.TcTTO"));
+        Assert.Equal(
+            ["MAIN", "HandwrittenProgram", "PRG_BM_Generated"],
+            task.Descendants("PouCall").Select(call => call.Element("Name")!.Value).ToArray());
+        var manifest = ReadIntegrationManifest(temporary.Path);
+        Assert.Equal("PlcTask.TcTTO", manifest.ManagedTaskPouCall!.TaskFile);
+        Assert.Equal("PRG_BM_Generated", manifest.ManagedTaskPouCall.ProgramName);
+
+        var repeated = BuildPlan(temporary.Path, project);
+        Assert.False(repeated.HasConflicts, FormatIssues(repeated));
+        Assert.Equal(GenerationChangeKind.Unchanged, repeated.TaskFile!.ChangeKind);
+        Assert.True(_executor.Execute(repeated).Success);
+    }
+
+    [Fact]
+    public void DisablingRuntimeExecution_RemovesOnlyManagedTaskCall()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(taskIncludes: ["PlcTask.TcTTO"]));
+        WriteTaskFile(temporary.Path, "PlcTask.TcTTO", ["MAIN", "HandwrittenProgram"]);
+        var enabledJson = EnableRuntimeExecution(ParseProject());
+        Assert.True(_executor.Execute(BuildPlan(
+            temporary.Path,
+            Validate(enabledJson))).Success);
+
+        enabledJson["project"]!["generation"]!["runtimeExecution"] = false;
+        enabledJson["project"]!["generation"]!["programCallStructure"] = false;
+        var disabledPlan = BuildPlan(temporary.Path, Validate(enabledJson));
+
+        Assert.False(disabledPlan.HasConflicts, FormatIssues(disabledPlan));
+        Assert.Equal(GenerationChangeKind.Update, disabledPlan.TaskFile!.ChangeKind);
+        Assert.Contains("remove runtime call PRG_BM_Generated", disabledPlan.TaskFile.Message);
+        Assert.True(_executor.Execute(disabledPlan).Success);
+        var calls = XDocument.Load(Path.Combine(temporary.Path, "PlcTask.TcTTO"))
+            .Descendants("PouCall")
+            .Select(call => call.Element("Name")!.Value)
+            .ToArray();
+        Assert.Equal(["MAIN", "HandwrittenProgram"], calls);
+        Assert.Null(ReadIntegrationManifest(temporary.Path).ManagedTaskPouCall);
+    }
+
+    [Fact]
+    public void RuntimeExecution_SelectsUniqueTaskCallingMain()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(taskIncludes: ["AuxTask.TcTTO", "PlcTask.TcTTO"]));
+        WriteTaskFile(temporary.Path, "AuxTask.TcTTO", ["Background"]);
+        WriteTaskFile(temporary.Path, "PlcTask.TcTTO", ["MAIN"]);
+
+        var plan = BuildPlan(
+            temporary.Path,
+            Validate(EnableRuntimeExecution(ParseProject())));
+
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        Assert.Equal("PlcTask.TcTTO", plan.TaskFile!.RelativePath);
+        Assert.DoesNotContain("PRG_BM_Generated", File.ReadAllText(
+            Path.Combine(temporary.Path, "AuxTask.TcTTO")));
+    }
+
+    [Fact]
+    public void ExistingRuntimeCallWithDifferentCase_IsPreservedAndNotDuplicated()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(taskIncludes: ["PlcTask.TcTTO"]));
+        WriteTaskFile(
+            temporary.Path,
+            "PlcTask.TcTTO",
+            ["MAIN", "prg_bm_generated"]);
+
+        var plan = BuildPlan(
+            temporary.Path,
+            Validate(EnableRuntimeExecution(ParseProject())));
+
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        Assert.Equal(GenerationChangeKind.Unchanged, plan.TaskFile!.ChangeKind);
+        Assert.Single(
+            XDocument.Parse(plan.TaskFile.ProposedContent).Descendants("PouCall"),
+            call => string.Equals(
+                call.Element("Name")?.Value,
+                "PRG_BM_Generated",
+                StringComparison.OrdinalIgnoreCase));
+        Assert.Null(ReadProposedIntegrationManifest(plan).ManagedTaskPouCall);
+    }
+
+    [Fact]
+    public void TaskChangedAfterPreview_IsRejectedBeforeWritingArtifacts()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(taskIncludes: ["PlcTask.TcTTO"]));
+        WriteTaskFile(temporary.Path, "PlcTask.TcTTO", ["MAIN"]);
+        var plan = BuildPlan(
+            temporary.Path,
+            Validate(EnableRuntimeExecution(ParseProject())));
+        File.AppendAllText(
+            Path.Combine(temporary.Path, "PlcTask.TcTTO"),
+            " ",
+            new UTF8Encoding(false));
+
+        var execution = _executor.Execute(plan);
+
+        Assert.False(execution.Success);
+        Assert.Contains(execution.Issues, issue => issue.Code == "MANAGED_FILE_CHANGED");
+        Assert.False(Directory.Exists(Path.Combine(temporary.Path, "Generated")));
+    }
+
+    [Fact]
+    public void FailureAfterTaskUpdate_RollsBackTaskProjectAndGeneratedFiles()
+    {
+        using var temporary = new TemporaryDirectory();
+        var originalProject = MinimalProject(taskIncludes: ["PlcTask.TcTTO"]);
+        const string originalTask = """
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Task Name="PlcTask" Id="{10000000-0000-4000-8000-000000000001}">
+    <PouCall>
+      <Name>MAIN</Name>
+    </PouCall>
+    <TaskFBGuid>{10000000-0000-4000-8000-000000000002}</TaskFBGuid>
+  </Task>
+</TcPlcObject>
+""";
+        WriteProjectFile(temporary.Path, originalProject);
+        File.WriteAllText(
+            Path.Combine(temporary.Path, "PlcTask.TcTTO"),
+            originalTask,
+            new UTF8Encoding(false));
+        var plan = BuildPlan(
+            temporary.Path,
+            Validate(EnableRuntimeExecution(ParseProject())));
+        var taskOperation = plan.Changes.Count(
+            change => change.ChangeKind != GenerationChangeKind.Unchanged) + 2;
+        var failingExecutor = new GenerationExecutor(operation =>
+        {
+            if (operation == taskOperation)
+            {
+                throw new InvalidOperationException("Injected task transaction failure.");
+            }
+        });
+
+        var execution = failingExecutor.Execute(plan);
+
+        Assert.False(execution.Success);
+        Assert.Equal(
+            originalProject,
+            File.ReadAllText(Path.Combine(temporary.Path, ProjectFileName), Encoding.UTF8));
+        Assert.Equal(
+            originalTask,
+            File.ReadAllText(Path.Combine(temporary.Path, "PlcTask.TcTTO"), Encoding.UTF8));
+        var generatedRoot = Path.Combine(temporary.Path, "Generated");
+        Assert.Empty(Directory.GetFiles(generatedRoot, "*", SearchOption.AllDirectories));
+        Assert.Empty(Directory.GetDirectories(generatedRoot, ".etab-*"));
+    }
+
+    [Fact]
     public void ExistingUnmanagedCompileEntry_IsPreservedAndNotClaimed()
     {
         using var temporary = new TemporaryDirectory();
@@ -374,11 +553,30 @@ public sealed class TwinCatProjectIntegrationTests
     private static JsonObject ParseProject() =>
         JsonNode.Parse(ValidProjectJson)!.AsObject();
 
+    private static JsonObject EnableRuntimeExecution(JsonObject project)
+    {
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        foreach (var node in project["nodes"]!.AsArray())
+        {
+            if (node!["kind"]!.GetValue<string>() is "applicationUnit" or "commandUnit")
+            {
+                node["generate"]!["instance"] = true;
+                node["generate"]!["callInProgram"] = true;
+            }
+        }
+        return project;
+    }
+
     private static ProjectIntegrationManifest ReadIntegrationManifest(string root) =>
         ProjectIntegrationManifestSerializer.Deserialize(File.ReadAllText(Path.Combine(
             root,
             "Generated",
             ProjectIntegrationManifestSerializer.FileName)));
+
+    private static ProjectIntegrationManifest ReadProposedIntegrationManifest(
+        GenerationPlan plan) =>
+        ProjectIntegrationManifestSerializer.Deserialize(
+            plan.ProjectIntegrationManifest!.ProposedContent);
 
     private static void WriteProjectFile(string root, string content)
     {
@@ -402,14 +600,43 @@ public sealed class TwinCatProjectIntegrationTests
             new UTF8Encoding(false));
     }
 
+    private static void WriteTaskFile(
+        string root,
+        string relativePath,
+        IReadOnlyList<string> programs)
+    {
+        var calls = string.Join(
+            "\r\n",
+            programs.Select(program =>
+                $"    <PouCall>\r\n      <Name>{program}</Name>\r\n    </PouCall>"));
+        var content = $$"""
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Task Name="{{Path.GetFileNameWithoutExtension(relativePath)}}" Id="{10000000-0000-4000-8000-000000000001}">
+{{calls}}
+    <TaskFBGuid>{10000000-0000-4000-8000-000000000002}</TaskFBGuid>
+  </Task>
+</TcPlcObject>
+""";
+        File.WriteAllText(
+            Path.Combine(root, relativePath),
+            content,
+            new UTF8Encoding(false));
+    }
+
     private static string MinimalProject(
         bool includeCompatibleLibrary = false,
         bool includeIncompatibleLibrary = false,
-        string? additionalCompileInclude = null)
+        string? additionalCompileInclude = null,
+        IReadOnlyList<string>? taskIncludes = null)
     {
-        var compile = additionalCompileInclude is null
-            ? string.Empty
-            : $"\r\n    <Compile Include=\"{additionalCompileInclude}\">\r\n      <SubType>Code</SubType>\r\n    </Compile>";
+        var compileIncludes = (additionalCompileInclude is null
+                ? []
+                : new[] { additionalCompileInclude })
+            .Concat(taskIncludes ?? [])
+            .ToArray();
+        var compile = string.Concat(compileIncludes.Select(include =>
+            $"\r\n    <Compile Include=\"{include}\">\r\n      <SubType>Code</SubType>\r\n    </Compile>"));
         var library = includeCompatibleLibrary
             ? """
   <ItemGroup>

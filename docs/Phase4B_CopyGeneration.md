@@ -8,13 +8,13 @@
 - `ST_BM_MotionRequest`, `ST_BM_WorkpieceRequest`, `ST_BM_ProcessRequest`,
 - `ST_BM_MachineStatus`.
 
-The integration model remains the same logical BrushMachine project but disables generation for these artifacts. It produces eight ETAB-owned artifacts:
+The integration model remains the same logical BrushMachine project but disables generation for these artifacts. At the time of this recorded run it produced eight ETAB-owned artifacts:
 
 - four ApplicationUnit base FBs,
 - `ST_BM_MotionStatus`, `ST_BM_WorkpieceStatus`, and `ST_BM_ProcessStatus`,
 - `GVL_BM_Units`.
 
-The full `examples/BrushMachine.reference.etab.json` remains unchanged as the 15-artifact generator reference and desktop smoke fixture.
+The later relation-wiring option adds one artifact to both examples, so the current integration model produces nine artifacts and the current full reference produces 16. The ownership decision and the eight-artifact evidence below remain unchanged historical evidence.
 
 ## Real-Project Read-Only Preview
 

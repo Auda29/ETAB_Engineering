@@ -21,6 +21,10 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
 
+    private sealed record RuntimeTaskPlan(
+        PlannedProjectFileChange? Change,
+        ManagedTaskPouCall? ManagedCall);
+
     public GenerationPlan Build(
         GenerationPlan basePlan,
         EtabProjectDocument project,
@@ -207,6 +211,14 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             newline,
             projectMutations,
             issues);
+        var taskPlan = PlanRuntimeTask(
+            basePlan.ProjectRoot,
+            document,
+            ns,
+            project,
+            preview,
+            existingManifest?.ManagedTaskPouCall,
+            issues);
 
         if (issues.Count > 0)
         {
@@ -253,7 +265,8 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
                 .OrderBy(path => path, StringComparer.Ordinal)
                 .ToList(),
             ManagedPlaceholderReference = proposedReference,
-            ManagedPlaceholderResolution = proposedResolution
+            ManagedPlaceholderResolution = proposedResolution,
+            ManagedTaskPouCall = taskPlan.ManagedCall
         };
         var proposedManifestContent = ProjectIntegrationManifestSerializer.Serialize(
             proposedManifest);
@@ -294,7 +307,449 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
                 manifestRelativePath,
                 proposedManifestContent,
                 existingManifestHash,
-                null));
+                null),
+            taskPlan.Change);
+    }
+
+    private static RuntimeTaskPlan PlanRuntimeTask(
+        string projectRoot,
+        XDocument projectDocument,
+        XNamespace projectNamespace,
+        EtabProjectDocument project,
+        GenerationPreview preview,
+        ManagedTaskPouCall? existingManagedCall,
+        ICollection<GenerationPlanIssue> issues)
+    {
+        var runtimeEnabled = project.Project.Generation.RuntimeExecution;
+        if (!runtimeEnabled && existingManagedCall is null)
+        {
+            return new RuntimeTaskPlan(null, null);
+        }
+
+        var programName = $"PRG_{project.Project.Prefix}_Generated";
+        if (runtimeEnabled && !preview.Artifacts.Any(
+                artifact => artifact.Kind == GeneratedArtifactKind.ProgramCallStructure &&
+                            string.Equals(
+                                artifact.Name,
+                                programName,
+                                StringComparison.Ordinal)))
+        {
+            issues.Add(new GenerationPlanIssue(
+                "RUNTIME_PROGRAM_MISSING",
+                "/project/generation/runtimeExecution",
+                $"Runtime execution requires the generated program '{programName}'."));
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        var compiledTaskIncludes = projectDocument
+            .Descendants(projectNamespace + "Compile")
+            .Select(element => (string?)element.Attribute("Include"))
+            .Where(include =>
+                !string.IsNullOrWhiteSpace(include) &&
+                include.EndsWith(".TcTTO", StringComparison.OrdinalIgnoreCase))
+            .Select(include => include!)
+            .Distinct(PathComparer)
+            .OrderBy(include => include, StringComparer.Ordinal)
+            .ToArray();
+
+        string? taskInclude;
+        if (existingManagedCall is not null)
+        {
+            taskInclude = ToProjectInclude(existingManagedCall.TaskFile);
+            if (!compiledTaskIncludes.Contains(taskInclude, PathComparer))
+            {
+                issues.Add(new GenerationPlanIssue(
+                    "PLC_TASK_MANAGED_CHANGED",
+                    existingManagedCall.TaskFile,
+                    "The manifest-managed TwinCAT task is no longer compiled by the PLC project."));
+                return new RuntimeTaskPlan(null, existingManagedCall);
+            }
+        }
+        else if (!runtimeEnabled)
+        {
+            return new RuntimeTaskPlan(null, null);
+        }
+        else
+        {
+            taskInclude = DetectRuntimeTask(
+                projectRoot,
+                compiledTaskIncludes,
+                issues);
+            if (taskInclude is null)
+            {
+                return new RuntimeTaskPlan(null, null);
+            }
+        }
+
+        if (!TryResolveTaskFile(
+                projectRoot,
+                taskInclude!,
+                out var taskPath,
+                out var taskRelativePath,
+                out var taskPathError))
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PLC_TASK_INVALID",
+                taskInclude!,
+                taskPathError!));
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        string taskContent;
+        string taskHash;
+        XDocument taskDocument;
+        try
+        {
+            taskContent = File.ReadAllText(taskPath!, Encoding.UTF8);
+            taskHash = ComputeFileHash(taskPath!);
+            taskDocument = XDocument.Parse(
+                taskContent,
+                LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or XmlException)
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PLC_TASK_READ_FAILED",
+                taskRelativePath!,
+                exception.Message));
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        var taskElements = taskDocument.Descendants("Task").ToArray();
+        if (taskDocument.Root?.Name.LocalName != "TcPlcObject" || taskElements.Length != 1)
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PLC_TASK_FORMAT",
+                taskRelativePath!,
+                "The selected TwinCAT task file must contain exactly one Task element."));
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        var taskElement = taskElements[0];
+        var taskName = (string?)taskElement.Attribute("Name") ??
+                       Path.GetFileNameWithoutExtension(taskRelativePath);
+        var proposedTaskContent = taskContent;
+        var taskMutations = new List<string>();
+        var proposedManagedCall = existingManagedCall;
+
+        if (existingManagedCall is not null)
+        {
+            var managedMatches = FindPouCalls(taskElement, existingManagedCall.ProgramName);
+            if (managedMatches.Count != 1 || !IsStandardPouCall(managedMatches.SingleOrDefault()))
+            {
+                issues.Add(new GenerationPlanIssue(
+                    "PLC_TASK_MANAGED_CHANGED",
+                    taskRelativePath!,
+                    $"The managed call to '{existingManagedCall.ProgramName}' is missing, duplicated, or was changed outside ETAB Engineering."));
+                return new RuntimeTaskPlan(null, existingManagedCall);
+            }
+
+            if (!runtimeEnabled || !string.Equals(
+                    existingManagedCall.ProgramName,
+                    programName,
+                    StringComparison.Ordinal))
+            {
+                RemovePouCallText(
+                    ref proposedTaskContent,
+                    existingManagedCall.ProgramName);
+                managedMatches[0].Remove();
+                taskMutations.Add($"remove runtime call {existingManagedCall.ProgramName}");
+                proposedManagedCall = null;
+            }
+        }
+
+        if (runtimeEnabled && proposedManagedCall is null)
+        {
+            var desiredMatches = FindPouCalls(taskElement, programName);
+            if (desiredMatches.Count > 1 ||
+                (desiredMatches.Count == 1 && !IsStandardPouCall(desiredMatches[0])))
+            {
+                issues.Add(new GenerationPlanIssue(
+                    "PLC_TASK_CALL_CONFLICT",
+                    taskRelativePath!,
+                    $"The TwinCAT task contains a duplicated or non-standard call to '{programName}'."));
+                return new RuntimeTaskPlan(null, existingManagedCall);
+            }
+
+            if (desiredMatches.Count == 0)
+            {
+                AppendPouCallText(ref proposedTaskContent, programName);
+                taskElement.Add(new XElement(
+                    "PouCall",
+                    new XElement("Name", programName)));
+                taskMutations.Add($"add {programName} to task {taskName}");
+                proposedManagedCall = new ManagedTaskPouCall
+                {
+                    TaskFile = taskRelativePath!,
+                    ProgramName = programName
+                };
+            }
+        }
+
+        if (issues.Count > 0)
+        {
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        try
+        {
+            _ = XDocument.Parse(proposedTaskContent, LoadOptions.PreserveWhitespace);
+        }
+        catch (XmlException exception)
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PLC_TASK_XML_INVALID",
+                taskRelativePath!,
+                exception.Message));
+            return new RuntimeTaskPlan(null, existingManagedCall);
+        }
+
+        var changeKind = string.Equals(
+            taskContent,
+            proposedTaskContent,
+            StringComparison.Ordinal)
+            ? GenerationChangeKind.Unchanged
+            : GenerationChangeKind.Update;
+        return new RuntimeTaskPlan(
+            new PlannedProjectFileChange(
+                changeKind,
+                taskRelativePath!,
+                taskPath!,
+                proposedTaskContent,
+                ComputeContentHash(proposedTaskContent),
+                taskHash,
+                taskMutations.Count == 0
+                    ? $"Runtime program is already assigned to task {taskName}."
+                    : string.Join("; ", taskMutations)),
+            proposedManagedCall);
+    }
+
+    private static string? DetectRuntimeTask(
+        string projectRoot,
+        IReadOnlyList<string> compiledTaskIncludes,
+        ICollection<GenerationPlanIssue> issues)
+    {
+        if (compiledTaskIncludes.Count == 0)
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PLC_TASK_NOT_FOUND",
+                "/project/generation/runtimeExecution",
+                "No compiled TwinCAT task (.TcTTO) was found in the linked PLC project."));
+            return null;
+        }
+        if (compiledTaskIncludes.Count == 1)
+        {
+            return compiledTaskIncludes[0];
+        }
+
+        var mainTasks = new List<string>();
+        foreach (var include in compiledTaskIncludes)
+        {
+            if (!TryResolveTaskFile(
+                    projectRoot,
+                    include,
+                    out var taskPath,
+                    out _,
+                    out _))
+            {
+                continue;
+            }
+
+            try
+            {
+                var document = XDocument.Load(taskPath!, LoadOptions.PreserveWhitespace);
+                if (document.Descendants("PouCall").Any(call => string.Equals(
+                        call.Element("Name")?.Value,
+                        "MAIN",
+                        StringComparison.OrdinalIgnoreCase)))
+                {
+                    mainTasks.Add(include);
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException or XmlException)
+            {
+                issues.Add(new GenerationPlanIssue(
+                    "PLC_TASK_READ_FAILED",
+                    include,
+                    exception.Message));
+                return null;
+            }
+        }
+
+        if (mainTasks.Count == 1)
+        {
+            return mainTasks[0];
+        }
+
+        issues.Add(new GenerationPlanIssue(
+            "PLC_TASK_AMBIGUOUS",
+            "/project/generation/runtimeExecution",
+            "Multiple compiled TwinCAT tasks were found and no unique task calling MAIN could be selected automatically."));
+        return null;
+    }
+
+    private static bool TryResolveTaskFile(
+        string projectRoot,
+        string configuredPath,
+        out string? absolutePath,
+        out string? relativePath,
+        out string? error)
+    {
+        absolutePath = null;
+        relativePath = null;
+        error = null;
+
+        try
+        {
+            var normalized = configuredPath
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+            if (Path.IsPathRooted(normalized) ||
+                normalized.Split(
+                        [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                        StringSplitOptions.RemoveEmptyEntries)
+                    .Any(segment => segment is "." or "..") ||
+                !normalized.EndsWith(".TcTTO", StringComparison.OrdinalIgnoreCase))
+            {
+                error = "The TwinCAT task must be a safe relative .TcTTO path.";
+                return false;
+            }
+
+            var root = Path.GetFullPath(projectRoot).TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar);
+            var candidate = Path.GetFullPath(normalized, root);
+            var boundary = root + Path.DirectorySeparatorChar;
+            if (!candidate.StartsWith(boundary, StringComparison.OrdinalIgnoreCase))
+            {
+                error = "The TwinCAT task resolves outside the selected PLC project root.";
+                return false;
+            }
+            if (!File.Exists(candidate))
+            {
+                error = $"The compiled TwinCAT task does not exist: {candidate}";
+                return false;
+            }
+
+            if (File.GetAttributes(candidate).HasFlag(FileAttributes.ReparsePoint))
+            {
+                error = "TwinCAT task integration through a reparse point is not allowed.";
+                return false;
+            }
+
+            var current = new DirectoryInfo(Path.GetDirectoryName(candidate)!);
+            while (current.FullName.StartsWith(boundary, StringComparison.OrdinalIgnoreCase))
+            {
+                if (current.Exists && current.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    error = "TwinCAT task integration through a reparse point is not allowed.";
+                    return false;
+                }
+                if (current.Parent is null ||
+                    string.Equals(current.FullName, root, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+                current = current.Parent;
+            }
+
+            absolutePath = candidate;
+            relativePath = NormalizeManifestPath(Path.GetRelativePath(root, candidate));
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException or
+                IOException or UnauthorizedAccessException)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    private static List<XElement> FindPouCalls(XElement task, string programName) =>
+        task.Elements("PouCall")
+            .Where(call => string.Equals(
+                call.Element("Name")?.Value,
+                programName,
+                StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private static bool IsStandardPouCall(XElement? call) =>
+        call is not null &&
+        !call.HasAttributes &&
+        call.Elements().Count() == 1 &&
+        call.Element("Name") is { HasAttributes: false } name &&
+        !name.HasElements;
+
+    private static void RemovePouCallText(ref string content, string programName)
+    {
+        var escapedName = Regex.Escape(programName);
+        var expression =
+            $@"(?ms)^[ \t]*<PouCall>[ \t]*(?:\r?\n)?[ \t]*<Name>[ \t]*{escapedName}[ \t]*</Name>[ \t]*(?:\r?\n)?[ \t]*</PouCall>[ \t]*(?:\r?\n)?";
+        var matches = Regex.Matches(
+            content,
+            expression,
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        if (matches.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"Could not locate the managed task call '{programName}' in the original XML text.");
+        }
+        content = content.Remove(matches[0].Index, matches[0].Length);
+    }
+
+    private static void AppendPouCallText(ref string content, string programName)
+    {
+        var newline = DetectNewline(content);
+        var existingCallMatches = Regex.Matches(
+            content,
+            @"(?m)^(?<indent>[ \t]*)</PouCall>[ \t]*\r?$",
+            RegexOptions.CultureInvariant);
+        string indentation;
+        int insertionIndex;
+        if (existingCallMatches.Count > 0)
+        {
+            var last = existingCallMatches[^1];
+            indentation = last.Groups["indent"].Value;
+            insertionIndex = last.Index + last.Length;
+            if (insertionIndex < content.Length && content[insertionIndex] == '\n')
+            {
+                insertionIndex++;
+            }
+        }
+        else
+        {
+            var taskEnd = content.LastIndexOf("</Task>", StringComparison.Ordinal);
+            if (taskEnd < 0)
+            {
+                throw new InvalidOperationException("Could not locate the TwinCAT Task closing tag.");
+            }
+            var taskIndent = DetectLineIndentation(content, taskEnd);
+            indentation = taskIndent + "  ";
+            insertionIndex = content.LastIndexOf('\n', Math.Max(0, taskEnd - 1));
+            insertionIndex = insertionIndex < 0 ? 0 : insertionIndex + 1;
+        }
+
+        var block =
+            $"{indentation}<PouCall>{newline}" +
+            $"{indentation}  <Name>{EscapeText(programName)}</Name>{newline}" +
+            $"{indentation}</PouCall>{newline}";
+        content = content.Insert(insertionIndex, block);
+    }
+
+    private static string DetectLineIndentation(string content, int position)
+    {
+        var lineStart = content.LastIndexOf('\n', Math.Max(0, position - 1));
+        lineStart = lineStart < 0 ? 0 : lineStart + 1;
+        var length = 0;
+        while (lineStart + length < content.Length &&
+               content[lineStart + length] is ' ' or '\t')
+        {
+            length++;
+        }
+        return content.Substring(lineStart, length);
     }
 
     private static void PlanCompileEntries(
@@ -659,7 +1114,43 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
         }
         ValidateManagedPaths(manifest.ManagedCompileIncludes, "/managedCompileIncludes", issues);
         ValidateManagedPaths(manifest.ManagedFolderIncludes, "/managedFolderIncludes", issues);
+        ValidateManagedTaskCall(manifest.ManagedTaskPouCall, issues);
         return issues;
+    }
+
+    private static void ValidateManagedTaskCall(
+        ManagedTaskPouCall? managedCall,
+        ICollection<GenerationPlanIssue> issues)
+    {
+        if (managedCall is null)
+        {
+            return;
+        }
+
+        var taskPath = managedCall.TaskFile?.Replace('/', '\\') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(taskPath) ||
+            Path.IsPathRooted(taskPath) ||
+            !taskPath.EndsWith(".TcTTO", StringComparison.OrdinalIgnoreCase) ||
+            taskPath.Split('\\', StringSplitOptions.RemoveEmptyEntries)
+                .Any(segment => segment is "." or ".."))
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PROJECT_INTEGRATION_MANIFEST_TASK",
+                "/managedTaskPouCall/taskFile",
+                "The managed TwinCAT task path is invalid."));
+        }
+
+        if (string.IsNullOrWhiteSpace(managedCall.ProgramName) ||
+            !Regex.IsMatch(
+                managedCall.ProgramName,
+                @"^[A-Za-z_][A-Za-z0-9_]*$",
+                RegexOptions.CultureInvariant))
+        {
+            issues.Add(new GenerationPlanIssue(
+                "PROJECT_INTEGRATION_MANIFEST_TASK",
+                "/managedTaskPouCall/programName",
+                "The managed runtime program name is invalid."));
+        }
     }
 
     private static void ValidateManagedPaths(

@@ -62,6 +62,8 @@ public sealed class GenerationSettings
     public bool ProgramCallStructure { get; init; }
 
     public bool RelationWiring { get; init; }
+
+    public bool RuntimeExecution { get; init; }
 }
 
 public sealed class EtabNode

@@ -225,6 +225,25 @@ public sealed class ProjectValidatorTests
     }
 
     [Fact]
+    public void RuntimeExecutionWithoutCyclicInstances_IsRejectedSemantically()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+        foreach (var node in project["nodes"]!.AsArray())
+        {
+            node!["generate"]!["callInProgram"] = false;
+        }
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        var issue = Assert.Single(
+            result.Issues,
+            item => item.Code == "PROGRAM_WITHOUT_INSTANCES");
+        Assert.Equal("/project/generation/runtimeExecution", issue.Path);
+    }
+
+    [Fact]
     public void ProgramCallSelectionWithoutInstance_IsRejectedSemantically()
     {
         var project = ParseProject();

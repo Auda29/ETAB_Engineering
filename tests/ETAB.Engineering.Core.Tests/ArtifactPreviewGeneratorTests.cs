@@ -183,6 +183,21 @@ public sealed class ArtifactPreviewGeneratorTests
     }
 
     [Fact]
+    public void RuntimeExecution_GeneratesProgramAndRunsRelationWiringFirst()
+    {
+        var project = ParseProject();
+        project["project"]!["generation"]!["runtimeExecution"] = true;
+
+        var artifact = Generate(project).Artifacts.Single(
+            item => item.Kind == GeneratedArtifactKind.ProgramCallStructure);
+
+        Assert.Contains("GVL_BM_Units.fbEtabRelationWiring();", artifact.Content);
+        Assert.True(
+            artifact.Content.IndexOf("fbEtabRelationWiring()", StringComparison.Ordinal) <
+            artifact.Content.IndexOf("fbMachine()", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ProjectAndNodeOrderChanges_DoNotAffectProjectLevelArtifacts()
     {
         var original = ParseProject();

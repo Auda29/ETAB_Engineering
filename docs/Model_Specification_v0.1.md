@@ -127,7 +127,9 @@ Invalid combinations are rejected semantically. For example, a `recipeManager` d
 
 A disabled artifact flag means that ETAB Engineering does not own or emit that artifact. This supports integration with existing PLC contracts: `examples/BrushMachine.integration.etab.json` disables the three command enums, three request DUTs, and aggregate machine-status DUT that are already compiled from handwritten project paths. The full reference model remains available separately as the complete generator example.
 
-Phase 3B collects all enabled instances in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB when available; otherwise the matching ETAB library FB is used. The project-wide `programCallStructure` option creates `PRG_<prefix>_Generated`, which invokes only nodes selected with `callInProgram`. This does not assign the PRG to a TwinCAT task.
+Phase 3B collects all enabled instances in a deterministic, qualified `GVL_<prefix>_Units`. If `instanceType` is omitted, an ApplicationUnit uses its generated base FB when available; otherwise the matching ETAB library FB is used. The legacy project-wide `programCallStructure` option creates `PRG_<prefix>_Generated` without assigning it to a task. The preferred `runtimeExecution` option creates the same PRG and, during linked project integration, manages exactly one corresponding `PouCall` in the detected TwinCAT task. The PRG invokes relation wiring first and then only ApplicationUnit and CommandUnit nodes selected with `callInProgram`.
+
+Task selection is deterministic. A project with one compiled `.TcTTO` uses that task. With multiple task objects, exactly one must already call `MAIN`; otherwise generation is blocked as ambiguous. Existing `PouCall` entries are preserved. ETAB owns only the generated call recorded in the project-integration manifest and removes only that call when runtime execution is disabled.
 
 ### 5.2 `applicationUnit`
 

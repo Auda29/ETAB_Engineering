@@ -312,13 +312,17 @@ internal sealed class SemanticValidator
         EtabProjectDocument project,
         ICollection<ValidationIssue> issues)
     {
-        if (project.Project.Generation.ProgramCallStructure &&
+        if ((project.Project.Generation.ProgramCallStructure ||
+             project.Project.Generation.RuntimeExecution) &&
             !project.Nodes.Any(node => node.Generate.Instance && node.Generate.CallInProgram))
         {
+            var setting = project.Project.Generation.RuntimeExecution
+                ? "runtimeExecution"
+                : "programCallStructure";
             issues.Add(new ValidationIssue(
                 "PROGRAM_WITHOUT_INSTANCES",
-                "/project/generation/programCallStructure",
-                "The generated PRG call structure requires at least one instance selected with callInProgram."));
+                $"/project/generation/{setting}",
+                "Generated runtime execution requires at least one instance selected with callInProgram."));
         }
     }
 

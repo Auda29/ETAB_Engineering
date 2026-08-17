@@ -30,13 +30,13 @@ The generator does not choose commands, map project-specific payloads, call reci
 - Reordering nodes, relations, or canvas layout does not alter generated content.
 - Member names longer than 80 characters receive a deterministic relation-ID suffix.
 - The artifact uses a project-derived UUID-v5 TwinCAT GUID and participates in manifests, hashes, conflict checks, project integration, and transactional rollback.
-- If the optional generated PRG is enabled, relation wiring is called before selected node instances. The PRG is still not assigned to a TwinCAT task automatically.
+- If the optional generated PRG is enabled, relation wiring is called before selected node instances. With the later `runtimeExecution` option, Phase 3E assigns this PRG once to the detected TwinCAT task; the legacy PRG-only option remains available without task modification.
 
 ## Automated Evidence
 
 The test suite covers all five relation types, logical-only backward compatibility, missing instance validation, relation-order independence, generated GVL and PRG integration, manifest round-trip, update/rename behavior, XML parsing, hashes, and TwinCAT project compile entries.
 
-Current local result on 2026-08-17: 65 Core tests and 10 service tests pass. TypeScript checking, the production frontend build, .NET formatting, and the embedded desktop smoke test also pass; the smoke test reports 16 preview artifacts and a lossless save/reopen cycle. A real TwinCAT XAE compile remains separate.
+Current local result for Phase 3D on 2026-08-17: 65 Core tests and 10 service tests passed. Later Phase 3E validation increases the Core suite and adds runtime-task coverage. A real TwinCAT XAE compile remains separate.
 
 ## Acceptance Boundary
 

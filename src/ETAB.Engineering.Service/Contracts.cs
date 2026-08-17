@@ -101,6 +101,7 @@ public sealed record PreviewResponse(
     IReadOnlyList<PlannedChangeResponse> Changes,
     ManifestPreviewResponse? Manifest,
     ManifestPreviewResponse? ProjectFile,
+    ManifestPreviewResponse? TaskFile,
     ManifestPreviewResponse? ProjectIntegrationManifest,
     string? ConfirmationToken,
     bool IntegrateProject,
@@ -116,6 +117,7 @@ public sealed record GenerateProjectResponse(
     int Renamed,
     int Deleted,
     bool ProjectFileChanged,
+    bool TaskFileChanged,
     bool ManifestChanged,
     IReadOnlyList<GenerationExecutionIssueResponse> Issues);
 

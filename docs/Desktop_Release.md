@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.1
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.2
 ```
 
 This local command creates unsigned development artifacts because no private signing identity is stored in the repository. Stable public releases are built and signed in GitHub Actions. An explicitly versioned `-preview.N` prerelease may remain unsigned while signing is deferred, but it is marked accordingly in GitHub and can trigger a Windows unknown-publisher warning. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for optional signing and package that exact bundle afterward.
@@ -53,10 +53,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -117,11 +117,11 @@ The GitHub configuration can be entered through **Settings → Environments → 
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly. An unsigned preview is marked as a prerelease and carries a warning in its release notes.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For preview version `0.1.0.7-preview.1`, publish with:
+For preview version `0.1.0.7-preview.2`, publish with:
 
 ```powershell
-git tag -a v0.1.0.7-preview.1 -m "ETAB Engineering v0.1.0.7-preview.1"
-git push origin v0.1.0.7-preview.1
+git tag -a v0.1.0.7-preview.2 -m "ETAB Engineering v0.1.0.7-preview.2"
+git push origin v0.1.0.7-preview.2
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
@@ -245,3 +245,11 @@ The automated service workflow creates an empty PLC project, connects it, previe
 Local validation on 2026-08-17 passed the TypeScript check and production build, all 65 Core tests, all 10 editor-service tests, .NET formatting verification, and PowerShell/YAML syntax checks. The packaged executable and isolated installed executable both passed the desktop smoke test with 16 preview artifacts and a lossless save/reopen round trip. The installer test also completed its silent per-user install and uninstall cleanup. No browser automation or Playwright run was used.
 
 The local portable ZIP is 78,832,528 bytes with SHA-256 `4bdfe635771097c5228ef0adfad2245aedd3e2123bab532b8d3a18c1d2526c7d`. The local Setup EXE is 55,937,521 bytes with SHA-256 `671772a6f5059035fa5c3a929757e80ba2dbdf4a7aca84638fadef764a6a4917`. This prerelease remains deliberately unsigned while Artifact Signing is deferred and is intended for functional relation-wiring acceptance. Stable releases remain blocked without valid timestamped signatures. A TwinCAT XAE compile of a generated project remains a separate user acceptance step.
+
+## Validation Record for v0.1.0.7-preview.2
+
+Local validation on 2026-08-17 passed the TypeScript check and production build, all 73 Core tests, all 10 editor-service tests, .NET formatting, the complete Release publish, the packaged executable smoke test, and the isolated installer install/application-smoke/uninstall cycle. Both desktop smoke tests reported 16 BrushMachine reference artifacts and a lossless save/reopen round trip. No browser automation or Playwright run was used.
+
+This prerelease adds opt-in generated runtime execution and transactional TwinCAT task integration. An isolated copy of the user's previously XAE-built `TwinCAT Project5` produced `PRG_PLC_Generated`, retained `MAIN`, added one generated `PouCall` to `PlcTask.TcTTO`, and reported synchronized on the repeated integrated CLI check. The live project was not modified; compiling and executing the new task-integrated copy in TwinCAT remain user acceptance steps.
+
+The local portable ZIP is 76,327,302 bytes with SHA-256 `ad2f83d852cd36b5f3c124fad22e210b0a42de3a67a4d43ed770f67e6561c628`. The local Setup EXE is 55,940,767 bytes with SHA-256 `a4a61af13fe053a339f53d7bbe8d6d29e5ce9a63a6861739e7483b79e6b90e7f`. This prerelease remains deliberately unsigned while Artifact Signing is deferred; Windows can therefore show an unknown-publisher warning. Stable releases remain blocked without valid timestamped signatures.

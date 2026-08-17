@@ -432,9 +432,15 @@ export default function App() {
       return;
     }
     const changedArtifacts = preview.changes.filter((change) => change.changeKind !== "unchanged").length;
+    const changedProjectFiles = [
+      preview.projectFile,
+      preview.taskFile,
+      preview.manifest,
+      preview.projectIntegrationManifest,
+    ].filter((change) => change && change.changeKind !== "unchanged").length;
     const projectNote = integrateProject ? " The configured .plcproj is included." : "";
     if (!window.confirm(
-      `Write ${changedArtifacts} planned artifact changes to:\n${generationRoot}\n\n${projectNote} This operation uses the displayed conflict-protected plan.`,
+      `Write ${changedArtifacts} artifact changes and ${changedProjectFiles} project integration changes to:\n${generationRoot}\n\n${projectNote} This operation uses the displayed conflict-protected plan.`,
     )) return;
 
     setGenerateBusy(true);
@@ -460,7 +466,7 @@ export default function App() {
       setValidation(refreshed.validation);
       setNotice({
         tone: "success",
-        text: `Generation completed: ${result.created} created, ${result.updated} updated, ${result.renamed} renamed, ${result.deleted} deleted`,
+        text: `Generation completed: ${result.created} created, ${result.updated} updated, ${result.renamed} renamed, ${result.deleted} deleted${result.taskFileChanged ? "; runtime task updated" : ""}`,
       });
     } catch (error) {
       setPreview(undefined);

@@ -46,7 +46,8 @@ public sealed class GenerationPlan
         PlannedManifestChange manifest,
         IReadOnlyList<GenerationPlanIssue> issues,
         PlannedProjectFileChange? projectFile = null,
-        PlannedProjectIntegrationManifestChange? projectIntegrationManifest = null)
+        PlannedProjectIntegrationManifestChange? projectIntegrationManifest = null,
+        PlannedProjectFileChange? taskFile = null)
     {
         ProjectRoot = projectRoot;
         GeneratedRoot = generatedRoot;
@@ -55,6 +56,7 @@ public sealed class GenerationPlan
         Issues = issues;
         ProjectFile = projectFile;
         ProjectIntegrationManifest = projectIntegrationManifest;
+        TaskFile = taskFile;
     }
 
     public string ProjectRoot { get; }
@@ -71,10 +73,13 @@ public sealed class GenerationPlan
 
     public PlannedProjectIntegrationManifestChange? ProjectIntegrationManifest { get; }
 
+    public PlannedProjectFileChange? TaskFile { get; }
+
     public bool HasConflicts =>
         Issues.Count > 0 ||
         Manifest.ChangeKind == GenerationChangeKind.Conflict ||
         ProjectFile?.ChangeKind == GenerationChangeKind.Conflict ||
+        TaskFile?.ChangeKind == GenerationChangeKind.Conflict ||
         ProjectIntegrationManifest?.ChangeKind == GenerationChangeKind.Conflict ||
         Changes.Any(change => change.ChangeKind == GenerationChangeKind.Conflict);
 }

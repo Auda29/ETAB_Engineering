@@ -1,20 +1,20 @@
-# ETAB Engineering v0.1.0.7-preview.1
+# ETAB Engineering v0.1.0.7-preview.2
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
 ## Current Status
 
-Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 3D adds opt-in PLC relation wiring with explicit command and status adapters while preserving the safety boundary. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. The generated copy was subsequently opened and built successfully in TwinCAT XAE by the user. Runtime and machine acceptance remain separate. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
+Phase 0 – Specification: completed on 2026-08-07, architecture addendum validated on 2026-08-10. Phase 1 – Headless Generator Core and Phase 2 – Visual Editor MVP: completed on 2026-08-10. Phase 3A – safe TwinCAT project-file integration, Phase 3B – generated instances plus an optional PRG call structure, and Phase 3C – target-aware preview and confirmed generation in the editor: completed structurally on 2026-08-13. Phase 3D adds opt-in PLC relation wiring with explicit command and status adapters while preserving the safety boundary. Phase 3E adds opt-in generated runtime execution: ETAB creates the generated PRG, detects the linked TwinCAT task, previews its exact `.TcTTO` change, and manages one task call transactionally. Phase 4A blocks duplicate IEC object names, and Phase 4B provides an external-ownership integration model that was generated idempotently into a project copy. The generated copy was subsequently opened and built successfully in TwinCAT XAE by the user. Runtime and machine acceptance remain separate. A portable Windows x64 desktop bundle and a guided Windows installer are also available.
 
 The model, rules, generation boundary, and reference classification have been defined and verified against the BrushMachine reference model. `enumValue`, the project-specific status contract, and the base-FB inheritance pattern have been conclusively defined. The base-FB spike compiles successfully in the BrushMachine project.
 
-The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, a qualified project instance GVL, and an opt-in `FB_<prefix>_Relations` adapter. The adapter exposes explicit command routing and typed status reads and wires ApplicationUnit hierarchy without inventing process, motion, safety, recipe, or machine-link input logic. An optional generated PRG can call explicitly selected instances. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
+The headless core is implemented as a .NET solution. It loads `*.etab.json` files and validates them against JSON Schema Draft 2020-12 and the project-specific semantic rules. The CLI commands `validate`, `preview`, `check`, and `generate` are available. The generator renders command enums, request and status DUTs, lean ApplicationUnit base FBs, a qualified project instance GVL, and an opt-in `FB_<prefix>_Relations` adapter. The adapter exposes explicit command routing and typed status reads and wires ApplicationUnit hierarchy without inventing process, motion, safety, recipe, or machine-link input logic. Generated runtime execution is optional: `PRG_<prefix>_Generated` calls relation wiring first and then only the ApplicationUnit and CommandUnit instances selected for cyclic execution. The core manages stable TwinCAT GUIDs and content hashes in the manifest and applies conflict-free changes transactionally within the configured ownership boundary.
 
 The TypeScript visual editor and its loopback .NET service are implemented. Its desktop workflow starts from an empty PLC project created in TwinCAT: the startup screen selects the `.plcproj` through a native Windows dialog, creates or reopens a deterministic companion `<PLC name>.etab.json`, and assigns the PLC directory, project filename, direct TwinCAT output layout, and `.plcproj` integration automatically. Project paths, filenames, and generation targets are display-only in the UI. The editor otherwise provides a drag-and-drop component palette, hierarchy, property and contract editors, direct relationship creation and editing on the draggable SVG canvas, live validation, a target-aware generation preview, and an explicitly confirmed write action. Palette components are placed at their drop position; Enter or Space provides keyboard placement with automatic positioning. Persistent machine areas appear as canvas tabs and project-tree folders; nodes can be moved between them, and global relationships may cross area boundaries. The **All** view renders the complete graph, while individual tabs provide cross-area navigation. Right-clicking a node opens a contextual action menu for renaming its display, PLC, and generated-symbol names, starting a valid relationship, adding a generated command, or moving the node to another area. Canvas controls and Ctrl+mouse-wheel zoom only the node workspace from 50 to 160 percent; WebView page zoom is disabled. A header toggle switches the complete editor between dark and light themes and persists the preference locally, including on the startup screen. Relationship mode highlights only valid targets, offers only valid types for the selected endpoints, shows direction arrows and a legend, and prevents duplicate or cyclic hierarchy links before saving. Both the editor service and CLI call the same `ETAB.Engineering.Core`; the UI contains no second generator implementation.
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
-The project integration manages generated `Compile` and `Folder` entries plus the ETAB placeholder reference without taking ownership of compatible existing entries. Before planning additions it scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project and emits directly into its `DUTs`, `POUs`, and `GVLs` hierarchy; only manifest-listed ETAB files are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
+The project integration manages generated `Compile` and `Folder` entries, the ETAB placeholder reference, and—when runtime execution is enabled—one generated `PouCall` in a detected `.TcTTO` task, without taking ownership of compatible existing entries. With multiple tasks ETAB selects the unique task that calls `MAIN`; ambiguous projects are blocked instead of guessed. Existing task calls remain unchanged, and disabling the option removes only the manifest-owned generated call. Before planning additions the integration scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project and emits directly into its `DUTs`, `POUs`, and `GVLs` hierarchy; only manifest-listed ETAB files and task call are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
 
 ## Quick Start
 
@@ -39,7 +39,7 @@ dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- g
 dotnet run --project .\src\ETAB.Engineering.Cli\ETAB.Engineering.Cli.csproj -- check .\examples\BrushMachine.reference.etab.json --root "C:\Path\To\PLC" --integrate-project
 ```
 
-`--integrate-project` requires `--root` and is deliberately opt-in. The configured `.plcproj` must currently be directly inside that root. ETAB Engineering records only entries it adds in `Generated/etab-project-integration-manifest.json`; compatible pre-existing entries remain unmanaged and untouched.
+`--integrate-project` requires `--root` and is deliberately opt-in. The configured `.plcproj` must currently be directly inside that root. ETAB Engineering records only entries it adds in `etab-project-integration-manifest.json` below the configured output root; compatible pre-existing entries remain unmanaged and untouched. If `runtimeExecution` is enabled, the preview also shows the complete proposed task XML before the managed `PRG_<prefix>_Generated` call is written.
 
 ### Visual Editor
 
@@ -60,7 +60,7 @@ Open `http://127.0.0.1:5173/` for frontend development. The editor talks only to
 
 For a new model, first create an empty PLC project in TwinCAT. On the ETAB startup screen select **Connect TwinCAT PLC Project** and choose its `.plcproj`. If the file is `PLC.plcproj`, ETAB creates `PLC.etab.json` beside it, derives a valid IEC project name and prefix, links `PLC.plcproj`, and stores the direct-output setting automatically. Selecting the same PLC project later reopens the existing companion model without replacing its stable IDs. **Open Existing ETAB Model** remains available for established models.
 
-To generate from the editor, save the ETAB model, open **Generation preview**, and select **Refresh preview**. The target and linked `.plcproj` are read-only and already follow the startup selection. Inspect the complete conflict-protected plan and then select **Generate**. Generated DUTs, POUs, and GVLs are written to the corresponding TwinCAT directories and added to the `.plcproj` in the same transaction. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
+To generate from the editor, save the ETAB model, open **Generation preview**, and select **Refresh preview**. The target and linked `.plcproj` are read-only and already follow the startup selection. In project properties, **Enable generated runtime execution** opts into cyclic execution and selects ApplicationUnit and CommandUnit instances by default; individual nodes can then be included or excluded with **Run cyclically in generated runtime**. Inspect the complete conflict-protected plan, including the proposed `.plcproj` and runtime-task XML, and then select **Generate**. Generated DUTs, POUs, and GVLs are written to the corresponding TwinCAT directories, added to the `.plcproj`, and—when enabled—assigned once to the detected TwinCAT task in the same transaction. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
 
 Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-artifact generator output, including `FB_BM_Relations`. For integration with the existing `AutomationBase Beispiel`, open `examples/BrushMachine.integration.etab.json`; it keeps the three existing command enums, three request DUTs, and aggregate machine-status DUT externally owned and proposes nine non-conflicting generated artifacts.
 
@@ -69,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.1
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.2
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.1-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.2-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.
@@ -104,6 +104,7 @@ After its one-time signing setup, the GitHub Actions workflow `Desktop release` 
 - [Phase 3B Instance and PRG Validation](docs/Phase3B_Validation.md)
 - [Phase 3C Editor Generation Validation](docs/Phase3C_Validation.md)
 - [Phase 3D Relation Wiring Validation](docs/Phase3D_Relation_Wiring.md)
+- [Phase 3E Runtime Execution Validation](docs/Phase3E_Runtime_Execution.md)
 - [Phase 4A Golden-Sample Reconciliation](docs/Phase4A_Reconciliation.md)
 - [Phase 4B Project-Copy Generation](docs/Phase4B_CopyGeneration.md)
 - [Windows Desktop Release](docs/Desktop_Release.md)

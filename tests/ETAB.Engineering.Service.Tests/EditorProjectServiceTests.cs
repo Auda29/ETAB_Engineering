@@ -31,6 +31,7 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.Equal("NewProject", first.Document["project"]!["name"]!.GetValue<string>());
         Assert.Equal("NEW", first.Document["project"]!["prefix"]!.GetValue<string>());
         Assert.Equal("0.1.0.3", first.Document["project"]!["etabLibrary"]!["version"]!.GetValue<string>());
+        Assert.False(first.Document["project"]!["generation"]!["runtimeExecution"]!.GetValue<bool>());
         Assert.Single(first.Document["nodes"]!.AsArray());
         Assert.Equal("applicationUnit", first.Document["nodes"]![0]!["kind"]!.GetValue<string>());
         Assert.Equal(5, first.Document["nodes"]![0]!["commands"]!.AsArray().Count);
@@ -220,6 +221,7 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.Equal(16, generated.Created);
         Assert.True(generated.ManifestChanged);
         Assert.False(generated.ProjectFileChanged);
+        Assert.False(generated.TaskFileChanged);
         var repeated = service.Preview(opened.Document, projectPath, testRoot);
         Assert.All(repeated.Changes, change => Assert.Equal("unchanged", change.ChangeKind));
         Assert.Equal("unchanged", repeated.Manifest!.ChangeKind);
