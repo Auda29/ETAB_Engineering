@@ -8,6 +8,7 @@
         MinWidth="1120"
         MinHeight="720"
         WindowStartupLocation="CenterScreen"
+        Icon="Assets/etab-engineering.ico"
         Background="{StaticResource WindowBackground}"
         Closing="Window_Closing"
         Loaded="Window_Loaded">

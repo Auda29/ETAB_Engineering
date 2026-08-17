@@ -498,6 +498,7 @@ export default function App() {
         <div className="startup-card">
           <div className="brand__mark">ET</div>
           <h1>ETAB Engineering</h1>
+          <div className="startup-card__descriptor">EngineeringToolbox AutomationBase</div>
           <p>{notice?.text ?? (sessionReady ? "Start with the empty PLC project you created in TwinCAT." : "Connecting to the local engineering service…")}</p>
           {sessionReady && (
             <>

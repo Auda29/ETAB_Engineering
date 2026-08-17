@@ -6,7 +6,8 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>ETAB Engineering</AssemblyName>
     <RootNamespace>ETAB.Engineering.Desktop</RootNamespace>
-    <Version>0.1.0.7-preview.5</Version>
+    <Version>0.1.0.7-preview.6</Version>
+    <ApplicationIcon>Assets\etab-engineering.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -16,6 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\etab-engineering.ico" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Web.WebView2" />
     <ProjectReference Include="..\ETAB.Engineering.Service\ETAB.Engineering.Service.csproj" />

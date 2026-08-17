@@ -44,6 +44,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 OutputDir={#InstallerOutputDir}
 OutputBaseFilename=ETAB-Engineering-v{#AppVersion}-win-x64-setup
+SetupIconFile=..\src\ETAB.Engineering.Desktop\Assets\etab-engineering.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

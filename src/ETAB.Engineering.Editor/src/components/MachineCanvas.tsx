@@ -7,7 +7,7 @@ import {
   nodeMatchesArea,
   type AreaView,
 } from "../areaModel";
-import type { EtabProjectDocument, NodeKind, NodeLayout, RelationKind } from "../model";
+import type { EtabProjectDocument, EtabRelation, NodeKind, NodeLayout, RelationKind } from "../model";
 import { nodeKindLabels } from "../modelFactory";
 import { containsDraggedNodeKind, readDraggedNodeKind } from "../nodeDragDrop";
 import {
@@ -20,6 +20,8 @@ const defaultWidth = 222;
 const defaultHeight = 112;
 const canvasWidth = 1800;
 const canvasHeight = 1100;
+const relationLaneSpacing = 36;
+const relationKindOrder: RelationKind[] = ["contains", "commands", "observes", "usesRecipe", "usesLink"];
 
 interface DragState {
   nodeId: string;
@@ -126,6 +128,10 @@ export function MachineCanvas({
     () => document.relations.filter((relation) =>
       visibleNodeIds.has(relation.sourceNodeId) && visibleNodeIds.has(relation.targetNodeId)),
     [document.relations, visibleNodeIds],
+  );
+  const relationLaneOffsets = useMemo(
+    () => calculateRelationLaneOffsets(visibleRelations),
+    [visibleRelations],
   );
   const crossAreaRelations = useMemo(
     () => activeAreaView === "all"
@@ -402,25 +408,23 @@ export function MachineCanvas({
                 const target = layouts.get(relation.targetNodeId);
                 if (!source || !target) return null;
                 const points = connectionPoints(source, target);
-                const curve = Math.max(42, Math.abs(points.target.x - points.source.x) * 0.38);
-                const direction = points.target.x >= points.source.x ? 1 : -1;
-                const path = `M ${points.source.x} ${points.source.y} C ${points.source.x + curve * direction} ${points.source.y}, ${points.target.x - curve * direction} ${points.target.y}, ${points.target.x} ${points.target.y}`;
+                const geometry = relationGeometry(points, relationLaneOffsets.get(relation.id) ?? 0);
                 const definition = getRelationDefinition(relation.kind);
                 return (
                   <g
                     key={relation.id}
                     className={`relation relation--${relation.kind} ${selectedRelationId === relation.id ? "relation--selected" : ""}`}
                   >
-                    <path className="relation-line" d={path} markerEnd={`url(#arrow-${relation.kind})`} />
+                    <path className="relation-line" d={geometry.path} markerEnd={`url(#arrow-${relation.kind})`} />
                     <path
                       className="relation-hit"
-                      d={path}
+                      d={geometry.path}
                       onClick={() => openRelationEditor(relation.id)}
                       aria-label={`Edit ${definition.label} relation`}
                     />
                     <text
-                      x={(points.source.x + points.target.x) / 2}
-                      y={(points.source.y + points.target.y) / 2 - 8}
+                      x={geometry.label.x}
+                      y={geometry.label.y}
                       onClick={() => openRelationEditor(relation.id)}
                     >
                       {relation.label || definition.label}
@@ -834,5 +838,83 @@ function connectionPoints(source: NodeLayout, target: NodeLayout): { source: Poi
   return {
     source: { x: sourceCenter.x, y: topToBottom ? source.y + sourceHeight : source.y },
     target: { x: targetCenter.x, y: topToBottom ? target.y : target.y + targetHeight },
+  };
+}
+
+function calculateRelationLaneOffsets(relations: EtabRelation[]): Map<string, number> {
+  const relationGroups = new Map<string, EtabRelation[]>();
+
+  relations.forEach((relation) => {
+    const key = relationPairKey(relation.sourceNodeId, relation.targetNodeId);
+    const group = relationGroups.get(key) ?? [];
+    group.push(relation);
+    relationGroups.set(key, group);
+  });
+
+  const offsets = new Map<string, number>();
+  relationGroups.forEach((group) => {
+    group
+      .sort((left, right) => {
+        const kindDifference = relationKindOrder.indexOf(left.kind) - relationKindOrder.indexOf(right.kind);
+        return kindDifference || left.id.localeCompare(right.id);
+      })
+      .forEach((relation, index) => {
+        const centeredIndex = index - (group.length - 1) / 2;
+        const canonicalDirection = relation.sourceNodeId.localeCompare(relation.targetNodeId) <= 0 ? 1 : -1;
+        offsets.set(relation.id, centeredIndex * relationLaneSpacing * canonicalDirection);
+      });
+  });
+
+  return offsets;
+}
+
+function relationPairKey(sourceNodeId: string, targetNodeId: string): string {
+  return sourceNodeId.localeCompare(targetNodeId) <= 0
+    ? `${sourceNodeId}\u0000${targetNodeId}`
+    : `${targetNodeId}\u0000${sourceNodeId}`;
+}
+
+function relationGeometry(points: { source: Point; target: Point }, laneOffset: number): { path: string; label: Point } {
+  const deltaX = points.target.x - points.source.x;
+  const deltaY = points.target.y - points.source.y;
+  const length = Math.hypot(deltaX, deltaY) || 1;
+  const normal = { x: -deltaY / length, y: deltaX / length };
+  const horizontal = Math.abs(deltaX) >= Math.abs(deltaY);
+  const distance = horizontal ? Math.abs(deltaX) : Math.abs(deltaY);
+  const curve = Math.max(42, distance * 0.38);
+  const direction = (horizontal ? deltaX : deltaY) >= 0 ? 1 : -1;
+  const firstControl = horizontal
+    ? { x: points.source.x + curve * direction, y: points.source.y }
+    : { x: points.source.x, y: points.source.y + curve * direction };
+  const secondControl = horizontal
+    ? { x: points.target.x - curve * direction, y: points.target.y }
+    : { x: points.target.x, y: points.target.y - curve * direction };
+
+  firstControl.x += normal.x * laneOffset;
+  firstControl.y += normal.y * laneOffset;
+  secondControl.x += normal.x * laneOffset;
+  secondControl.y += normal.y * laneOffset;
+
+  const midpoint = cubicPoint(points.source, firstControl, secondControl, points.target, 0.5);
+  return {
+    path: `M ${points.source.x} ${points.source.y} C ${firstControl.x} ${firstControl.y}, ${secondControl.x} ${secondControl.y}, ${points.target.x} ${points.target.y}`,
+    label: {
+      x: midpoint.x + normal.x * laneOffset * 0.15,
+      y: midpoint.y + normal.y * laneOffset * 0.15 - 8,
+    },
+  };
+}
+
+function cubicPoint(start: Point, firstControl: Point, secondControl: Point, end: Point, position: number): Point {
+  const inverse = 1 - position;
+  return {
+    x: inverse ** 3 * start.x
+      + 3 * inverse ** 2 * position * firstControl.x
+      + 3 * inverse * position ** 2 * secondControl.x
+      + position ** 3 * end.x,
+    y: inverse ** 3 * start.y
+      + 3 * inverse ** 2 * position * firstControl.y
+      + 3 * inverse * position ** 2 * secondControl.y
+      + position ** 3 * end.y,
   };
 }

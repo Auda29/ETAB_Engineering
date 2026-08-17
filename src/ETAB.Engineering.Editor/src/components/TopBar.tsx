@@ -32,7 +32,7 @@ export function TopBar({
         <div className="brand__mark">ET</div>
         <div>
           <div className="brand__name">ETAB Engineering</div>
-          <div className="brand__phase">Visual Editor · Phase 3</div>
+          <div className="brand__descriptor">EngineeringToolbox AutomationBase</div>
         </div>
       </div>
 
