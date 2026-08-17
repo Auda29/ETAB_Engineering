@@ -15,6 +15,9 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
     private const string MsBuildNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
     private const string EtabLibraryName = "EngineeringToolboxAutomationBase";
     private const string EtabLibraryPublisher = "NiklasW";
+    private const string EngineeringToolboxPlaceholder = "ET";
+    private const string EngineeringToolboxLibraryName = "EngineeringToolbox";
+    private const string EngineeringToolboxLibraryPublisher = "Beckhoff Electronics Mfg";
 
     private static readonly StringComparer PathComparer =
         OperatingSystem.IsWindows()
@@ -197,7 +200,22 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             ns,
             ref proposedProjectContent,
             project.Project.EtabLibrary.Placeholder,
+            EtabLibraryName,
+            EtabLibraryPublisher,
+            project.Project.EtabLibrary.Placeholder,
             existingManifest?.ManagedPlaceholderReference,
+            newline,
+            projectMutations,
+            issues);
+        var proposedEngineeringToolboxReference = PlanPlaceholderReference(
+            document,
+            ns,
+            ref proposedProjectContent,
+            EngineeringToolboxPlaceholder,
+            EngineeringToolboxLibraryName,
+            EngineeringToolboxLibraryPublisher,
+            EngineeringToolboxPlaceholder,
+            existingManifest?.ManagedEngineeringToolboxPlaceholderReference,
             newline,
             projectMutations,
             issues);
@@ -265,6 +283,8 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
                 .OrderBy(path => path, StringComparer.Ordinal)
                 .ToList(),
             ManagedPlaceholderReference = proposedReference,
+            ManagedEngineeringToolboxPlaceholderReference =
+                proposedEngineeringToolboxReference,
             ManagedPlaceholderResolution = proposedResolution,
             ManagedTaskPouCall = taskPlan.ManagedCall
         };
@@ -909,6 +929,9 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
         XNamespace ns,
         ref string projectContent,
         string placeholder,
+        string libraryName,
+        string libraryPublisher,
+        string libraryNamespace,
         ManagedPlaceholderReference? previouslyManaged,
         string newline,
         ICollection<string> projectMutations,
@@ -917,8 +940,8 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
         var desired = new ManagedPlaceholderReference
         {
             Include = placeholder,
-            DefaultResolution = $"{EtabLibraryName}, * ({EtabLibraryPublisher})",
-            Namespace = placeholder
+            DefaultResolution = $"{libraryName}, * ({libraryPublisher})",
+            Namespace = libraryNamespace
         };
 
         if (previouslyManaged is not null)
@@ -933,7 +956,8 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
                 issues.Add(new GenerationPlanIssue(
                     "PLC_LIBRARY_REFERENCE_MANAGED_CHANGED",
                     previouslyManaged.Include,
-                    "The manifest-managed ETAB PlaceholderReference was changed outside ETAB Engineering."));
+                    $"The manifest-managed '{previouslyManaged.Include}' PlaceholderReference " +
+                    "was changed outside ETAB Engineering."));
                 return null;
             }
 
@@ -967,7 +991,8 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             issues.Add(new GenerationPlanIssue(
                 "PLC_LIBRARY_REFERENCE_CONFLICT",
                 desired.Include,
-                "An incompatible or duplicate PlaceholderReference already uses the configured ETAB placeholder."));
+                $"An incompatible or duplicate PlaceholderReference already uses the " +
+                $"'{desired.Include}' placeholder."));
             return null;
         }
 

@@ -64,6 +64,13 @@ public sealed class TwinCatProjectIntegrationTests
         Assert.Single(
             document.Descendants(ns + "PlaceholderReference"),
             element => (string?)element.Attribute("Include") == "ETAB");
+        var engineeringToolboxReference = Assert.Single(
+            document.Descendants(ns + "PlaceholderReference"),
+            element => (string?)element.Attribute("Include") == "ET");
+        Assert.Equal(
+            "EngineeringToolbox, * (Beckhoff Electronics Mfg)",
+            engineeringToolboxReference.Element(ns + "DefaultResolution")?.Value);
+        Assert.Equal("ET", engineeringToolboxReference.Element(ns + "Namespace")?.Value);
         Assert.Single(
             document.Descendants(ns + "PlaceholderResolution"),
             element => (string?)element.Attribute("Include") == "ETAB");
@@ -72,6 +79,8 @@ public sealed class TwinCatProjectIntegrationTests
         Assert.Equal(16, integrationManifest.ManagedCompileIncludes.Count);
         Assert.Equal(7, integrationManifest.ManagedFolderIncludes.Count);
         Assert.NotNull(integrationManifest.ManagedPlaceholderReference);
+        Assert.NotNull(
+            integrationManifest.ManagedEngineeringToolboxPlaceholderReference);
         Assert.NotNull(integrationManifest.ManagedPlaceholderResolution);
 
         var before = SnapshotFiles(temporary.Path);
@@ -106,6 +115,7 @@ public sealed class TwinCatProjectIntegrationTests
         Assert.True(execution.Success, FormatIssues(execution));
         var manifest = ReadIntegrationManifest(temporary.Path);
         Assert.Null(manifest.ManagedPlaceholderReference);
+        Assert.Null(manifest.ManagedEngineeringToolboxPlaceholderReference);
         Assert.Null(manifest.ManagedPlaceholderResolution);
     }
 
@@ -531,6 +541,23 @@ public sealed class TwinCatProjectIntegrationTests
             issue => issue.Code == "PLC_LIBRARY_REFERENCE_CONFLICT");
     }
 
+    [Fact]
+    public void IncompatibleEngineeringToolboxReference_IsConflict()
+    {
+        using var temporary = new TemporaryDirectory();
+        WriteProjectFile(
+            temporary.Path,
+            MinimalProject(includeIncompatibleDependency: true));
+
+        var plan = BuildPlan(temporary.Path, Validate(ParseProject()));
+
+        Assert.True(plan.HasConflicts);
+        var issue = Assert.Single(
+            plan.Issues,
+            item => item.Code == "PLC_LIBRARY_REFERENCE_CONFLICT");
+        Assert.Equal("ET", issue.Path);
+    }
+
     private GenerationPlan BuildPlan(string root, EtabProjectDocument project)
     {
         var preview = _generator.Generate(project);
@@ -627,6 +654,7 @@ public sealed class TwinCatProjectIntegrationTests
     private static string MinimalProject(
         bool includeCompatibleLibrary = false,
         bool includeIncompatibleLibrary = false,
+        bool includeIncompatibleDependency = false,
         string? additionalCompileInclude = null,
         IReadOnlyList<string>? taskIncludes = null)
     {
@@ -643,6 +671,10 @@ public sealed class TwinCatProjectIntegrationTests
     <PlaceholderReference Include="ETAB">
       <DefaultResolution>EngineeringToolboxAutomationBase, * (NiklasW)</DefaultResolution>
       <Namespace>ETAB</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="ET">
+      <DefaultResolution>EngineeringToolbox, * (Beckhoff Electronics Mfg)</DefaultResolution>
+      <Namespace>ET</Namespace>
     </PlaceholderReference>
   </ItemGroup>
   <ItemGroup>
@@ -662,6 +694,17 @@ public sealed class TwinCatProjectIntegrationTests
 """
                 : string.Empty;
 
+        var dependency = includeIncompatibleDependency
+            ? """
+  <ItemGroup>
+    <PlaceholderReference Include="ET">
+      <DefaultResolution>WrongLibrary, * (SomeoneElse)</DefaultResolution>
+      <Namespace>ET</Namespace>
+    </PlaceholderReference>
+  </ItemGroup>
+"""
+            : string.Empty;
+
         return ("""
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -677,10 +720,11 @@ public sealed class TwinCatProjectIntegrationTests
   <ItemGroup>
     <Folder Include="Application" />
   </ItemGroup>
-{LIBRARY}</Project>
+{LIBRARY}{DEPENDENCY}</Project>
 """)
             .Replace("{COMPILE}", compile, StringComparison.Ordinal)
             .Replace("{LIBRARY}", library, StringComparison.Ordinal)
+            .Replace("{DEPENDENCY}", dependency, StringComparison.Ordinal)
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace("\n", "\r\n", StringComparison.Ordinal);
     }

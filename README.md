@@ -1,4 +1,4 @@
-# ETAB Engineering v0.1.0.7-preview.4
+# ETAB Engineering v0.1.0.7-preview.5
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
@@ -14,7 +14,7 @@ The TypeScript visual editor and its loopback .NET service are implemented. Its 
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
-The project integration manages generated `Compile` and `Folder` entries, the ETAB placeholder reference, and—when runtime execution is enabled—one generated `PouCall` in a detected `.TcTTO` task, without taking ownership of compatible existing entries. With multiple tasks ETAB selects the unique task that calls `MAIN`; ambiguous projects are blocked instead of guessed. Existing task calls remain unchanged, and disabling the option removes only the manifest-owned generated call. Before planning additions the integration scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project and emits directly into its `DUTs`, `POUs`, and `GVLs` hierarchy; only manifest-listed ETAB files and task call are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
+The project integration manages generated `Compile` and `Folder` entries, the ETAB placeholder reference, the required direct EngineeringToolbox (`ET`) placeholder reference, and—when runtime execution is enabled—one generated `PouCall` in a detected `.TcTTO` task, without taking ownership of compatible existing entries. With multiple tasks ETAB selects the unique task that calls `MAIN`; ambiguous projects are blocked instead of guessed. Existing task calls remain unchanged, and disabling the option removes only the manifest-owned generated call. Before planning additions the integration scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project and emits directly into its `DUTs`, `POUs`, and `GVLs` hierarchy; only manifest-listed ETAB files and task call are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
 
 ## Quick Start
 
@@ -69,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.4
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.5
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.4-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.4-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.4-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.4-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.5-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.5-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.5-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.5-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.

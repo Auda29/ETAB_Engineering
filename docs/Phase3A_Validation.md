@@ -8,7 +8,7 @@ The integration manages:
 
 - `Compile` entries for generated PLC artifacts,
 - `Folder` entries required by the generated hierarchy,
-- the configured ETAB `PlaceholderReference` and `PlaceholderResolution`,
+- the configured ETAB `PlaceholderReference` and `PlaceholderResolution`, plus the direct EngineeringToolbox (`ET`) `PlaceholderReference` required by generated typed mode assignments,
 - ownership metadata in `Generated/etab-project-integration-manifest.json`.
 
 GVL instance generation, the optional PRG call structure, an editor-side confirmed write action, and TwinCAT XAE compile validation remain outside this slice.

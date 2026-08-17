@@ -120,7 +120,7 @@ The following additional rules then apply:
 - an XML structural validation is performed before writing,
 - a real XAE compile is a separate acceptance step after writing.
 
-Phase 3A implements this boundary as an explicit CLI opt-in using `--integrate-project` together with `--root`. The project file and generated artifacts participate in one preflight and rollback transaction. ETAB Engineering records only the `Compile`, `Folder`, `PlaceholderReference`, and `PlaceholderResolution` elements that it adds in the project-integration manifest below the configured generator root.
+Phase 3A implements this boundary as an explicit CLI opt-in using `--integrate-project` together with `--root`. The project file and generated artifacts participate in one preflight and rollback transaction. ETAB Engineering records only the `Compile`, `Folder`, `PlaceholderReference`, and `PlaceholderResolution` elements that it adds in the project-integration manifest below the configured generator root. Project integration adds both the configured ETAB reference and a direct `ET` reference to `EngineeringToolbox`; the latter is required because generated runtime settings use the library's qualified-only `ET.eMODE` values.
 
 Compatible entries that already exist are retained but not claimed as managed state. Missing, duplicated, incompatible, or externally changed managed entries block the whole write. Project XML is parsed before planning and again after applying the targeted textual changes; unrelated project-file lines and their existing line endings are preserved.
 

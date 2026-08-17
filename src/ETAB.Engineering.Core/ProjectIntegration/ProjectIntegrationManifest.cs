@@ -14,6 +14,8 @@ public sealed class ProjectIntegrationManifest
 
     public ManagedPlaceholderReference? ManagedPlaceholderReference { get; init; }
 
+    public ManagedPlaceholderReference? ManagedEngineeringToolboxPlaceholderReference { get; init; }
+
     public ManagedPlaceholderResolution? ManagedPlaceholderResolution { get; init; }
 
     public ManagedTaskPouCall? ManagedTaskPouCall { get; init; }
