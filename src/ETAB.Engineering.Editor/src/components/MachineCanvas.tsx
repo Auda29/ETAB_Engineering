@@ -7,7 +7,7 @@ import {
   nodeMatchesArea,
   type AreaView,
 } from "../areaModel";
-import type { EtabProjectDocument, EtabRelation, NodeKind, NodeLayout, RelationKind } from "../model";
+import type { EtabNode, EtabProjectDocument, EtabRelation, NodeKind, NodeLayout, RelationKind } from "../model";
 import { nodeKindLabels } from "../modelFactory";
 import { containsDraggedNodeKind, readDraggedNodeKind } from "../nodeDragDrop";
 import {
@@ -20,6 +20,9 @@ const defaultWidth = 222;
 const defaultHeight = 112;
 const canvasWidth = 1800;
 const canvasHeight = 1100;
+const canvasPadding = 120;
+const minimumZoom = 0.2;
+const maximumZoom = 1.6;
 const relationLaneSpacing = 36;
 const relationKindOrder: RelationKind[] = ["contains", "commands", "observes", "usesRecipe", "usesLink"];
 
@@ -29,6 +32,14 @@ interface DragState {
   startPointerY: number;
   startX: number;
   startY: number;
+}
+
+interface PanState {
+  pointerId: number;
+  startPointerX: number;
+  startPointerY: number;
+  startScrollLeft: number;
+  startScrollTop: number;
 }
 
 interface Point {
@@ -46,6 +57,29 @@ interface NodeRenameDraft {
   displayName: string;
   name: string;
   symbolStem: string;
+}
+
+interface LayoutBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+interface AreaOverview {
+  view: AreaView;
+  key: string;
+  displayName: string;
+  nodes: EtabNode[];
+  internalRelations: number;
+  crossRelations: number;
+}
+
+interface AreaConnectionOverview {
+  source: string;
+  target: string;
+  count: number;
+  kinds: Partial<Record<RelationKind, number>>;
 }
 
 export function MachineCanvas({
@@ -99,9 +133,14 @@ export function MachineCanvas({
   const [newAreaName, setNewAreaName] = useState("");
   const [managingArea, setManagingArea] = useState(false);
   const [areaNameDraft, setAreaNameDraft] = useState("");
+  const [spacePressed, setSpacePressed] = useState(false);
+  const [panning, setPanning] = useState(false);
   const drag = useRef<DragState | undefined>(undefined);
+  const pan = useRef<PanState | undefined>(undefined);
+  const spacePressedRef = useRef(false);
   const paletteDragDepth = useRef(0);
   const shellRef = useRef<HTMLElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   const layouts = useMemo(() => {
     const map = new Map<string, NodeLayout>();
@@ -140,6 +179,29 @@ export function MachineCanvas({
         visibleNodeIds.has(relation.sourceNodeId) !== visibleNodeIds.has(relation.targetNodeId)),
     [activeAreaView, document.relations, visibleNodeIds],
   );
+  const canvasDimensions = useMemo(() => {
+    let width = canvasWidth;
+    let height = canvasHeight;
+    for (const node of document.nodes) {
+      const layout = layouts.get(node.id);
+      if (!layout) continue;
+      width = Math.max(width, layout.x + (layout.width ?? defaultWidth) + canvasPadding);
+      height = Math.max(height, layout.y + (layout.height ?? defaultHeight) + canvasPadding);
+    }
+    return { width, height };
+  }, [document.nodes, layouts]);
+  const visibleBounds = useMemo(
+    () => calculateLayoutBounds(visibleNodes, layouts),
+    [layouts, visibleNodes],
+  );
+  const overviewAreas = useMemo(
+    () => buildAreaOverview(document, groups),
+    [document, groups],
+  );
+  const overviewConnections = useMemo(
+    () => buildAreaConnectionOverview(document, groups),
+    [document, groups],
+  );
 
   const sourceNode = document.nodes.find((node) => node.id === connectSourceId);
   const targetNode = document.nodes.find((node) => node.id === connectTargetId);
@@ -170,6 +232,34 @@ export function MachineCanvas({
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
+  }, []);
+
+  useEffect(() => {
+    const setSpace = (pressed: boolean) => {
+      spacePressedRef.current = pressed;
+      setSpacePressed(pressed);
+    };
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isKeyboardInteractionTarget(event.target)) return;
+      event.preventDefault();
+      setSpace(true);
+    };
+    const keyUp = (event: KeyboardEvent) => {
+      if (event.code === "Space") setSpace(false);
+    };
+    const reset = () => {
+      setSpace(false);
+      pan.current = undefined;
+      setPanning(false);
+    };
+    window.addEventListener("keydown", keyDown);
+    window.addEventListener("keyup", keyUp);
+    window.addEventListener("blur", reset);
+    return () => {
+      window.removeEventListener("keydown", keyDown);
+      window.removeEventListener("keyup", keyUp);
+      window.removeEventListener("blur", reset);
+    };
   }, []);
 
   useEffect(() => {
@@ -215,6 +305,12 @@ export function MachineCanvas({
     setManagingArea(false);
     setAreaNameDraft(activeGroup?.displayName ?? "");
     setNodeContextMenu(undefined);
+    if (activeAreaView === "all") {
+      setConnectSourceId(undefined);
+      setConnectTargetId(undefined);
+      setConnectKind(undefined);
+      setSelectedRelationId(undefined);
+    }
   }, [activeAreaView, activeGroup?.displayName]);
 
   const cancelConnect = () => {
@@ -264,9 +360,47 @@ export function MachineCanvas({
   };
 
   const changeZoom = (nextZoom: number) => {
-    setZoom(Math.min(1.6, Math.max(0.5, Math.round(nextZoom * 10) / 10)));
+    setZoom(Math.min(maximumZoom, Math.max(minimumZoom, Math.round(nextZoom * 10) / 10)));
     setNodeContextMenu(undefined);
   };
+
+  const fitVisibleNodes = () => {
+    const viewport = viewportRef.current;
+    if (!viewport || !visibleBounds || activeAreaView === "all") return;
+    const horizontalPadding = 72;
+    const verticalPadding = 64;
+    const contentWidth = Math.max(1, visibleBounds.right - visibleBounds.left);
+    const contentHeight = Math.max(1, visibleBounds.bottom - visibleBounds.top);
+    const availableWidth = Math.max(1, viewport.clientWidth - horizontalPadding * 2);
+    const availableHeight = Math.max(1, viewport.clientHeight - verticalPadding * 2);
+    const nextZoom = Math.min(
+      1,
+      maximumZoom,
+      Math.max(minimumZoom, Math.min(availableWidth / contentWidth, availableHeight / contentHeight)),
+    );
+    const roundedZoom = Math.round(nextZoom * 100) / 100;
+    setZoom(roundedZoom);
+    setNodeContextMenu(undefined);
+    window.requestAnimationFrame(() => {
+      const scaledWidth = contentWidth * roundedZoom;
+      const scaledHeight = contentHeight * roundedZoom;
+      viewport.scrollLeft = Math.max(0, visibleBounds.left * roundedZoom - (viewport.clientWidth - scaledWidth) / 2);
+      viewport.scrollTop = Math.max(0, visibleBounds.top * roundedZoom - (viewport.clientHeight - scaledHeight) / 2);
+    });
+  };
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    if (activeAreaView === "all") {
+      viewport.scrollTo({ left: 0, top: 0 });
+      return;
+    }
+    const frame = window.requestAnimationFrame(fitVisibleNodes);
+    return () => window.cancelAnimationFrame(frame);
+    // Fitting is intentional only when the user changes the active area.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAreaView]);
 
   const createArea = () => {
     const name = onCreateArea(newAreaName);
@@ -286,23 +420,32 @@ export function MachineCanvas({
               ? "Drop the component at the desired position"
               : connectSourceId
                 ? "Choose a highlighted target node; switch areas if necessary"
-                : "Drag components onto the canvas; right-click nodes for actions"}</span>
+                : activeAreaView === "all"
+                  ? "Project overview. Open an area to edit its nodes and relations"
+                  : "Drag empty canvas to pan; use middle-drag or Space + drag anywhere"}</span>
           </div>
           <div className="canvas-toolbar__controls">
-            <label className="canvas-toggle">
-              <input type="checkbox" checked={showRelations} onChange={(event) => setShowRelations(event.target.checked)} />
-              Relations
-            </label>
-            <div className="canvas-zoom" aria-label="Canvas zoom">
-              <button type="button" title="Zoom out" onClick={() => changeZoom(zoom - .1)}>−</button>
-              <button type="button" title="Reset canvas zoom" onClick={() => changeZoom(1)}>{Math.round(zoom * 100)}%</button>
-              <button type="button" title="Zoom in" onClick={() => changeZoom(zoom + .1)}>+</button>
-            </div>
+            {activeAreaView === "all" ? (
+              <span className="canvas-overview-counts">{document.nodes.length} nodes · {document.relations.length} relations</span>
+            ) : (
+              <>
+                <label className="canvas-toggle">
+                  <input type="checkbox" checked={showRelations} onChange={(event) => setShowRelations(event.target.checked)} />
+                  Relations
+                </label>
+                <div className="canvas-zoom" aria-label="Canvas zoom">
+                  <button type="button" title="Zoom out" disabled={zoom <= minimumZoom} onClick={() => changeZoom(zoom - .1)}>−</button>
+                  <button type="button" title="Reset canvas zoom" onClick={() => changeZoom(1)}>{Math.round(zoom * 100)}%</button>
+                  <button type="button" title="Zoom in" disabled={zoom >= maximumZoom} onClick={() => changeZoom(zoom + .1)}>+</button>
+                  <button className="canvas-zoom__fit" type="button" title="Fit visible nodes" onClick={fitVisibleNodes}>Fit</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div className="canvas-area-bar">
           <div className="canvas-area-tabs" role="tablist" aria-label="Machine areas">
-            <button className={activeAreaView === "all" ? "active" : ""} type="button" role="tab" onClick={() => onActiveAreaViewChange("all")}>All</button>
+            <button className={activeAreaView === "all" ? "active" : ""} type="button" role="tab" onClick={() => onActiveAreaViewChange("all")}>Overview</button>
             {groups.map((group) => {
               const view = areaViewForGroup(group.name);
               return <button className={activeAreaView === view ? "active" : ""} type="button" role="tab" key={group.name} onClick={() => onActiveAreaViewChange(view)}>{group.displayName}</button>;
@@ -339,35 +482,83 @@ export function MachineCanvas({
       </div>
 
       <div
-        className={`canvas-viewport ${paletteDragOver ? "canvas-viewport--drop-target" : ""}`}
+        className={[
+          "canvas-viewport",
+          activeAreaView === "all" ? "canvas-viewport--overview" : "",
+          paletteDragOver ? "canvas-viewport--drop-target" : "",
+          spacePressed ? "canvas-viewport--pan-ready" : "",
+          panning ? "canvas-viewport--panning" : "",
+        ].filter(Boolean).join(" ")}
+        ref={viewportRef}
         data-testid="machine-canvas"
-        style={{ backgroundSize: `${80 * zoom}px ${80 * zoom}px, ${80 * zoom}px ${80 * zoom}px, ${16 * zoom}px ${16 * zoom}px, ${16 * zoom}px ${16 * zoom}px` }}
+        style={{ backgroundSize: activeAreaView === "all" ? undefined : `${80 * zoom}px ${80 * zoom}px, ${80 * zoom}px ${80 * zoom}px, ${16 * zoom}px ${16 * zoom}px, ${16 * zoom}px ${16 * zoom}px` }}
         onScroll={() => {
           setNodeContextMenu(undefined);
           setNodeRenameDraft(undefined);
         }}
         onWheel={(event) => {
-          if (!event.ctrlKey) return;
+          if (!event.ctrlKey || activeAreaView === "all") return;
           event.preventDefault();
           changeZoom(zoom + (event.deltaY < 0 ? .1 : -.1));
         }}
+        onPointerDown={(event) => {
+          if (activeAreaView === "all") return;
+          const backgroundPan = event.button === 0 && isCanvasBackground(event.target);
+          const spacePan = event.button === 0 && spacePressedRef.current;
+          const middlePan = event.button === 1;
+          if (!backgroundPan && !spacePan && !middlePan) return;
+
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          pan.current = {
+            pointerId: event.pointerId,
+            startPointerX: event.clientX,
+            startPointerY: event.clientY,
+            startScrollLeft: event.currentTarget.scrollLeft,
+            startScrollTop: event.currentTarget.scrollTop,
+          };
+          setPanning(true);
+          setNodeContextMenu(undefined);
+          setNodeRenameDraft(undefined);
+        }}
+        onPointerMove={(event) => {
+          if (!pan.current || pan.current.pointerId !== event.pointerId) return;
+          event.currentTarget.scrollLeft = pan.current.startScrollLeft - (event.clientX - pan.current.startPointerX);
+          event.currentTarget.scrollTop = pan.current.startScrollTop - (event.clientY - pan.current.startPointerY);
+        }}
+        onPointerUp={(event) => {
+          if (!pan.current || pan.current.pointerId !== event.pointerId) return;
+          pan.current = undefined;
+          setPanning(false);
+        }}
+        onPointerCancel={(event) => {
+          if (!pan.current || pan.current.pointerId !== event.pointerId) return;
+          pan.current = undefined;
+          setPanning(false);
+        }}
+        onLostPointerCapture={(event) => {
+          if (!pan.current || pan.current.pointerId !== event.pointerId) return;
+          pan.current = undefined;
+          setPanning(false);
+        }}
         onDragEnter={(event) => {
-          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          if (activeAreaView === "all" || !containsDraggedNodeKind(event.dataTransfer)) return;
           event.preventDefault();
           paletteDragDepth.current += 1;
           setPaletteDragOver(true);
         }}
         onDragOver={(event) => {
-          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          if (activeAreaView === "all" || !containsDraggedNodeKind(event.dataTransfer)) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
         }}
         onDragLeave={(event) => {
-          if (!containsDraggedNodeKind(event.dataTransfer)) return;
+          if (activeAreaView === "all" || !containsDraggedNodeKind(event.dataTransfer)) return;
           paletteDragDepth.current = Math.max(0, paletteDragDepth.current - 1);
           if (paletteDragDepth.current === 0) setPaletteDragOver(false);
         }}
         onDrop={(event) => {
+          if (activeAreaView === "all") return;
           const kind = readDraggedNodeKind(event.dataTransfer);
           if (!kind) return;
           event.preventDefault();
@@ -378,15 +569,23 @@ export function MachineCanvas({
           const bounds = viewport.getBoundingClientRect();
           const rawX = (event.clientX - bounds.left + viewport.scrollLeft) / zoom - defaultWidth / 2;
           const rawY = (event.clientY - bounds.top + viewport.scrollTop) / zoom - defaultHeight / 2;
-          const x = Math.min(canvasWidth - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
-          const y = Math.min(canvasHeight - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
+          const x = Math.min(canvasDimensions.width - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
+          const y = Math.min(canvasDimensions.height - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
           onAddNode(kind, { x, y }, activeGroupName);
         }}
       >
-        <div className="canvas-stage" style={{ width: canvasWidth * zoom, height: canvasHeight * zoom }}>
-        <div className="canvas-world" style={{ transform: `scale(${zoom})` }}>
+        {activeAreaView === "all" ? (
+          <CanvasOverview
+            document={document}
+            areas={overviewAreas}
+            connections={overviewConnections}
+            onOpenArea={onActiveAreaViewChange}
+          />
+        ) : (
+        <div className="canvas-stage" style={{ width: canvasDimensions.width * zoom, height: canvasDimensions.height * zoom }}>
+        <div className="canvas-world" style={{ width: canvasDimensions.width, height: canvasDimensions.height, transform: `scale(${zoom})` }}>
           {showRelations && (
-            <svg className="relation-layer" width={canvasWidth} height={canvasHeight} aria-label="Node relations">
+            <svg className="relation-layer" width={canvasDimensions.width} height={canvasDimensions.height} aria-label="Node relations">
               <defs>
                 {(["contains", "commands", "observes", "usesRecipe", "usesLink"] as RelationKind[]).map((kind) => (
                   <marker
@@ -480,7 +679,7 @@ export function MachineCanvas({
                   onSelect(node.id);
                 }}
                 onPointerDown={(event) => {
-                  if (event.button !== 0) return;
+                  if (event.button !== 0 || spacePressedRef.current) return;
                   if (connectSourceId) {
                     if (validTarget) selectTarget(node.id);
                     return;
@@ -499,8 +698,8 @@ export function MachineCanvas({
                   if (!drag.current || drag.current.nodeId !== node.id) return;
                   const rawX = drag.current.startX + (event.clientX - drag.current.startPointerX) / zoom;
                   const rawY = drag.current.startY + (event.clientY - drag.current.startPointerY) / zoom;
-                  const x = Math.min(canvasWidth - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
-                  const y = Math.min(canvasHeight - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
+                  const x = Math.min(canvasDimensions.width - defaultWidth - 12, Math.max(12, Math.round(rawX / 4) * 4));
+                  const y = Math.min(canvasDimensions.height - defaultHeight - 12, Math.max(12, Math.round(rawY / 4) * 4));
                   onMoveNode(node.id, x, y);
                 }}
                 onPointerUp={() => { drag.current = undefined; }}
@@ -541,15 +740,16 @@ export function MachineCanvas({
           {visibleNodes.length === 0 && (
             <div className="canvas-empty">
               <span>↓</span>
-              <strong>{activeAreaView === "all" ? "Drag a component onto the canvas" : "This area is empty"}</strong>
+              <strong>This area is empty</strong>
               <p>Drop a component here or move an existing node into this area.</p>
             </div>
           )}
         </div>
         </div>
+        )}
       </div>
 
-      {paletteDragOver && <div className="canvas-drop-hint">Drop to place component</div>}
+      {activeAreaView !== "all" && paletteDragOver && <div className="canvas-drop-hint">Drop to place component</div>}
 
       {activeGroup && managingArea && (
         <div className="area-manager-popover">
@@ -714,7 +914,7 @@ export function MachineCanvas({
         </div>
       )}
 
-      {showRelations && (
+      {activeAreaView !== "all" && showRelations && (
         <div className="relation-legend" aria-label="Relation legend">
           {(["contains", "commands", "observes", "usesRecipe", "usesLink"] as RelationKind[]).map((kind) => (
             <span key={kind}><i className={`relation-legend__line relation-legend__line--${kind}`} />{getRelationDefinition(kind).label}</span>
@@ -817,6 +1017,228 @@ export function MachineCanvas({
   );
 }
 
+function CanvasOverview({
+  document,
+  areas,
+  connections,
+  onOpenArea,
+}: {
+  document: EtabProjectDocument;
+  areas: AreaOverview[];
+  connections: AreaConnectionOverview[];
+  onOpenArea: (view: AreaView) => void;
+}) {
+  const visibleConnections = connections.slice(0, 12);
+
+  return (
+    <section className="canvas-overview" aria-label="Project overview">
+      <header className="canvas-overview__summary">
+        <div>
+          <span className="eyebrow">Project map</span>
+          <h2>{document.project.displayName}</h2>
+          <p>Open an area to edit its nodes and inspect the complete relation graph.</p>
+        </div>
+        <dl>
+          <div><dt>Areas</dt><dd>{areas.length}</dd></div>
+          <div><dt>Nodes</dt><dd>{document.nodes.length}</dd></div>
+          <div><dt>Relations</dt><dd>{document.relations.length}</dd></div>
+        </dl>
+      </header>
+
+      <div className="canvas-overview__content">
+        <section className="canvas-overview__areas-section" aria-labelledby="overview-areas-title">
+          <div className="canvas-overview__section-title">
+            <div>
+              <h3 id="overview-areas-title">Machine areas</h3>
+              <p>Each card is a focused editing view.</p>
+            </div>
+          </div>
+          <div className="canvas-overview__areas">
+            {areas.map((area) => {
+              const nodeKinds = (["applicationUnit", "commandUnit", "recipeManager", "machineLink"] as NodeKind[])
+                .map((kind) => ({
+                  kind,
+                  count: area.nodes.filter((node) => node.kind === kind).length,
+                }))
+                .filter((entry) => entry.count > 0);
+              const previewNodes = area.nodes.slice(0, 4);
+              const hiddenNodeCount = Math.max(0, area.nodes.length - previewNodes.length);
+
+              return (
+                <button
+                  className="canvas-area-card"
+                  type="button"
+                  key={area.key}
+                  onClick={() => onOpenArea(area.view)}
+                  aria-label={`Open ${area.displayName} area`}
+                >
+                  <span className="canvas-area-card__header">
+                    <span>
+                      <small>Area</small>
+                      <strong>{area.displayName}</strong>
+                    </span>
+                    <b>{area.nodes.length}</b>
+                  </span>
+                  <span className="canvas-area-card__kinds">
+                    {nodeKinds.length > 0
+                      ? nodeKinds.map(({ kind, count }) => (
+                        <span key={kind}><i className={`kind-dot kind-dot--${kind}`} />{count} {nodeKindLabels[kind]}</span>
+                      ))
+                      : <em>Empty area</em>}
+                  </span>
+                  <span className="canvas-area-card__nodes">
+                    {previewNodes.map((node) => <span key={node.id}>{node.displayName}</span>)}
+                    {hiddenNodeCount > 0 && <span>+{hiddenNodeCount} more</span>}
+                  </span>
+                  <span className="canvas-area-card__stats">
+                    <span>{area.internalRelations} inside</span>
+                    <span>{area.crossRelations} cross-area</span>
+                    <strong>Open area <b aria-hidden="true">→</b></strong>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="canvas-overview__connections" aria-labelledby="overview-connections-title">
+          <div className="canvas-overview__section-title">
+            <div>
+              <h3 id="overview-connections-title">Between areas</h3>
+              <p>Aggregated cross-area relations.</p>
+            </div>
+            <span>{connections.length}</span>
+          </div>
+          <div className="canvas-overview__connection-list">
+            {visibleConnections.map((connection) => (
+              <div className="canvas-area-connection" key={`${connection.source}\u0000${connection.target}`}>
+                <div>
+                  <strong>{connection.source}</strong>
+                  <span aria-hidden="true">→</span>
+                  <strong>{connection.target}</strong>
+                  <b>{connection.count}</b>
+                </div>
+                <p>
+                  {relationKindOrder
+                    .filter((kind) => connection.kinds[kind])
+                    .map((kind) => (
+                      <span key={kind}>
+                        <i className={`relation-legend__line relation-legend__line--${kind}`} />
+                        {getRelationDefinition(kind).label} {connection.kinds[kind]}
+                      </span>
+                    ))}
+                </p>
+              </div>
+            ))}
+            {connections.length === 0 && <div className="canvas-overview__no-connections">No cross-area relations yet.</div>}
+            {connections.length > visibleConnections.length && (
+              <small className="canvas-overview__more">+{connections.length - visibleConnections.length} more area connections</small>
+            )}
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function calculateLayoutBounds(nodes: EtabNode[], layouts: Map<string, NodeLayout>): LayoutBounds | undefined {
+  if (nodes.length === 0) return undefined;
+
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+
+  for (const node of nodes) {
+    const layout = layouts.get(node.id);
+    if (!layout) continue;
+    left = Math.min(left, layout.x);
+    top = Math.min(top, layout.y);
+    right = Math.max(right, layout.x + (layout.width ?? defaultWidth));
+    bottom = Math.max(bottom, layout.y + (layout.height ?? defaultHeight));
+  }
+
+  return Number.isFinite(left) ? { left, top, right, bottom } : undefined;
+}
+
+function buildAreaOverview(document: EtabProjectDocument, groups: ReturnType<typeof getLayoutGroups>): AreaOverview[] {
+  const areaDefinitions = groups.map((group) => ({
+    view: areaViewForGroup(group.name),
+    key: group.name.toLowerCase(),
+    displayName: group.displayName,
+    groupName: group.name,
+  }));
+  const unassignedNodes = document.nodes.filter((node) => !nodeGroup(document, node.id));
+  if (unassignedNodes.length > 0) {
+    areaDefinitions.push({
+      view: "unassigned",
+      key: "__unassigned__",
+      displayName: "Unassigned",
+      groupName: "",
+    });
+  }
+
+  return areaDefinitions.map((area) => {
+    const nodes = area.view === "unassigned"
+      ? unassignedNodes
+      : document.nodes.filter((node) => nodeGroup(document, node.id)?.toLowerCase() === area.groupName.toLowerCase());
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    let internalRelations = 0;
+    let crossRelations = 0;
+
+    for (const relation of document.relations) {
+      const sourceInside = nodeIds.has(relation.sourceNodeId);
+      const targetInside = nodeIds.has(relation.targetNodeId);
+      if (sourceInside && targetInside) internalRelations += 1;
+      else if (sourceInside !== targetInside) crossRelations += 1;
+    }
+
+    return {
+      view: area.view,
+      key: area.key,
+      displayName: area.displayName,
+      nodes,
+      internalRelations,
+      crossRelations,
+    };
+  });
+}
+
+function buildAreaConnectionOverview(
+  document: EtabProjectDocument,
+  groups: ReturnType<typeof getLayoutGroups>,
+): AreaConnectionOverview[] {
+  const groupNames = new Map(groups.map((group) => [group.name.toLowerCase(), group.displayName]));
+  const nodeAreas = new Map(document.nodes.map((node) => {
+    const group = nodeGroup(document, node.id);
+    return [node.id, group
+      ? { key: group.toLowerCase(), displayName: groupNames.get(group.toLowerCase()) ?? group }
+      : { key: "__unassigned__", displayName: "Unassigned" }] as const;
+  }));
+  const connections = new Map<string, AreaConnectionOverview>();
+
+  for (const relation of document.relations) {
+    const sourceArea = nodeAreas.get(relation.sourceNodeId);
+    const targetArea = nodeAreas.get(relation.targetNodeId);
+    if (!sourceArea || !targetArea || sourceArea.key === targetArea.key) continue;
+    const key = `${sourceArea.key}\u0000${targetArea.key}`;
+    const connection = connections.get(key) ?? {
+      source: sourceArea.displayName,
+      target: targetArea.displayName,
+      count: 0,
+      kinds: {},
+    };
+    connection.count += 1;
+    connection.kinds[relation.kind] = (connection.kinds[relation.kind] ?? 0) + 1;
+    connections.set(key, connection);
+  }
+
+  return [...connections.values()].sort((left, right) =>
+    right.count - left.count
+    || left.source.localeCompare(right.source)
+    || left.target.localeCompare(right.target));
+}
+
 function connectionPoints(source: NodeLayout, target: NodeLayout): { source: Point; target: Point } {
   const sourceWidth = source.width ?? defaultWidth;
   const sourceHeight = source.height ?? defaultHeight;
@@ -917,4 +1339,14 @@ function cubicPoint(start: Point, firstControl: Point, secondControl: Point, end
       + 3 * inverse * position ** 2 * secondControl.y
       + position ** 3 * end.y,
   };
+}
+
+function isCanvasBackground(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return !target.closest(".canvas-node, .relation, button, input, select, textarea, a, [contenteditable='true']");
+}
+
+function isKeyboardInteractionTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest("button, input, select, textarea, a, [role='button'], [contenteditable='true']"));
 }

@@ -21,7 +21,7 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.6
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.7
 ```
 
 This local command creates unsigned development artifacts because no private signing identity is stored in the repository. Stable public releases are built and signed in GitHub Actions. An explicitly versioned `-preview.N` prerelease may remain unsigned while signing is deferred, but it is marked accordingly in GitHub and can trigger a Windows unknown-publisher warning. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for optional signing and package that exact bundle afterward.
@@ -53,10 +53,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.6-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.6-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.6-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.6-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -117,11 +117,11 @@ The GitHub configuration can be entered through **Settings → Environments → 
 - A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly. An unsigned preview is marked as a prerelease and carries a warning in its release notes.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For preview version `0.1.0.7-preview.6`, publish with:
+For preview version `0.1.0.7-preview.7`, publish with:
 
 ```powershell
-git tag -a v0.1.0.7-preview.6 -m "ETAB Engineering v0.1.0.7-preview.6"
-git push origin v0.1.0.7-preview.6
+git tag -a v0.1.0.7-preview.7 -m "ETAB Engineering v0.1.0.7-preview.7"
+git push origin v0.1.0.7-preview.7
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
