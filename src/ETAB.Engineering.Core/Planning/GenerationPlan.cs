@@ -12,7 +12,8 @@ public sealed record PlannedArtifactChange(
     string? PreviousRelativePath,
     string? ExpectedExistingHash,
     string? Message,
-    GeneratedArtifact? PlannedArtifact);
+    GeneratedArtifact? PlannedArtifact,
+    bool PreserveExistingContent = false);
 
 public sealed record PlannedManifestChange(
     GenerationChangeKind ChangeKind,

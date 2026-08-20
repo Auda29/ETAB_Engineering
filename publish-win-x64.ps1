@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.1.0.7',
+    [string]$Version = '0.1.0.8-preview.1',
 
     [string]$OutputDirectory = '',
 

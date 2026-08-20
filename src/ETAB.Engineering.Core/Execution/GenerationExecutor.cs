@@ -553,17 +553,39 @@ public sealed class GenerationExecutor
     {
         foreach (var change in plan.Changes.Where(
                      change => change.ChangeKind is GenerationChangeKind.Create or
-                         GenerationChangeKind.Update or
-                         GenerationChangeKind.Rename))
+                          GenerationChangeKind.Update or
+                          GenerationChangeKind.Rename))
         {
-            var artifact = change.PlannedArtifact
-                ?? throw new InvalidOperationException(
-                    $"Planned content for '{change.RelativePath}' is missing.");
             var stagedPath = ResolveTransactionPath(
                 plan,
                 stagingRoot,
                 change.RelativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!);
+            if (change.PreserveExistingContent)
+            {
+                if (change.ChangeKind != GenerationChangeKind.Rename ||
+                    string.IsNullOrWhiteSpace(change.PreviousRelativePath))
+                {
+                    throw new InvalidOperationException(
+                        $"Only a rename can preserve existing content for '{change.RelativePath}'.");
+                }
+
+                var sourcePath = ResolveGeneratedPath(plan, change.PreviousRelativePath);
+                File.Copy(sourcePath, stagedPath);
+                if (!string.Equals(
+                        ComputeFileHash(stagedPath),
+                        change.ExpectedExistingHash,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new IOException(
+                        $"Staged preserved content hash mismatch for '{change.RelativePath}'.");
+                }
+                continue;
+            }
+
+            var artifact = change.PlannedArtifact
+                ?? throw new InvalidOperationException(
+                    $"Planned content for '{change.RelativePath}' is missing.");
             File.WriteAllText(stagedPath, artifact.Content, Utf8WithoutBom);
 
             if (!string.Equals(

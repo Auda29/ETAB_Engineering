@@ -164,7 +164,9 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
             .Select(artifact => ToProjectInclude(artifact.RelativePath))
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
-        var desiredFolderIncludes = BuildFolderIncludes(desiredCompileIncludes);
+        var desiredFolderIncludes = BuildFolderIncludes(
+            desiredCompileIncludes,
+            preview.FolderPaths.Select(ToProjectInclude));
         var managedFolderIncludes = new HashSet<string>(
             existingManifest?.ManagedFolderIncludes ?? [],
             PathComparer);
@@ -1290,13 +1292,23 @@ public sealed class TwinCatProjectIntegrationPlanBuilder
         }
     }
 
-    private static string[] BuildFolderIncludes(IEnumerable<string> compileIncludes)
+    private static string[] BuildFolderIncludes(
+        IEnumerable<string> compileIncludes,
+        IEnumerable<string> explicitFolderIncludes)
     {
         var folders = new HashSet<string>(PathComparer);
         foreach (var include in compileIncludes)
         {
             var segments = include.Split('\\', StringSplitOptions.RemoveEmptyEntries);
             for (var length = 1; length < segments.Length; length++)
+            {
+                folders.Add(string.Join('\\', segments.Take(length)));
+            }
+        }
+        foreach (var include in explicitFolderIncludes)
+        {
+            var segments = include.Split('\\', StringSplitOptions.RemoveEmptyEntries);
+            for (var length = 1; length <= segments.Length; length++)
             {
                 folders.Add(string.Join('\\', segments.Take(length)));
             }

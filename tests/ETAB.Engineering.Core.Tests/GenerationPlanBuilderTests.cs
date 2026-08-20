@@ -116,7 +116,9 @@ public sealed class GenerationPlanBuilderTests
         var deletion = Assert.Single(
             plan.Changes,
             change => change.ChangeKind == GenerationChangeKind.Delete);
-        Assert.Equal("Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT", deletion.RelativePath);
+        Assert.Equal(
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT",
+            deletion.RelativePath);
         Assert.Null(deletion.PlannedArtifact);
     }
 
@@ -128,7 +130,7 @@ public sealed class GenerationPlanBuilderTests
         Materialize(temporary.Path, initialPlan);
         var target = Resolve(
             temporary.Path,
-            "Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT");
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT");
         File.AppendAllText(target, "manual change", new UTF8Encoding(false));
 
         var plan = BuildPlan(temporary.Path, ParseProject());
@@ -147,7 +149,7 @@ public sealed class GenerationPlanBuilderTests
         using var temporary = new TemporaryDirectory();
         var target = Resolve(
             temporary.Path,
-            "Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT");
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT");
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         File.WriteAllText(target, "foreign file", new UTF8Encoding(false));
 
@@ -157,7 +159,9 @@ public sealed class GenerationPlanBuilderTests
         var conflict = Assert.Single(
             plan.Changes,
             change => change.ChangeKind == GenerationChangeKind.Conflict);
-        Assert.Equal("Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT", conflict.RelativePath);
+        Assert.Equal(
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT",
+            conflict.RelativePath);
         Assert.Contains("not managed", conflict.Message, StringComparison.Ordinal);
 
         File.Delete(target);
@@ -169,7 +173,7 @@ public sealed class GenerationPlanBuilderTests
             directoryPlan.Changes,
             change => change.ChangeKind == GenerationChangeKind.Conflict);
         Assert.Equal(
-            "Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT",
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT",
             directoryConflict.RelativePath);
     }
 

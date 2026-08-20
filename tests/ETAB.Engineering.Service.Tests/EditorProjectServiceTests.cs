@@ -86,13 +86,15 @@ public sealed class EditorProjectServiceTests : IDisposable
             Assert.DoesNotContain("Generated/", artifact.RelativePath, StringComparison.OrdinalIgnoreCase));
         Assert.Contains(
             preview.Artifacts,
-            artifact => artifact.RelativePath == "DUTs/Commands/E_PLC_MachineCommand.TcDUT");
+            artifact => artifact.RelativePath ==
+                "Application/Machine/Machine/E_PLC_MachineCommand.TcDUT");
         Assert.Contains(
             preview.Artifacts,
-            artifact => artifact.RelativePath == "POUs/FB_PLC_MachineUnitBase.TcPOU");
+            artifact => artifact.RelativePath ==
+                "Application/Machine/Machine/FB_PLC_MachineUnitBase.TcPOU");
         Assert.Contains(
             preview.Artifacts,
-            artifact => artifact.RelativePath == "GVLs/GVL_PLC_Units.TcGVL");
+            artifact => artifact.RelativePath == "ETAB/Shared/GVL_PLC_Units.TcGVL");
 
         var generated = service.Generate(
             connected.Document,
@@ -105,18 +107,25 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.True(generated.Success);
         Assert.True(File.Exists(Path.Combine(
             testRoot,
-            "DUTs",
-            "Commands",
+            "Application",
+            "Machine",
+            "Machine",
             "E_PLC_MachineCommand.TcDUT")));
         Assert.True(File.Exists(Path.Combine(
             testRoot,
-            "POUs",
+            "Application",
+            "Machine",
+            "Machine",
             "FB_PLC_MachineUnitBase.TcPOU")));
-        Assert.True(File.Exists(Path.Combine(testRoot, "GVLs", "GVL_PLC_Units.TcGVL")));
+        Assert.True(File.Exists(Path.Combine(
+            testRoot,
+            "ETAB",
+            "Shared",
+            "GVL_PLC_Units.TcGVL")));
         Assert.False(Directory.Exists(Path.Combine(testRoot, "Generated")));
         Assert.Equal("owned by the PLC developer\n", await File.ReadAllTextAsync(handwrittenPath));
         Assert.Contains(
-            "DUTs\\Commands\\E_PLC_MachineCommand.TcDUT",
+            "Application\\Machine\\Machine\\E_PLC_MachineCommand.TcDUT",
             await File.ReadAllTextAsync(plcProjectPath),
             StringComparison.Ordinal);
     }
@@ -299,7 +308,7 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.True(generated.Success);
         Assert.True(generated.ProjectFileChanged);
         Assert.Contains(
-            "Generated\\GVLs\\GVL_BM_Units.TcGVL",
+            "Generated\\ETAB\\Shared\\GVL_BM_Units.TcGVL",
             await File.ReadAllTextAsync(plcProjectPath),
             StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(

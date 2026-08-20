@@ -1,4 +1,4 @@
-# ETAB Engineering v0.1.0.7
+# ETAB Engineering v0.1.0.8-preview.1
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
@@ -14,7 +14,7 @@ The TypeScript visual editor and its loopback .NET service are implemented. Its 
 
 `ETAB Engineering.exe` hosts the production React build in WebView2 and starts the existing ASP.NET service inside the same process on a random loopback port. The self-contained package requires neither the .NET SDK nor Node.js on the target computer.
 
-The project integration manages generated `Compile` and `Folder` entries, the ETAB placeholder reference, the required direct EngineeringToolbox (`ET`) placeholder reference, and—when runtime execution is enabled—one generated `PouCall` in a detected `.TcTTO` task, without taking ownership of compatible existing entries. With multiple tasks ETAB selects the unique task that calls `MAIN`; ambiguous projects are blocked instead of guessed. Existing task calls remain unchanged, and disabling the option removes only the manifest-owned generated call. Before planning additions the integration scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project and emits directly into its `DUTs`, `POUs`, and `GVLs` hierarchy; only manifest-listed ETAB files and task call are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
+The project integration manages generated `Compile` and `Folder` entries, the ETAB placeholder reference, the required direct EngineeringToolbox (`ET`) placeholder reference, and one generated `PouCall` in a detected `.TcTTO` task when runtime execution is enabled. It does not take ownership of compatible existing entries. With multiple tasks ETAB selects the unique task that calls `MAIN`; ambiguous projects are blocked instead of guessed. Existing task calls remain unchanged, and disabling the option removes only the manifest-owned generated call. Before planning additions the integration scans the already compiled `.TcDUT`, `.TcPOU`, and `.TcGVL` objects inside the selected root and blocks duplicate case-insensitive IEC names. The desktop editor makes integration mandatory for a linked PLC project. Node-owned artifacts are written below `Application/<area>/<node>`, shared generated objects below `ETAB/Shared`, and the optional generated program below `ETAB/Runtime`. Empty areas and nodes without their own artifacts still receive TwinCAT `Folder` entries. Only manifest-listed ETAB files and task calls are managed even though handwritten files share the PLC root. The complete generated BrushMachine integration copy subsequently built successfully in TwinCAT XAE; runtime simulation and machine behavior remain separate acceptance levels.
 
 ## Quick Start
 
@@ -60,7 +60,7 @@ Open `http://127.0.0.1:5173/` for frontend development. The editor talks only to
 
 For a new model, first create an empty PLC project in TwinCAT. On the ETAB startup screen select **Connect TwinCAT PLC Project** and choose its `.plcproj`. If the file is `PLC.plcproj`, ETAB creates `PLC.etab.json` beside it, derives a valid IEC project name and prefix, links `PLC.plcproj`, and stores the direct-output setting automatically. Selecting the same PLC project later reopens the existing companion model without replacing its stable IDs. **Open Existing ETAB Model** remains available for established models.
 
-To generate from the editor, save the ETAB model, open **Generation preview**, and select **Refresh preview**. The target and linked `.plcproj` are read-only and already follow the startup selection. In project properties, **Enable generated runtime execution** opts into cyclic execution and selects ApplicationUnit and CommandUnit instances by default; Recipe Manager and Machine Link targets referenced through `usesRecipe` or `usesLink` are included automatically. Individual nodes can still be included or excluded with **Run cyclically in generated runtime**. A `commands` relationship exposes an **Automatic command routing** editor in the node's Relations tab. Each configured route maps one source command to one target command and forwards the execute signal and command ID; ambiguous multiple automatic drivers for the same target are rejected. **Create user stubs** emits editable ApplicationUnit derivatives only when no explicit instance type is configured. Inspect the complete conflict-protected plan, including the proposed `.plcproj` and runtime-task XML, and then select **Generate**. Generated DUTs, POUs, and GVLs are written to the corresponding TwinCAT directories, added to the `.plcproj`, and—when enabled—assigned once to the detected TwinCAT task in the same transaction. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
+To generate from the editor, save the ETAB model, open **Generation preview**, and select **Refresh preview**. The target and linked `.plcproj` are read-only and already follow the startup selection. In project properties, **Enable generated runtime execution** opts into cyclic execution and selects ApplicationUnit and CommandUnit instances by default; Recipe Manager and Machine Link targets referenced through `usesRecipe` or `usesLink` are included automatically. Individual nodes can still be included or excluded with **Run cyclically in generated runtime**. A `commands` relationship exposes an **Automatic command routing** editor in the node's Relations tab. Each configured route maps one source command to one target command and forwards the execute signal and command ID; ambiguous multiple automatic drivers for the same target are rejected. **Create user stubs** emits editable ApplicationUnit derivatives only when no explicit instance type is configured. Inspect the complete conflict-protected plan, including the proposed `.plcproj` and runtime-task XML, and then select **Generate**. Generated objects follow the editor's area and node tree below `Application`; shared and runtime objects use `ETAB/Shared` and `ETAB/Runtime`. The generator adds these paths to the `.plcproj` and assigns the generated program once to the detected TwinCAT task when enabled. The button remains disabled for unsaved models, invalid models, conflicts, or stale previews; a final confirmation displays the exact target before any write.
 
 Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-artifact generator output, including `FB_BM_Relations`. For integration with the existing `AutomationBase Beispiel`, open `examples/BrushMachine.integration.etab.json`; it keeps the three existing command enums, three request DUTs, and aggregate machine-status DUT externally owned and proposes nine non-conflicting generated artifacts.
 
@@ -69,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7
+.\publish-installer-win-x64.ps1 -Version 0.1.0.8-preview.1
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.

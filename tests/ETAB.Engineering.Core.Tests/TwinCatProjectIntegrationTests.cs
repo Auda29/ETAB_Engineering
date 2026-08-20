@@ -77,7 +77,19 @@ public sealed class TwinCatProjectIntegrationTests
 
         var integrationManifest = ReadIntegrationManifest(temporary.Path);
         Assert.Equal(16, integrationManifest.ManagedCompileIncludes.Count);
-        Assert.Equal(7, integrationManifest.ManagedFolderIncludes.Count);
+        Assert.Equal(15, integrationManifest.ManagedFolderIncludes.Count);
+        Assert.Contains(
+            "Generated\\Application\\Machine\\Process Cycle",
+            integrationManifest.ManagedFolderIncludes);
+        Assert.Contains(
+            "Generated\\Application\\Services\\Product Recipe Manager",
+            integrationManifest.ManagedFolderIncludes);
+        Assert.Contains(
+            "Generated\\Application\\Communication\\Cell Machine Link",
+            integrationManifest.ManagedFolderIncludes);
+        Assert.Contains(
+            "Generated\\Application\\Unassigned",
+            integrationManifest.ManagedFolderIncludes);
         Assert.NotNull(integrationManifest.ManagedPlaceholderReference);
         Assert.NotNull(
             integrationManifest.ManagedEngineeringToolboxPlaceholderReference);
@@ -110,7 +122,9 @@ public sealed class TwinCatProjectIntegrationTests
         using var temporary = new TemporaryDirectory();
         WriteProjectFile(temporary.Path, MinimalProject(includeCompatibleLibrary: true));
 
-        var execution = _executor.Execute(BuildPlan(temporary.Path, Validate(ParseProject())));
+        var plan = BuildPlan(temporary.Path, Validate(ParseProject()));
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        var execution = _executor.Execute(plan);
 
         Assert.True(execution.Success, FormatIssues(execution));
         var manifest = ReadIntegrationManifest(temporary.Path);
@@ -130,7 +144,7 @@ public sealed class TwinCatProjectIntegrationTests
         var execution = _executor.Execute(BuildPlan(temporary.Path, Validate(projectJson)));
 
         Assert.True(execution.Success, FormatIssues(execution));
-        var expected = "Generated\\POUs\\PRG_BM_Generated.TcPOU";
+        var expected = "Generated\\ETAB\\Runtime\\PRG_BM_Generated.TcPOU";
         var document = XDocument.Load(Path.Combine(temporary.Path, ProjectFileName));
         var ns = XNamespace.Get(MsBuildNamespace);
         Assert.Single(
@@ -323,12 +337,14 @@ public sealed class TwinCatProjectIntegrationTests
     {
         using var temporary = new TemporaryDirectory();
         const string existingGenerated =
-            "Generated\\DUTs\\Status\\ST_BM_MachineStatus.TcDUT";
+            "Generated\\Application\\Machine\\Brush Machine\\ST_BM_MachineStatus.TcDUT";
         WriteProjectFile(
             temporary.Path,
             MinimalProject(additionalCompileInclude: existingGenerated));
 
-        var execution = _executor.Execute(BuildPlan(temporary.Path, Validate(ParseProject())));
+        var plan = BuildPlan(temporary.Path, Validate(ParseProject()));
+        Assert.False(plan.HasConflicts, FormatIssues(plan));
+        var execution = _executor.Execute(plan);
 
         Assert.True(execution.Success, FormatIssues(execution));
         var manifest = ReadIntegrationManifest(temporary.Path);
@@ -442,10 +458,10 @@ public sealed class TwinCatProjectIntegrationTests
             .Where(include => include is not null)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         Assert.DoesNotContain(
-            "Generated\\DUTs\\Status\\ST_BM_ProcessStatus.TcDUT",
+            "Generated\\Application\\Machine\\Process Unit\\ST_BM_ProcessStatus.TcDUT",
             includes);
         Assert.Contains(
-            "Generated\\DUTs\\Status\\ST_BM_ProcessRenamedStatus.TcDUT",
+            "Generated\\Application\\Machine\\Process Unit\\ST_BM_ProcessRenamedStatus.TcDUT",
             includes);
     }
 

@@ -15,6 +15,7 @@ public sealed class ArtifactPreviewGenerator
 
         var artifacts = new List<GeneratedArtifact>();
         var generatedRoot = NormalizeRoot(project.Project.Generation.GeneratedRoot);
+        var folderLayout = GenerationFolderLayout.Create(project);
         var orderedNodes = project.Nodes
             .OrderBy(node => node.Name, StringComparer.Ordinal)
             .ThenBy(node => node.Id, StringComparer.Ordinal)
@@ -27,28 +28,29 @@ public sealed class ArtifactPreviewGenerator
 
         foreach (var node in orderedNodes)
         {
+            var nodeDirectory = folderLayout.GetNodeDirectory(node);
             if (node.Generate.CommandEnum)
             {
-                artifacts.Add(CreateCommandEnum(project, node, generatedRoot));
+                artifacts.Add(CreateCommandEnum(project, node, generatedRoot, nodeDirectory));
             }
 
             if (node.Generate.RequestType)
             {
-                artifacts.Add(CreateRequestDut(project, node, generatedRoot));
+                artifacts.Add(CreateRequestDut(project, node, generatedRoot, nodeDirectory));
             }
 
             if (node.Generate.StatusType)
             {
-                artifacts.Add(CreateStatusDut(project, node, generatedRoot));
+                artifacts.Add(CreateStatusDut(project, node, generatedRoot, nodeDirectory));
             }
 
             if (node.Generate.BaseFunctionBlock)
             {
-                artifacts.Add(CreateBaseFunctionBlock(project, node, generatedRoot));
+                artifacts.Add(CreateBaseFunctionBlock(project, node, generatedRoot, nodeDirectory));
                 if (project.Project.Generation.CreateUserStubs &&
                     string.IsNullOrWhiteSpace(node.Generate.InstanceType))
                 {
-                    artifacts.Add(CreateUserFunctionBlock(project, node, generatedRoot));
+                    artifacts.Add(CreateUserFunctionBlock(project, node, generatedRoot, nodeDirectory));
                 }
             }
         }
@@ -108,7 +110,14 @@ public sealed class ArtifactPreviewGenerator
             }
         }
 
-        return new GenerationPreview(project.Project.Id, project.Project.Name, artifacts.ToArray());
+        var folderPaths = folderLayout.Folders
+            .Select(folder => InGeneratedRoot(generatedRoot, folder))
+            .ToArray();
+        return new GenerationPreview(
+            project.Project.Id,
+            project.Project.Name,
+            artifacts.ToArray(),
+            folderPaths);
     }
 
     private static GeneratedArtifact CreateInstanceGlobalVariableList(
@@ -133,7 +142,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"GVLs/{name}.TcGVL"),
+            InGeneratedRoot(generatedRoot, $"ETAB/Shared/{name}.TcGVL"),
             content);
     }
 
@@ -227,7 +236,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
+            InGeneratedRoot(generatedRoot, $"ETAB/Shared/{name}.TcPOU"),
             content);
     }
 
@@ -253,7 +262,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
+            InGeneratedRoot(generatedRoot, $"ETAB/Runtime/{name}.TcPOU"),
             content);
     }
 
@@ -282,7 +291,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
+            InGeneratedRoot(generatedRoot, $"ETAB/Runtime/{name}.TcPOU"),
             content);
     }
 
@@ -339,7 +348,8 @@ public sealed class ArtifactPreviewGenerator
     private static GeneratedArtifact CreateCommandEnum(
         EtabProjectDocument project,
         EtabNode node,
-        string generatedRoot)
+        string generatedRoot,
+        string nodeDirectory)
     {
         const GeneratedArtifactKind kind = GeneratedArtifactKind.CommandEnum;
         var name = $"E_{project.Project.Prefix}_{node.SymbolStem}Command";
@@ -356,14 +366,15 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"DUTs/Commands/{name}.TcDUT"),
+            InGeneratedRoot(generatedRoot, $"{nodeDirectory}/{name}.TcDUT"),
             content);
     }
 
     private static GeneratedArtifact CreateRequestDut(
         EtabProjectDocument project,
         EtabNode node,
-        string generatedRoot)
+        string generatedRoot,
+        string nodeDirectory)
     {
         const GeneratedArtifactKind kind = GeneratedArtifactKind.RequestDut;
         var name = $"ST_{project.Project.Prefix}_{node.SymbolStem}Request";
@@ -383,14 +394,15 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"DUTs/Requests/{name}.TcDUT"),
+            InGeneratedRoot(generatedRoot, $"{nodeDirectory}/{name}.TcDUT"),
             content);
     }
 
     private static GeneratedArtifact CreateUserFunctionBlock(
         EtabProjectDocument project,
         EtabNode node,
-        string generatedRoot)
+        string generatedRoot,
+        string nodeDirectory)
     {
         const GeneratedArtifactKind kind = GeneratedArtifactKind.UserFunctionBlock;
         var name = $"FB_{project.Project.Prefix}_{node.SymbolStem}Unit";
@@ -408,15 +420,12 @@ public sealed class ArtifactPreviewGenerator
             guid,
             hookGuid,
             project.Project.TwinCat.Version);
-        var applicationRoot = NormalizeApplicationRoot(
-            project.Project.Generation.ApplicationRoot);
-
         return CreateArtifact(
             node.Id,
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"{applicationRoot}/{name}.TcPOU"),
+            InGeneratedRoot(generatedRoot, $"{nodeDirectory}/{name}.TcPOU"),
             content,
             preserveUserEdits: true);
     }
@@ -424,7 +433,8 @@ public sealed class ArtifactPreviewGenerator
     private static GeneratedArtifact CreateStatusDut(
         EtabProjectDocument project,
         EtabNode node,
-        string generatedRoot)
+        string generatedRoot,
+        string nodeDirectory)
     {
         const GeneratedArtifactKind kind = GeneratedArtifactKind.StatusDut;
         var name = $"ST_{project.Project.Prefix}_{node.SymbolStem}Status";
@@ -441,14 +451,15 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"DUTs/Status/{name}.TcDUT"),
+            InGeneratedRoot(generatedRoot, $"{nodeDirectory}/{name}.TcDUT"),
             content);
     }
 
     private static GeneratedArtifact CreateBaseFunctionBlock(
         EtabProjectDocument project,
         EtabNode node,
-        string generatedRoot)
+        string generatedRoot,
+        string nodeDirectory)
     {
         if (node.Kind != "applicationUnit")
         {
@@ -476,7 +487,7 @@ public sealed class ArtifactPreviewGenerator
             kind,
             name,
             guid,
-            InGeneratedRoot(generatedRoot, $"POUs/{name}.TcPOU"),
+            InGeneratedRoot(generatedRoot, $"{nodeDirectory}/{name}.TcPOU"),
             content);
     }
 

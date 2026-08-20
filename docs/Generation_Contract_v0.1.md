@@ -14,19 +14,21 @@ Default CLI path:
 Generated/
 ```
 
-The TwinCAT-first desktop workflow uses the selected PLC project directory directly so generated objects land in its existing `DUTs`, `POUs`, and `GVLs` hierarchy. This mode is represented by `project.generation.generatedRoot = "."`.
+The TwinCAT-first desktop workflow uses the selected PLC project directory directly. This mode is represented by `project.generation.generatedRoot = "."`. Generated paths follow this structure:
+
+```text
+Application/<area>/<node>/
+ETAB/Shared/
+ETAB/Runtime/
+```
+
+Node-owned command, request, status, base-FB, and optional user-stub objects share the node folder. Project-wide GVL and relation objects use `ETAB/Shared`. The optional generated PRG uses `ETAB/Runtime`. The isolated CLI layout adds `Generated/` in front of the same structure.
 
 In either layout, only files assigned to the current project and a model ID in the last valid manifest are considered generator-managed. Selecting the PLC root does not transfer ownership of handwritten or otherwise unmanaged files in that directory to ETAB Engineering.
 
-### User-Owned Area
+### User-owned files
 
-Default path:
-
-```text
-Application/
-```
-
-The generator does not modify or delete any existing file there. In direct TwinCAT output mode (`generatedRoot = "."`) user stubs are created below this application root. In isolated CLI output mode they remain inside the transaction boundary as `Generated/Application/...`.
+Ownership is recorded per file, not inferred from a directory. Handwritten files remain unmanaged even when they are stored beside ETAB files under `Application/<area>/<node>`.
 
 An initial user scaffold may optionally be generated only when:
 
@@ -36,7 +38,7 @@ An initial user scaffold may optionally be generated only when:
 
 Generation of initial user scaffolds is disabled by default.
 
-User scaffolds carry `preserveUserEdits = true` in the generation manifest. Once the file exists, its actual hash is used only for preflight race detection; content differences never schedule an update. Removing the node or disabling scaffolding removes ETAB's compile ownership but leaves the user file on disk. A path-changing symbol rename is blocked until the user-owned file is renamed explicitly.
+User scaffolds carry `preserveUserEdits = true` in the generation manifest. Once the file exists, its actual hash is used only for preflight race detection; content differences never schedule an update. An area rename, node display-name change, or node move preserves the exact file bytes while moving the stub to its new folder. A change to the generated FB name remains blocked until the user updates the declaration and file explicitly. Removing the node or disabling scaffolding removes ETAB's compile ownership but leaves the user file on disk.
 
 ## 3. Manifest
 
@@ -46,7 +48,7 @@ User scaffolds carry `preserveUserEdits = true` in the generation manifest. Once
 - generator version,
 - schema version,
 - project ID,
-- semantic model hash excluding layout,
+- semantic model hash excluding canvas coordinates and sizes but including generated area-folder assignments,
 - model ID, artifact kind, TwinCAT GUID, relative path, and content hash for each artifact.
 
 The manifest is written only after all intended output files have been generated successfully.
@@ -78,7 +80,7 @@ A conflict exists at least when:
 - a generated file has been modified manually since the last manifest,
 - a target path is occupied by a file not recorded in the manifest,
 - two model objects produce the same target path,
-- a user file would have to be renamed, overwritten, or deleted,
+- a user-owned FB declaration would have to be renamed, overwritten, or deleted,
 - the project or output root cannot be resolved unambiguously,
 - a target path traverses a symbolic link, junction, or other reparse point,
 - a generated IEC object name is already compiled from another `.TcDUT`, `.TcPOU`, or `.TcGVL` path in the selected project,
@@ -93,6 +95,7 @@ Conflicts are never overwritten, renamed, or deleted automatically.
 - The new target name is calculated from the current naming rules.
 - The old path is removed only if it is present in the manifest, unchanged, and within the configured generator root.
 - The preview reports the operation as `rename`.
+- A pure folder move of a user scaffold copies its existing bytes through staging and validates the actual preflight hash before replacing the path.
 
 ## 7. Deletion
 

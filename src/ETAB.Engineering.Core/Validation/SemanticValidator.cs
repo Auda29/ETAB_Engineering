@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ETAB.Engineering.Core.Generation;
 using ETAB.Engineering.Core.Model;
 
 namespace ETAB.Engineering.Core.Validation;
@@ -754,6 +755,10 @@ internal sealed class SemanticValidator
         var nodeIds = project.Nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
         var seenLayoutNodes = new HashSet<string>(StringComparer.Ordinal);
         var declaredGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var generatedAreaFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            GenerationFolderLayout.UnassignedAreaName
+        };
 
         if (project.Layout.Groups is not null)
         {
@@ -766,6 +771,21 @@ internal sealed class SemanticValidator
                         "LAYOUT_GROUP_DUPLICATE",
                         $"/layout/groups/{index}/name",
                         $"Layout area name '{group.Name}' is already declared."));
+                }
+
+                if (!GeneratedFolderName.TryValidate(group.DisplayName, out var folderError))
+                {
+                    issues.Add(new ValidationIssue(
+                        "LAYOUT_GROUP_FOLDER_NAME",
+                        $"/layout/groups/{index}/displayName",
+                        folderError!));
+                }
+                else if (!generatedAreaFolders.Add(group.DisplayName))
+                {
+                    issues.Add(new ValidationIssue(
+                        "LAYOUT_GROUP_FOLDER_DUPLICATE",
+                        $"/layout/groups/{index}/displayName",
+                        $"TwinCAT folder name '{group.DisplayName}' is already used by another area or by Unassigned."));
                 }
             }
         }
@@ -798,6 +818,46 @@ internal sealed class SemanticValidator
                     "LAYOUT_GROUP_MISSING",
                     $"/layout/nodes/{index}/group",
                     $"Layout references undeclared area '{layout.Group}'."));
+            }
+        }
+
+
+        var layoutByNodeId = project.Layout.Nodes
+            .GroupBy(layout => layout.NodeId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First().Group,
+                StringComparer.Ordinal);
+        var generatedNodeFolders = new Dictionary<string, HashSet<string>>(
+            StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < project.Nodes.Count; index++)
+        {
+            var node = project.Nodes[index];
+            if (!GeneratedFolderName.TryValidate(node.DisplayName, out var folderError))
+            {
+                issues.Add(new ValidationIssue(
+                    "LAYOUT_NODE_FOLDER_NAME",
+                    $"/nodes/{index}/displayName",
+                    folderError!));
+                continue;
+            }
+
+            var area = layoutByNodeId.TryGetValue(node.Id, out var groupName) &&
+                       !string.IsNullOrWhiteSpace(groupName)
+                ? groupName
+                : GenerationFolderLayout.UnassignedAreaName;
+            if (!generatedNodeFolders.TryGetValue(area, out var names))
+            {
+                names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                generatedNodeFolders.Add(area, names);
+            }
+
+            if (!names.Add(node.DisplayName))
+            {
+                issues.Add(new ValidationIssue(
+                    "LAYOUT_NODE_FOLDER_DUPLICATE",
+                    $"/nodes/{index}/displayName",
+                    $"TwinCAT node folder name '{node.DisplayName}' is already used in the same area."));
             }
         }
     }

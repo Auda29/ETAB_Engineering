@@ -38,24 +38,28 @@ public sealed class ArtifactPreviewGeneratorTests
         Assert.Equal(16, preview.Artifacts.Count);
         Assert.Equal(
             [
-                "Generated/DUTs/Status/ST_BM_MachineStatus.TcDUT",
-                "Generated/POUs/FB_BM_MachineUnitBase.TcPOU",
-                "Generated/DUTs/Commands/E_BM_MotionCommand.TcDUT",
-                "Generated/DUTs/Requests/ST_BM_MotionRequest.TcDUT",
-                "Generated/DUTs/Status/ST_BM_MotionStatus.TcDUT",
-                "Generated/POUs/FB_BM_MotionUnitBase.TcPOU",
-                "Generated/DUTs/Commands/E_BM_ProcessCommand.TcDUT",
-                "Generated/DUTs/Requests/ST_BM_ProcessRequest.TcDUT",
-                "Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT",
-                "Generated/POUs/FB_BM_ProcessUnitBase.TcPOU",
-                "Generated/DUTs/Commands/E_BM_WorkpieceCommand.TcDUT",
-                "Generated/DUTs/Requests/ST_BM_WorkpieceRequest.TcDUT",
-                "Generated/DUTs/Status/ST_BM_WorkpieceStatus.TcDUT",
-                "Generated/POUs/FB_BM_WorkpieceUnitBase.TcPOU",
-                "Generated/POUs/FB_BM_Relations.TcPOU",
-                "Generated/GVLs/GVL_BM_Units.TcGVL"
+                "Generated/Application/Machine/Brush Machine/ST_BM_MachineStatus.TcDUT",
+                "Generated/Application/Machine/Brush Machine/FB_BM_MachineUnitBase.TcPOU",
+                "Generated/Application/Machine/Motion Unit/E_BM_MotionCommand.TcDUT",
+                "Generated/Application/Machine/Motion Unit/ST_BM_MotionRequest.TcDUT",
+                "Generated/Application/Machine/Motion Unit/ST_BM_MotionStatus.TcDUT",
+                "Generated/Application/Machine/Motion Unit/FB_BM_MotionUnitBase.TcPOU",
+                "Generated/Application/Machine/Process Unit/E_BM_ProcessCommand.TcDUT",
+                "Generated/Application/Machine/Process Unit/ST_BM_ProcessRequest.TcDUT",
+                "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT",
+                "Generated/Application/Machine/Process Unit/FB_BM_ProcessUnitBase.TcPOU",
+                "Generated/Application/Machine/Workpiece Unit/E_BM_WorkpieceCommand.TcDUT",
+                "Generated/Application/Machine/Workpiece Unit/ST_BM_WorkpieceRequest.TcDUT",
+                "Generated/Application/Machine/Workpiece Unit/ST_BM_WorkpieceStatus.TcDUT",
+                "Generated/Application/Machine/Workpiece Unit/FB_BM_WorkpieceUnitBase.TcPOU",
+                "Generated/ETAB/Shared/FB_BM_Relations.TcPOU",
+                "Generated/ETAB/Shared/GVL_BM_Units.TcGVL"
             ],
             preview.Artifacts.Select(artifact => artifact.RelativePath));
+        Assert.Contains("Generated/Application/Machine/Process Cycle", preview.FolderPaths);
+        Assert.Contains("Generated/Application/Services/Product Recipe Manager", preview.FolderPaths);
+        Assert.Contains("Generated/Application/Communication/Cell Machine Link", preview.FolderPaths);
+        Assert.Contains("Generated/Application/Unassigned", preview.FolderPaths);
     }
 
     [Fact]
@@ -331,7 +335,7 @@ public sealed class ArtifactPreviewGeneratorTests
 
         Assert.True(stub.PreserveUserEdits);
         Assert.Equal(
-            "Generated/Application/FB_BM_MotionUnit.TcPOU",
+            "Generated/Application/Machine/Motion Unit/FB_BM_MotionUnit.TcPOU",
             stub.RelativePath);
         Assert.Contains("This file is user-owned and is never overwritten", stub.Content);
         Assert.Contains("fbMotionUnit : FB_BM_MotionUnit;", gvl);
@@ -410,20 +414,61 @@ public sealed class ArtifactPreviewGeneratorTests
     }
 
     [Fact]
-    public void LayoutOnlyChanges_DoNotAffectArtifacts()
+    public void CanvasCoordinateChanges_DoNotAffectArtifactsOrFolderPaths()
     {
         var original = ParseProject();
         var modified = original.DeepClone().AsObject();
         modified["layout"]!["nodes"]![0]!["x"] = 9876.5;
         modified["layout"]!["nodes"]![0]!["y"] = -1234.25;
-        modified["layout"]!["nodes"]![0]!["group"] = "MovedOnCanvas";
-        modified["layout"]!["groups"]!.AsArray().Add(new JsonObject
-        {
-            ["name"] = "MovedOnCanvas",
-            ["displayName"] = "Moved on canvas"
-        });
 
         Assert.Equal(Signatures(Generate(original)), Signatures(Generate(modified)));
+        Assert.Equal(Generate(original).FolderPaths, Generate(modified).FolderPaths);
+    }
+
+    [Fact]
+    public void AreaAssignmentChangesNodeArtifactAndFolderPathsOnly()
+    {
+        var original = ParseProject();
+        var modified = original.DeepClone().AsObject();
+        modified["layout"]!["nodes"]![1]!["group"] = "services";
+
+        var originalPreview = Generate(original);
+        var modifiedPreview = Generate(modified);
+        var originalMotion = originalPreview.Artifacts.Single(artifact =>
+            artifact.SourceModelId == "20000000-0000-4000-8000-000000000001" &&
+            artifact.Kind == GeneratedArtifactKind.CommandEnum);
+        var modifiedMotion = modifiedPreview.Artifacts.Single(artifact =>
+            artifact.SourceModelId == originalMotion.SourceModelId &&
+            artifact.Kind == originalMotion.Kind);
+
+        Assert.Equal(originalMotion.Sha256, modifiedMotion.Sha256);
+        Assert.Equal(originalMotion.TwinCatGuid, modifiedMotion.TwinCatGuid);
+        Assert.Equal(
+            "Generated/Application/Services/Motion Unit/E_BM_MotionCommand.TcDUT",
+            modifiedMotion.RelativePath);
+        Assert.Contains(
+            "Generated/Application/Services/Motion Unit",
+            modifiedPreview.FolderPaths);
+    }
+
+    [Fact]
+    public void LegacyAreaAssignmentsWithoutDeclarationsUseDerivedFolderNames()
+    {
+        var project = ParseProject();
+        project["layout"]!.AsObject().Remove("groups");
+
+        var preview = Generate(project);
+
+        Assert.Contains(
+            preview.Artifacts,
+            artifact => artifact.RelativePath ==
+                "Generated/Application/Machine/Motion Unit/E_BM_MotionCommand.TcDUT");
+        Assert.Contains(
+            "Generated/Application/Services/Product Recipe Manager",
+            preview.FolderPaths);
+        Assert.Contains(
+            "Generated/Application/Communication/Cell Machine Link",
+            preview.FolderPaths);
     }
 
     [Fact]

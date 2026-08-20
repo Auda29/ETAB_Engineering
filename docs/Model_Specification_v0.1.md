@@ -25,9 +25,9 @@ Normative structural validation: `../schemas/etab-project.schema.json`.
 - `project`: project-wide naming, version, and output settings.
 - `nodes`: ETAB components and project-specific roles.
 - `relations`: normative logical connections.
-- `layout`: visual position and size only.
+- `layout`: visual position and size plus generated TwinCAT area-folder assignments.
 
-Changes under `layout` must not cause any change to the PLC output.
+Canvas coordinates and sizes do not change PLC output. Area declarations and node assignments change generated paths and TwinCAT folder entries without changing generated object content or deterministic GUIDs.
 
 ## 3. Identities
 
@@ -313,11 +313,11 @@ The layout references nodes exclusively through `nodeId` and stores:
 - optional width and height,
 - an optional `group` identifier assigning the node to an editor area.
 
-`layout.groups` optionally declares persistent editor areas with a unique IEC-compatible `name` and a user-facing `displayName`. The declaration permits empty areas to survive save/reopen. Legacy models that only use `nodeLayout.group` remain valid; the editor derives their display names and materializes declarations when an area is edited.
+`layout.groups` optionally declares persistent editor areas with a unique IEC-compatible `name` and a user-facing `displayName`. The declaration permits empty areas to survive save/reopen and produces a corresponding TwinCAT folder. Legacy models that only use `nodeLayout.group` remain valid; the editor derives their display names and materializes declarations when an area is edited.
 
-Areas are visual organization only. Relations remain global node-to-node contracts and may connect nodes in different areas. Area declarations, assignments, positions, sizes, and canvas zoom do not participate in the semantic model hash and must not alter generated PLC artifacts.
+Relations remain global node-to-node contracts and may connect nodes in different areas. Area display names and node assignments determine `Application/<area>/<node>` output paths and participate in the semantic model hash. Positions, sizes, and canvas zoom remain visual only. Moving a node does not change the artifact content or TwinCAT GUID.
 
-A node may have at most one layout entry. Missing layout does not affect model validity; in that case, the editor may position the node automatically.
+A node may have at most one layout entry. A node without an assigned declared area is generated below `Application/Unassigned/<node>`. Area and node display names must be valid Windows folder names and unique within their generated parent folder.
 
 ## 10. MTP Preparation
 
@@ -337,7 +337,7 @@ The generator uses the following ordering:
 - Commands: `enumValue`, then `name`, then `id`.
 - Fields: model order is PLC order and therefore semantic.
 - Relationships: `kind`, `sourceNodeId`, `targetNodeId`, `id`.
-- Layout is excluded from PLC generation.
+- Canvas coordinates, sizes, and input order are excluded from PLC generation. Area display names and assignments determine output paths.
 
 ## 12. Validation Outside the JSON Schema
 

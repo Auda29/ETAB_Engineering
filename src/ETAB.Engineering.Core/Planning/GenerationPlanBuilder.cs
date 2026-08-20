@@ -278,12 +278,39 @@ public sealed class GenerationPlanBuilder
 
         if (artifact.PreserveUserEdits)
         {
-            if (!PathComparer.Equals(existing.RelativePath, artifact.RelativePath))
+            if (!string.Equals(existing.Name, artifact.Name, StringComparison.Ordinal))
             {
                 return Conflict(
                     artifact,
-                    "The user-owned function block path changed. Rename it explicitly before regenerating.",
+                    "The user-owned function block name changed. Rename its declaration and file explicitly before regenerating.",
                     existing.RelativePath);
+            }
+
+            if (!PathComparer.Equals(existing.RelativePath, artifact.RelativePath))
+            {
+                if (!GenerationPathResolver.TryResolveArtifactPath(
+                        paths,
+                        artifact.RelativePath,
+                        out var userMovePath,
+                        out var userMovePathError))
+                {
+                    return Conflict(artifact, userMovePathError!, existing.RelativePath);
+                }
+
+                if (IsOccupied(userMovePath!))
+                {
+                    return Conflict(
+                        artifact,
+                        "The user-owned function block move target is already occupied.",
+                        existing.RelativePath);
+                }
+
+                return Planned(
+                    GenerationChangeKind.Rename,
+                    artifact,
+                    existing.RelativePath,
+                    actualHash,
+                    preserveExistingContent: true);
             }
 
             return Planned(
@@ -594,7 +621,8 @@ public sealed class GenerationPlanBuilder
         GenerationChangeKind kind,
         GeneratedArtifact artifact,
         string? previousRelativePath = null,
-        string? expectedExistingHash = null) =>
+        string? expectedExistingHash = null,
+        bool preserveExistingContent = false) =>
         new(
             kind,
             artifact.Kind,
@@ -603,7 +631,8 @@ public sealed class GenerationPlanBuilder
             previousRelativePath,
             expectedExistingHash,
             null,
-            artifact);
+            artifact,
+            preserveExistingContent);
 
     private static PlannedArtifactChange Conflict(
         GeneratedArtifact artifact,

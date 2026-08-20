@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ETAB.Engineering.Core.Generation;
 using ETAB.Engineering.Core.Model;
 
 namespace ETAB.Engineering.Core.Manifest;
@@ -18,7 +19,7 @@ public static class SemanticModelHasher
         ArgumentNullException.ThrowIfNull(project);
 
         var root = JsonSerializer.SerializeToNode(project, SerializerOptions)!.AsObject();
-        root.Remove("layout");
+        NormalizeGeneratedLayout(root, project);
         NormalizeSemanticArrays(root);
 
         var buffer = new ArrayBufferWriter<byte>();
@@ -28,6 +29,47 @@ public static class SemanticModelHasher
         }
 
         return Convert.ToHexString(SHA256.HashData(buffer.WrittenSpan)).ToLowerInvariant();
+    }
+
+    private static void NormalizeGeneratedLayout(
+        JsonObject root,
+        EtabProjectDocument project)
+    {
+        var groupsByName = GenerationFolderLayout.GetAreaDisplayNames(project.Layout);
+        var generatedGroups = groupsByName.Values
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .Select(name => JsonValue.Create(name))
+            .ToArray();
+        var assignments = project.Layout.Nodes
+            .GroupBy(layout => layout.NodeId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First().Group,
+                StringComparer.Ordinal);
+        var generatedNodes = project.Nodes
+            .Select(node =>
+            {
+                assignments.TryGetValue(node.Id, out var groupName);
+                var area = !string.IsNullOrWhiteSpace(groupName) &&
+                           groupsByName.TryGetValue(groupName, out var displayName)
+                    ? displayName
+                    : GenerationFolderLayout.UnassignedAreaName;
+                return new JsonObject
+                {
+                    ["nodeId"] = node.Id,
+                    ["area"] = area
+                };
+            })
+            .OrderBy(node => node["nodeId"]!.GetValue<string>(), StringComparer.Ordinal)
+            .Select(node => (JsonNode)node)
+            .ToArray();
+
+        root["layout"] = new JsonObject
+        {
+            ["groups"] = new JsonArray(generatedGroups),
+            ["nodes"] = new JsonArray(generatedNodes)
+        };
     }
 
     private static void NormalizeSemanticArrays(JsonObject root)

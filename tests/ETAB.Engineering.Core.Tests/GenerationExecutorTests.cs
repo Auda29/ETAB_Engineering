@@ -123,13 +123,13 @@ public sealed class GenerationExecutorTests
         Assert.Equal(1, execution.Deleted);
         Assert.False(File.Exists(Resolve(
             temporary.Path,
-            "Generated/DUTs/Commands/E_BM_MotionCommand.TcDUT")));
+            "Generated/Application/Machine/Motion Unit/E_BM_MotionCommand.TcDUT")));
         Assert.True(File.Exists(Resolve(
             temporary.Path,
-            "Generated/DUTs/Commands/E_BM_MotionRenamedCommand.TcDUT")));
+            "Generated/Application/Machine/Motion Unit/E_BM_MotionRenamedCommand.TcDUT")));
         Assert.False(File.Exists(Resolve(
             temporary.Path,
-            "Generated/DUTs/Status/ST_BM_WorkpieceStatus.TcDUT")));
+            "Generated/Application/Machine/Workpiece Unit/ST_BM_WorkpieceStatus.TcDUT")));
 
         var synchronizedPlan = BuildPlan(temporary.Path, modified);
         Assert.False(synchronizedPlan.HasConflicts);
@@ -151,7 +151,7 @@ public sealed class GenerationExecutorTests
         Assert.True(first.Success, FormatIssues(first));
         var stubPath = Resolve(
             temporary.Path,
-            "Generated/Application/FB_BM_MotionUnit.TcPOU");
+            "Generated/Application/Machine/Motion Unit/FB_BM_MotionUnit.TcPOU");
         File.AppendAllText(stubPath, "(* user edit *)\n", Encoding.UTF8);
         var edited = File.ReadAllText(stubPath);
 
@@ -168,13 +168,50 @@ public sealed class GenerationExecutorTests
     }
 
     [Fact]
+    public void UserOwnedStub_IsMovedBetweenAreasWithoutChangingItsContent()
+    {
+        using var temporary = new TemporaryDirectory();
+        var original = ParseProject();
+        original["project"]!["generation"]!["createUserStubs"] = true;
+        original["nodes"]![1]!["generate"]!.AsObject().Remove("instanceType");
+        Assert.True(_executor.Execute(BuildPlan(temporary.Path, original)).Success);
+        var oldPath = Resolve(
+            temporary.Path,
+            "Generated/Application/Machine/Motion Unit/FB_BM_MotionUnit.TcPOU");
+        File.AppendAllText(oldPath, "(* user edit *)\n", Encoding.UTF8);
+        var edited = File.ReadAllBytes(oldPath);
+
+        var moved = original.DeepClone().AsObject();
+        moved["layout"]!["nodes"]![1]!["group"] = "services";
+        var plan = BuildPlan(temporary.Path, moved);
+        var stubChange = plan.Changes.Single(change =>
+            change.ArtifactKind == GeneratedArtifactKind.UserFunctionBlock &&
+            change.SourceModelId == "20000000-0000-4000-8000-000000000001");
+
+        Assert.False(plan.HasConflicts);
+        Assert.Equal(GenerationChangeKind.Rename, stubChange.ChangeKind);
+        Assert.True(stubChange.PreserveExistingContent);
+        var execution = _executor.Execute(plan);
+        var newPath = Resolve(
+            temporary.Path,
+            "Generated/Application/Services/Motion Unit/FB_BM_MotionUnit.TcPOU");
+
+        Assert.True(execution.Success, FormatIssues(execution));
+        Assert.False(File.Exists(oldPath));
+        Assert.Equal(edited, File.ReadAllBytes(newPath));
+        Assert.All(
+            BuildPlan(temporary.Path, moved).Changes,
+            change => Assert.Equal(GenerationChangeKind.Unchanged, change.ChangeKind));
+    }
+
+    [Fact]
     public void Conflict_BlocksEveryPlannedWrite()
     {
         using var temporary = new TemporaryDirectory();
         Assert.True(_executor.Execute(BuildPlan(temporary.Path, ParseProject())).Success);
         var changedFile = Resolve(
             temporary.Path,
-            "Generated/DUTs/Status/ST_BM_ProcessStatus.TcDUT");
+            "Generated/Application/Machine/Process Unit/ST_BM_ProcessStatus.TcDUT");
         File.AppendAllText(changedFile, "manual change", new UTF8Encoding(false));
 
         var modified = ParseProject();
@@ -198,7 +235,7 @@ public sealed class GenerationExecutorTests
         var plan = BuildPlan(temporary.Path, ParseProject());
         var occupiedTarget = Resolve(
             temporary.Path,
-            "Generated/DUTs/Status/ST_BM_MachineStatus.TcDUT");
+            "Generated/Application/Machine/Brush Machine/ST_BM_MachineStatus.TcDUT");
         Directory.CreateDirectory(Path.GetDirectoryName(occupiedTarget)!);
         File.WriteAllText(occupiedTarget, "foreign", new UTF8Encoding(false));
 

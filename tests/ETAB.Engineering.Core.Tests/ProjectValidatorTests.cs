@@ -187,6 +187,59 @@ public sealed class ProjectValidatorTests
     }
 
     [Fact]
+    public void InvalidTwinCatAreaFolderNameIsRejected()
+    {
+        var project = ParseProject();
+        project["layout"]!["groups"]![0]!["displayName"] = "Machine/Overview";
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_GROUP_FOLDER_NAME");
+    }
+
+    [Fact]
+    public void DuplicateTwinCatAreaFolderNameIsRejected()
+    {
+        var project = ParseProject();
+        project["layout"]!["groups"]!.AsArray().Add(new JsonObject
+        {
+            ["name"] = "duplicateFolder",
+            ["displayName"] = "machine"
+        });
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_GROUP_FOLDER_DUPLICATE");
+    }
+
+    [Fact]
+    public void ReservedUnassignedAreaFolderNameIsRejected()
+    {
+        var project = ParseProject();
+        project["layout"]!["groups"]![0]!["displayName"] = "Unassigned";
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_GROUP_FOLDER_DUPLICATE");
+    }
+
+    [Fact]
+    public void DuplicateNodeFolderNameInsideAreaIsRejected()
+    {
+        var project = ParseProject();
+        project["nodes"]![2]!["displayName"] =
+            project["nodes"]![1]!["displayName"]!.GetValue<string>();
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Code == "LAYOUT_NODE_FOLDER_DUPLICATE");
+    }
+
+    [Fact]
     public void UndeclaredLayoutAreaReferenceIsRejected()
     {
         var project = ParseProject();
