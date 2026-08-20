@@ -69,6 +69,36 @@ public sealed class ProjectValidatorTests
         Assert.Contains(result.Issues, issue => issue.Code == "ENUM_VALUE_DUPLICATE");
     }
 
+    [Theory]
+    [InlineData("Reference")]
+    [InlineData("reference")]
+    public void TwinCatReservedCommandName_IsRejectedSemantically(string commandName)
+    {
+        var project = ParseProject();
+        project["nodes"]![1]!["commands"]![1]!["name"] = commandName;
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        var issue = Assert.Single(result.Issues, issue => issue.Code == "IEC_IDENTIFIER_RESERVED");
+        Assert.Equal("/nodes/1/commands/1/name", issue.Path);
+        Assert.Contains(commandName, issue.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TwinCatReservedGeneratedPayloadField_IsRejectedSemantically()
+    {
+        var project = ParseProject();
+        project["nodes"]![1]!["requestPayload"]![0]!["name"] = "VAR";
+
+        var result = Validate(project);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue =>
+            issue.Code == "IEC_IDENTIFIER_RESERVED" &&
+            issue.Path == "/nodes/1/requestPayload/0/name");
+    }
+
     [Fact]
     public void LibraryOwnedStatusField_IsRejectedSemantically()
     {

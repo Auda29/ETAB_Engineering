@@ -1,4 +1,4 @@
-# ETAB Engineering v0.1.0.7-preview.7
+# ETAB Engineering v0.1.0.7
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
@@ -69,23 +69,23 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.7
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.
 
 As a portable alternative, extract the complete ZIP and start `ETAB Engineering.exe`. WebView2 Runtime must already be present when using the ZIP directly. Neither distribution requires the .NET SDK, Node.js, a terminal, or a separately started service on the target computer.
 
-After its one-time signing setup, the GitHub Actions workflow `Desktop release` creates authoritative signed releases through Microsoft Artifact Signing. Stable `v*` tags fail closed when signing is absent or incomplete. Explicit `vX.Y.Z.W-preview.N` tags may publish a clearly marked unsigned prerelease for functional testing while signing is deferred; Windows SmartScreen can therefore show an unknown-publisher warning for those preview assets. The workflow still builds, installs, smoke-tests, uninstalls, and verifies both checksums. A manual workflow run performs the same package validation without creating a Release. Previously published assets are not changed retroactively. The required Azure and GitHub environment configuration is documented in [Windows Desktop Release](docs/Desktop_Release.md#artifact-signing-setup).
+After its one-time signing setup, the GitHub Actions workflow `Desktop release` creates signed releases through Microsoft Artifact Signing. Until then, explicit `vX.Y.Z.W-preview.N` tags may publish unsigned prereleases. A stable unsigned release additionally requires the repository environment variable `ALLOW_UNSIGNED_STABLE_RELEASES=true`; partial or invalid signing configuration still fails closed. Windows SmartScreen can show an unknown-publisher warning for unsigned assets. The workflow still builds, installs, smoke-tests, uninstalls, and verifies both checksums. A manual workflow run performs the same package validation without creating a Release. Previously published assets are not changed retroactively. The required Azure and GitHub environment configuration is documented in [Windows Desktop Release](docs/Desktop_Release.md#artifact-signing-setup).
 
 ## Documents
 

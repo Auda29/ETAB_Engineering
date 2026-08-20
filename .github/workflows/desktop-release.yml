@@ -6,7 +6,7 @@ on:
       version:
         description: Release version without the leading v
         required: true
-        default: 0.1.0.7-preview.7
+        default: 0.1.0.7
         type: string
   push:
     tags:
@@ -115,6 +115,7 @@ jobs:
           SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
           SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
           SIGNING_PROFILE_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          ALLOW_UNSIGNED_STABLE: ${{ vars.ALLOW_UNSIGNED_STABLE_RELEASES }}
         run: |
           $requiredValues = [ordered]@{
             AZURE_CLIENT_ID = $env:AZURE_CLIENT_ID
@@ -127,11 +128,17 @@ jobs:
           $configured = @($requiredValues.GetEnumerator() |
             Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.Value) })
           if ($configured.Count -eq 0) {
-            if ($env:RELEASE_IS_PREVIEW -ne 'true') {
-              throw 'Artifact Signing is required for stable releases. Only an explicitly versioned preview release may be published unsigned.'
-            }
             'SIGN_RELEASE=false' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            Write-Warning 'Artifact Signing is not configured. Publishing an explicitly marked unsigned preview build.'
+            if ($env:RELEASE_IS_PREVIEW -eq 'true') {
+              'RELEASE_UNSIGNED_STABLE=false' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+              Write-Warning 'Artifact Signing is not configured. Publishing an explicitly marked unsigned preview build.'
+              exit 0
+            }
+            if ($env:ALLOW_UNSIGNED_STABLE -ne 'true') {
+              throw 'Artifact Signing is required for stable releases unless ALLOW_UNSIGNED_STABLE_RELEASES is explicitly set to true.'
+            }
+            'RELEASE_UNSIGNED_STABLE=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Warning 'Publishing an explicitly authorized unsigned stable build. Windows may show an unknown-publisher warning.'
             exit 0
           }
 
@@ -150,6 +157,7 @@ jobs:
           }
 
           'SIGN_RELEASE=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          'RELEASE_UNSIGNED_STABLE=false' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build and test portable bundle before signing
         shell: pwsh
@@ -265,11 +273,12 @@ jobs:
           if ($env:SIGN_RELEASE -eq 'true') {
             Assert-ReleaseSignature -Path $env:PORTABLE_EXECUTABLE
             Assert-ReleaseSignature -Path $env:INSTALLER_PATH
-          } else {
-            if ($env:RELEASE_IS_PREVIEW -ne 'true') {
-              throw 'Unsigned artifacts are forbidden for stable releases.'
-            }
+          } elseif ($env:RELEASE_IS_PREVIEW -eq 'true') {
             Write-Warning 'Verifying an explicitly marked unsigned preview build.'
+          } elseif ($env:RELEASE_UNSIGNED_STABLE -eq 'true') {
+            Write-Warning 'Verifying an explicitly authorized unsigned stable build.'
+          } else {
+            throw 'Unsigned stable artifacts require an explicit release authorization.'
           }
 
           $installerName = [IO.Path]::GetFileName($env:INSTALLER_PATH)
@@ -323,6 +332,10 @@ jobs:
               $releaseArguments += @(
                 '--prerelease',
                 '--notes', $previewNote
+              )
+            } elseif ($env:RELEASE_UNSIGNED_STABLE -eq 'true') {
+              $releaseArguments += @(
+                '--notes', 'Unsigned stable build published while Artifact Signing is deferred. Windows SmartScreen may show an unknown-publisher warning.'
               )
             }
             & gh @releaseArguments

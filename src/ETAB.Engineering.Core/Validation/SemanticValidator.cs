@@ -107,7 +107,67 @@ internal sealed class SemanticValidator
             ValidateBaseFunctionBlockContract(node, nodePath, issues);
             ValidateInstanceContract(node, nodePath, issues);
             ValidateMtp(node, nodePath, issues);
+            ValidateGeneratedIdentifiers(node, nodePath, issues);
         }
+    }
+
+    private static void ValidateGeneratedIdentifiers(
+        EtabNode node,
+        string nodePath,
+        ICollection<ValidationIssue> issues)
+    {
+        if (node.Generate.CommandEnum)
+        {
+            for (var commandIndex = 0; commandIndex < node.Commands.Count; commandIndex++)
+            {
+                AddReservedIdentifierIssue(
+                    node.Commands[commandIndex].Name,
+                    $"{nodePath}/commands/{commandIndex}/name",
+                    "Command name",
+                    issues);
+            }
+        }
+
+        if (node.Generate.RequestType)
+        {
+            for (var fieldIndex = 0; fieldIndex < node.RequestPayload.Count; fieldIndex++)
+            {
+                AddReservedIdentifierIssue(
+                    node.RequestPayload[fieldIndex].Name,
+                    $"{nodePath}/requestPayload/{fieldIndex}/name",
+                    "Request field name",
+                    issues);
+            }
+        }
+
+        if (node.Generate.StatusType)
+        {
+            for (var fieldIndex = 0; fieldIndex < node.StatusPayload.Count; fieldIndex++)
+            {
+                AddReservedIdentifierIssue(
+                    node.StatusPayload[fieldIndex].Name,
+                    $"{nodePath}/statusPayload/{fieldIndex}/name",
+                    "Status field name",
+                    issues);
+            }
+        }
+    }
+
+    private static void AddReservedIdentifierIssue(
+        string identifier,
+        string path,
+        string label,
+        ICollection<ValidationIssue> issues)
+    {
+        if (!TwinCatIdentifier.IsReserved(identifier))
+        {
+            return;
+        }
+
+        issues.Add(new ValidationIssue(
+            "IEC_IDENTIFIER_RESERVED",
+            path,
+            $"{label} '{identifier}' is a reserved TwinCAT Structured Text word and cannot be generated as an identifier."));
     }
 
     private static void ValidateCommands(

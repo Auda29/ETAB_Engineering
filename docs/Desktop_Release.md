@@ -21,10 +21,10 @@ Microsoft Edge WebView2 Runtime remains a target-system prerequisite. Setup dete
 Install Inno Setup 7, then run this command from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.7-preview.7
+.\publish-installer-win-x64.ps1 -Version 0.1.0.7
 ```
 
-This local command creates unsigned development artifacts because no private signing identity is stored in the repository. Stable public releases are built and signed in GitHub Actions. An explicitly versioned `-preview.N` prerelease may remain unsigned while signing is deferred, but it is marked accordingly in GitHub and can trigger a Windows unknown-publisher warning. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for optional signing and package that exact bundle afterward.
+This local command creates unsigned development artifacts because no private signing identity is stored in the repository. GitHub Actions signs public releases when Artifact Signing is configured. While signing is deferred, preview releases may remain unsigned. A stable unsigned release also requires the explicit `ALLOW_UNSIGNED_STABLE_RELEASES=true` environment variable and can trigger a Windows unknown-publisher warning. The two-phase options on `publish-win-x64.ps1` exist so CI can preserve the unpacked bundle for optional signing and package that exact bundle afterward.
 
 The release script calls `publish-win-x64.ps1` and performs these checks before producing the four release files:
 
@@ -53,10 +53,10 @@ The smoke test verifies that the packaged executable:
 The output files are:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.7-preview.7-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.7-win-x64-setup.exe.sha256
 ```
 
 The ZIP contains one root directory so it can be extracted without scattering files into the destination directory. Keep all files and directories next to the executable as shipped.
@@ -70,7 +70,7 @@ The ZIP contains one root directory so it can be extracted without scattering fi
 - Setup installs WebView2 Runtime only when registry detection reports that it is missing.
 - Silent installation uses the standard Inno Setup flags, for example `setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`.
 
-Every stable GitHub Release produced by the configured workflow contains an Authenticode-signed application executable and Setup EXE. Both signatures use a SHA-256 file digest and the Microsoft Artifact Signing RFC 3161 timestamp service. The workflow rejects a missing, invalid, or non-timestamped signature for stable versions. While signing is deferred, only an explicit `vX.Y.Z.W-preview.N` tag may take the unsigned path; it is published as a GitHub prerelease with an unknown-publisher warning. Previously published unsigned assets are not modified retroactively. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
+When Artifact Signing is configured, every GitHub Release contains an Authenticode-signed application executable and Setup EXE. Both signatures use a SHA-256 file digest and the Microsoft Artifact Signing RFC 3161 timestamp service. The workflow rejects missing, invalid, or non-timestamped signatures whenever any signing setting is present. While signing is deferred, preview tags may take the unsigned path. A stable tag may do so only while `ALLOW_UNSIGNED_STABLE_RELEASES=true` is set in the `release-signing` environment. Unsigned releases carry an unknown-publisher warning. Previously published unsigned assets are not modified retroactively. The embedded Microsoft WebView2 bootstrapper is separately verified as valid Microsoft-signed code during every build.
 
 Authenticode establishes the verified publisher and file integrity. A newly established publisher can still receive a temporary SmartScreen reputation warning until Microsoft has accumulated sufficient reputation for the signing identity and downloads. Every release must therefore use the same public-trust certificate profile.
 
@@ -97,7 +97,7 @@ Perform this account setup once before running the updated workflow:
    - `AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME`
    - `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
 
-The endpoint must match the Azure region that contains the account and certificate profile. A partial configuration always fails closed. When all six settings are absent, only a `-preview.N` version may continue unsigned; a stable version is rejected. Once all values are present, signing and signature verification are mandatory for every run.
+The endpoint must match the Azure region that contains the account and certificate profile. A partial configuration always fails closed. When all six settings are absent, a `-preview.N` version may continue unsigned. A stable version additionally requires `ALLOW_UNSIGNED_STABLE_RELEASES=true` as an environment variable. Remove that temporary variable once signing is configured. Once all signing values are present, signing and signature verification are mandatory for every run.
 
 The GitHub configuration can be entered through **Settings → Environments → release-signing**. Keep these values out of tracked files. OIDC removes the need for an `AZURE_CLIENT_SECRET`.
 
@@ -111,17 +111,17 @@ The GitHub configuration can be entered through **Settings → Environments → 
 4. build the installer exclusively from the verified ZIP,
 5. for configured signing, sign the final Setup EXE and require its valid timestamped signature,
 6. run the isolated installer test and regenerate the Setup checksum after optional preview signing,
-8. verify both SHA-256 sidecars before any release upload.
+7. verify both SHA-256 sidecars before any release upload.
 
-- `workflow_dispatch` builds and verifies the four files without creating a Release. Stable versions require signing; explicit preview versions may run unsigned.
-- A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly. An unsigned preview is marked as a prerelease and carries a warning in its release notes.
+- `workflow_dispatch` builds and verifies the four files without creating a Release. Preview versions may run unsigned; stable versions require signing or the explicit unsigned-stable environment variable.
+- A pushed `v*` tag derives the package version from the tag, builds and verifies both distributions, and creates or updates the corresponding GitHub Release with all four files attached directly. Unsigned releases carry a warning in their release notes, and previews are marked as prereleases.
 - The workflow additionally attempts to retain the files as a workflow artifact. This copy is optional so an exhausted GitHub Actions artifact quota cannot block the authoritative Release assets.
 
-For preview version `0.1.0.7-preview.7`, publish with:
+For stable version `0.1.0.7`, publish with:
 
 ```powershell
-git tag -a v0.1.0.7-preview.7 -m "ETAB Engineering v0.1.0.7-preview.7"
-git push origin v0.1.0.7-preview.7
+git tag -a v0.1.0.7 -m "ETAB Engineering v0.1.0.7"
+git push origin v0.1.0.7
 ```
 
 Create the tag only after the release commit has been pushed and the local packaging script has completed successfully.
