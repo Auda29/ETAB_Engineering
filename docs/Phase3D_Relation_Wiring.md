@@ -36,8 +36,8 @@ The generator does not choose commands, map project-specific payloads, call reci
 
 The test suite covers all five relation types, logical-only backward compatibility, missing instance validation, relation-order independence, generated GVL and PRG integration, manifest round-trip, update/rename behavior, XML parsing, hashes, and TwinCAT project compile entries.
 
-Current local result for Phase 3D on 2026-08-17: 65 Core tests and 10 service tests passed. Later Phase 3E validation increases the Core suite and adds runtime-task coverage. A real TwinCAT XAE compile remains separate.
+The current stable-release validation on 2026-08-21 passes all 91 Core tests and all 10 editor-service tests. Manual TwinCAT evidence additionally covers a successful rebuild of the task-bound `TwinCAT Project5` model and a successful `Rebuild All` of the 36-node, 62-relation OmniGrind model with 168 managed artifacts.
 
 ## Acceptance Boundary
 
-The automated checks prove deterministic generated XML and project-file integration. They are not a TwinCAT compiler, runtime simulation, or machine acceptance. The next live step is to generate a small non-BrushMachine model into an empty linked PLC project, compile it in TwinCAT XAE, and exercise each adapter from handwritten application code.
+The automated checks prove deterministic generated XML and project-file integration. The two successful TwinCAT rebuilds add compile evidence for the generated adapters and their project integration. They do not prove that adapter methods execute with the intended online values. The remaining live step is to exercise each relevant relation path online, verify command handoff and observed status values, and then perform simulation, safety, and machine acceptance separately.

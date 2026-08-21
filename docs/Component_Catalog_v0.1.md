@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This catalog defines which components of the current `ET_AutomationBase` library appear as independent nodes in the visual ETAB model v0.1. It is based on the statically reviewed `ET_AutomationBase_v0.1.0.3` state.
+This catalog defines which components of the current `ET_AutomationBase` library appear as independent nodes in the visual ETAB model v0.1. The classification was established against 0.1.0.3 and reviewed again for release 0.1.0.4. Version 0.1.0.4 adds public status interfaces for Recipe Manager and Machine Link without changing the node classification.
 
-This classification is not evidence of a TwinCAT compile or runtime validation.
+The 0.1.0.4 library source rebuilt successfully in TwinCAT, and the exported artifact was verified separately. This classification is not evidence of online runtime or machine validation.
 
 ## Status Classes
 
@@ -93,6 +93,7 @@ Generator target:
 Library foundation:
 
 - `ETAB.FB_ETAB_RecipeManager`
+- `ETAB.I_ETAB_RecipeManager`
 - `ETAB.E_ETAB_RecipeCommand`
 - `ETAB.ST_ETAB_RecipeOptions`
 - `ETAB.ST_ETAB_RecipeStatus`
@@ -128,6 +129,7 @@ Generator target:
 Library foundation:
 
 - `ETAB.FB_ETAB_MachineLink`
+- `ETAB.I_ETAB_MachineLink`
 - `ETAB.ST_ETAB_MachineLinkData`
 - `ETAB.ST_ETAB_MachineLinkOptions`
 - `ETAB.ST_ETAB_MachineLinkStatus`
@@ -205,6 +207,8 @@ The component remains cataloged, but it is not a valid node kind in schema v0.1.
 | `FB_BM_CellInterface` | Project-Specific Link Adapter | Uses `machineLink` |
 
 ## Sources in the Workspace
+
+The repository directory retains its historical `v0.1.0.3` name; the source and exported library inside it are version 0.1.0.4.
 
 - `../../ET_AutomationBase_v0.1.0.3/README.md`
 - `../../ET_AutomationBase_v0.1.0.3/ET_AutomationBase/ET_AutomationBase/ApplicationUnit/`

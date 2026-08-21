@@ -62,8 +62,10 @@ Local validation on 2026-08-17 passes 79 Core tests and 10 editor-service tests.
 - rejection when the task changes after preview,
 - rollback after an injected failure immediately following the task update.
 
-The rebuilt CLI was also run read-only against the user's existing `TwinCAT Project5` model. The preview produced typed ApplicationUnit/CommandUnit calls, safe inactive Recipe Manager inputs for its legacy model without a request DUT, an active Machine Link cycle, generated status publication, and dependency-before-consumer ordering. The live TwinCAT project was not modified.
+The rebuilt CLI was first run read-only against the user's existing `TwinCAT Project5` model. The preview produced typed ApplicationUnit/CommandUnit calls, safe inactive Recipe Manager inputs for its legacy model without a request DUT, an active Machine Link cycle, generated status publication, and dependency-before-consumer ordering. The model was subsequently regenerated with the corrected runtime renderer and rebuilt successfully in TwinCAT XAE. This supplies compiler evidence for the generated task-bound PRG, typed requests and statuses, node option binding, and relation calls.
+
+Stable release `v0.1.0.8` was also used to generate the 36-node, 62-relation OmniGrind model with 168 managed artifacts and area-aware TwinCAT folders. `Rebuild All` succeeded and the integrated CLI check reported `CHECK SYNCHRONIZED`. Generated runtime execution was disabled in that OmniGrind model, so this second result validates large-model generation, folder/project integration, and idempotence, not cyclic execution of `PRG_<prefix>_Generated`.
 
 ## Acceptance Boundary
 
-These checks prove deterministic generation, task-file structure, ownership, synchronization, and rollback. The user's preceding generated project version built successfully in TwinCAT XAE, but the new request/status bindings and command routing have not yet been compiled or executed in TwinCAT. TwinCAT compile, online runtime behavior, simulation, safety validation, and machine acceptance remain separate user validation steps.
+These checks prove deterministic generation, task-file structure, ownership, synchronization, rollback, and TwinCAT compilation of the current generated runtime source. They do not prove online execution semantics. Online request handling, command routing, status publication, relation behavior, simulation, safety validation, and machine acceptance remain separate user validation steps.
