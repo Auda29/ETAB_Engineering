@@ -50,7 +50,7 @@ public sealed class EditorProjectService
                 "namespace": "NewProject",
                 "etabLibrary": {
                   "placeholder": "ETAB",
-                  "version": "0.1.0.3"
+                  "version": "0.1.0.4"
                 },
                 "twinCAT": {
                   "version": "3.1.4024.74"

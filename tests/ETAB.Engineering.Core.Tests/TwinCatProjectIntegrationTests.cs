@@ -695,7 +695,7 @@ public sealed class TwinCatProjectIntegrationTests
   </ItemGroup>
   <ItemGroup>
     <PlaceholderResolution Include="ETAB">
-      <Resolution>EngineeringToolboxAutomationBase, 0.1.0.3 (NiklasW)</Resolution>
+      <Resolution>EngineeringToolboxAutomationBase, 0.1.0.4 (NiklasW)</Resolution>
     </PlaceholderResolution>
   </ItemGroup>
 """

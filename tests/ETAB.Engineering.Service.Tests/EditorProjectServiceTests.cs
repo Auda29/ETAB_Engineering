@@ -30,7 +30,7 @@ public sealed class EditorProjectServiceTests : IDisposable
         Assert.True(first.Validation.IsValid);
         Assert.Equal("NewProject", first.Document["project"]!["name"]!.GetValue<string>());
         Assert.Equal("NEW", first.Document["project"]!["prefix"]!.GetValue<string>());
-        Assert.Equal("0.1.0.3", first.Document["project"]!["etabLibrary"]!["version"]!.GetValue<string>());
+        Assert.Equal("0.1.0.4", first.Document["project"]!["etabLibrary"]!["version"]!.GetValue<string>());
         Assert.False(first.Document["project"]!["generation"]!["runtimeExecution"]!.GetValue<bool>());
         Assert.Single(first.Document["nodes"]!.AsArray());
         Assert.Equal("applicationUnit", first.Document["nodes"]![0]!["kind"]!.GetValue<string>());
