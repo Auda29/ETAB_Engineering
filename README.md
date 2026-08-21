@@ -1,4 +1,4 @@
-# ETAB Engineering v0.1.0.8-preview.1
+# ETAB Engineering v0.1.0.8
 
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
@@ -69,16 +69,16 @@ Use `examples/BrushMachine.reference.etab.json` to exercise the complete 16-arti
 Create the complete Windows x64 release from the repository root:
 
 ```powershell
-.\publish-installer-win-x64.ps1 -Version 0.1.0.8-preview.1
+.\publish-installer-win-x64.ps1 -Version 0.1.0.8
 ```
 
 Inno Setup 7 must be installed on the build computer. The script first builds and verifies the portable application, downloads Microsoft's signed WebView2 Evergreen bootstrapper, verifies its Authenticode signature, compiles the installer, and performs an isolated silent install, application smoke test, and uninstall. It creates:
 
 ```text
-artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64.zip
-artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64.zip.sha256
-artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64-setup.exe
-artifacts/ETAB-Engineering-v0.1.0.8-preview.1-win-x64-setup.exe.sha256
+artifacts/ETAB-Engineering-v0.1.0.8-win-x64.zip
+artifacts/ETAB-Engineering-v0.1.0.8-win-x64.zip.sha256
+artifacts/ETAB-Engineering-v0.1.0.8-win-x64-setup.exe
+artifacts/ETAB-Engineering-v0.1.0.8-win-x64-setup.exe.sha256
 ```
 
 For a normal installation, start the `setup.exe`. It installs for the current user without elevation by default, creates a Start menu entry, optionally creates a desktop shortcut, and registers a complete uninstaller. If WebView2 Runtime is missing, Setup installs it through the included Microsoft Evergreen bootstrapper; that one-time case requires an internet connection.
