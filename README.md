@@ -1,5 +1,7 @@
 # ETAB Engineering v0.1.0.8
 
+[Project website](https://auda29.github.io/ETAB_Engineering/) · [Downloads](https://github.com/Auda29/ETAB_Engineering/releases/latest)
+
 Visual engineering tool for describing a logical machine and subsequently generating a TwinCAT PLC template based on the `ET_AutomationBase` library.
 
 ## Current Status
