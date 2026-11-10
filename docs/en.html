@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>ETAB Engineering · Model machines. Generate TwinCAT code.</title>
+<meta content="Visual engineering for TwinCAT. Model machine structures, components and relationships, review changes and generate PLC templates based on ET_AutomationBase." name="description"/>
+<meta content="#173a35" name="theme-color"/>
+<meta content="ETAB Engineering · From machine model to PLC project" property="og:title"/>
+<meta content="A visual editor and reviewable code generation for TwinCAT based on ET_AutomationBase. Windows downloads and technical documentation." property="og:description"/>
+<meta content="website" property="og:type"/>
+<meta content="https://auda29.github.io/ETAB_Engineering/en.html" property="og:url"/>
+<link href="https://auda29.github.io/ETAB_Engineering/en.html" rel="canonical"/>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="site.css" rel="stylesheet"/>
+<link href="engineering.css" rel="stylesheet"/>
+
+  <link rel="alternate" hreflang="de" href="https://auda29.github.io/ETAB_Engineering/">
+  <link rel="alternate" hreflang="en" href="https://auda29.github.io/ETAB_Engineering/en.html">
+  <link rel="alternate" hreflang="x-default" href="https://auda29.github.io/ETAB_Engineering/">
+  <script src="language.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="header"><nav aria-label="Main navigation" class="wrap nav">
+<a aria-label="ETAB Engineering home" class="brand" href="en.html"><img alt="" class="brand-icon" height="35" src="assets/favicon.svg" width="35"/><span class="brand-text">ETAB Engineering<small>ENGINEERINGTOOLBOX AUTOMATIONBASE</small></span></a>
+<div class="nav-links"><div class="language-switch" role="group" aria-label="Language"><a href="index.html" lang="de" hreflang="de" data-language-link title="Deutsch">DE</a><a href="en.html" lang="en" hreflang="en" data-language-link title="English" aria-current="page">EN</a></div><a class="optional" href="#workflow">Workflow</a><a href="#docs">Docs</a><a class="optional" href="https://github.com/Auda29/ETAB_Engineering">GitHub ↗</a><a class="nav-cta" href="#download">Download ↓</a></div>
+</nav></header>
+<main id="main"><div class="wrap">
+<section aria-labelledby="hero-title" class="hero">
+<div><div class="eyebrow">Visual engineering for TwinCAT</div>
+<h1 id="hero-title">Model your<br/>machine.<br/><span>Generate the code.</span></h1>
+<p class="lead">Describe components, areas and relationships in the visual editor. ETAB turns them into a TwinCAT PLC template based on <code>ET_AutomationBase</code>.</p>
+<div class="actions"><a class="btn primary" href="https://github.com/Auda29/ETAB_Engineering/releases/download/v0.1.0.8/ETAB-Engineering-v0.1.0.8-win-x64-setup.exe">Download for Windows <span aria-hidden="true">↓</span></a><a class="btn" href="#workflow">How it works <span aria-hidden="true">↗</span></a></div>
+<div class="tag">v0.1.0.8 · Windows x64 · ETAB 0.1.0.4</div>
+</div>
+<figure class="engineering-figure">
+<div class="media-top"><span>MODEL → PREVIEW → PLC</span><span>ENGINEERING WORKFLOW</span></div>
+<svg aria-labelledby="diagram-title diagram-desc" class="diagram" role="img" viewbox="0 0 510 408" xmlns="http://www.w3.org/2000/svg">
+<title id="diagram-title">From a machine model to generated TwinCAT files</title><desc id="diagram-desc">A Machine Application Unit contains two child Application Units. A Recipe Manager is connected through usesRecipe. The model produces a reviewable file preview with a GVL, function block and status data type.</desc>
+<defs><pattern height="18" id="dots" patternunits="userSpaceOnUse" width="18"><circle cx="1" cy="1" fill="#bdcbbb" r=".8"></circle></pattern><marker id="arrow" markerheight="5" markerwidth="5" orient="auto-start-reverse" refx="9" refy="5" viewbox="0 0 10 10"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64816d"></path></marker></defs>
+<rect fill="url(#dots)" height="285" rx="5" width="510"></rect>
+<path d="M255 88V114H104V151M255 114H359V151" fill="none" marker-end="url(#arrow)" stroke="#64816d" stroke-width="1.6"></path>
+<text fill="#5e7864" font-size="9" x="258" y="132">contains</text>
+<g><rect fill="#173a35" height="68" rx="5" width="172" x="169" y="20"></rect><rect fill="#a5cf87" height="68" rx="2" width="4" x="169" y="20"></rect><text fill="#acc8b9" font-size="9" x="184" y="43">APPLICATION UNIT</text><text fill="#f3f6ee" font-size="17" font-weight="600" x="184" y="67">Machine</text></g>
+<g><rect fill="#f8faf5" height="64" rx="5" stroke="#b4c5b0" width="164" x="22" y="151"></rect><rect fill="#168b79" height="64" rx="2" width="4" x="22" y="151"></rect><text fill="#607767" font-size="9" x="37" y="173">APPLICATION UNIT</text><text fill="#173a35" font-size="16" x="37" y="197">Infeed</text></g>
+<g><rect fill="#f8faf5" height="64" rx="5" stroke="#b4c5b0" width="170" x="277" y="151"></rect><rect fill="#168b79" height="64" rx="2" width="4" x="277" y="151"></rect><text fill="#607767" font-size="9" x="292" y="173">APPLICATION UNIT</text><text fill="#173a35" font-size="16" x="292" y="197">Processing</text></g>
+<path d="M104 215V244H319" fill="none" marker-end="url(#arrow)" stroke="#9d7f4d" stroke-dasharray="4 4" stroke-width="1.5"></path><text fill="#8b6e42" font-size="9" x="170" y="238">usesRecipe</text>
+<g><rect fill="#f0e9d8" height="34" rx="4" stroke="#cfbd96" width="158" x="320" y="229"></rect><text fill="#725c37" font-size="11" x="332" y="251">◇  Recipe Manager</text></g>
+<path d="M255 284V310" marker-end="url(#arrow)" stroke="#64816d" stroke-width="1.6"></path>
+<g><rect fill="#173a35" height="86" rx="5" width="466" x="22" y="319"></rect><text fill="#acc8b9" font-size="9" letter-spacing="1" x="39" y="343">GENERATION PREVIEW</text><text fill="#e7f4df" font-size="11" style="font-family:Consolas,monospace" x="39" y="366">GVL_Project.TcGVL</text><text fill="#e7f4df" font-size="11" style="font-family:Consolas,monospace" x="39" y="387">FB_UnitBase.TcPOU   ST_Status.TcDUT</text><rect fill="#2c594b" height="24" rx="3" width="95" x="376" y="334"></rect><text fill="#d2efb6" font-size="10" x="388" y="350">CHECK PLAN</text></g>
+</svg>
+<div class="figure-bottom"><span>DESCRIBE THE STRUCTURE</span><span class="verified">REVIEW CHANGES FIRST</span></div>
+<figcaption>Schematic workflow illustration, not an application screenshot. File names are simplified.</figcaption>
+</figure>
+</section>
+<div class="fact-strip"><div><strong>4 component types</strong><span>for your machine model</span></div><div><strong>Editor + CLI</strong><span>one shared generation core</span></div><div><strong>Preview before writing</strong><span>with target and conflict checks</span></div><div><strong>Windows desktop</strong><span>Installer or portable ZIP</span></div></div>
+<section aria-labelledby="workflow-title" class="section" id="workflow">
+<div class="section-head"><div><span class="section-index">01 / FROM MODEL TO PROJECT</span><h2 id="workflow-title">An engineering workflow<br/>you can follow.</h2></div><p class="section-intro">Machine structure and contracts are modelled explicitly. The actual process logic remains project-specific.</p></div>
+<div class="flow"><article><h3>Connect a PLC project</h3><p>Create an empty PLC project in TwinCAT and select its <code>.plcproj</code> in ETAB. The companion model is created or reopened alongside it.</p><span class="file-label">PLC.etab.json</span></article><article><h3>Describe the machine</h3><p>Place components by drag and drop. Organise them into areas and define hierarchy, commands, request and status fields, and relationships.</p><span class="file-label">Components + contracts</span></article><article><h3>Review the changes</h3><p>Save the model and open the generation preview. Review files, conflicts and the planned project changes, including task changes where applicable.</p><span class="file-label">Generation preview</span></article><article><h3>Generate the template</h3><p>Confirm the target and write operation. ETAB creates the managed artifacts and integrates them into the linked TwinCAT project.</p><span class="file-label">TwinCAT PLC artifacts</span></article></div>
+</section>
+<section aria-labelledby="components-title" class="section">
+<div class="section-head"><div><span class="section-index">02 / THE BUILDING BLOCKS</span><h2 id="components-title">Components become<br/>a structure.</h2></div><p class="section-intro">Four directly modelled node types from the EngineeringToolbox AutomationBase library.</p></div>
+<div class="components"><article class="component"><span class="component-kind">applicationUnit</span><h3>Application Unit</h3><p>Machine, motion, workpiece or process unit. A unit connects the ET state model to commands and project-specific data contracts.</p><p class="output">Generates: command enum, request/status DUTs, base FB</p></article><article class="component"><span class="component-kind">commandUnit</span><h3>Command Unit</h3><p>Command execution and sequence coordination without a separate ET state model. You write the actual CASE or sequence logic in the project.</p><p class="output">Generates: command and contract scaffold</p></article><article class="component"><span class="component-kind">recipeManager</span><h3>Recipe Manager</h3><p>Describe the recipe data type, file, path and options. Domain data structures and validation logic remain project-specific.</p><p class="output">Generates: instance, configuration, status contract</p></article><article class="component"><span class="component-kind">machineLink</span><h3>Machine Link</h3><p>Model a logical machine connection with role, bridge type, watchdog and token options. Hardware addressing is configured in the project.</p><p class="output">Generates: instance, Rx/Tx and status contract</p></article></div>
+<p class="small"><a href="https://github.com/Auda29/ETAB_Engineering/blob/main/docs/Component_Catalog_v0.1.md">Full component catalog ↗</a> · <a href="https://github.com/Auda29/ET_AutomationBase">PLC library ↗</a></p>
+</section>
+<section aria-labelledby="generation-title" class="section">
+<div class="section-head"><div><span class="section-index">03 / CLEAR GENERATION BOUNDARIES</span><h2 id="generation-title">See what<br/>will be written.</h2></div><p class="section-intro">The editor and CLI use the same core. Every generation starts with a concrete plan you can review.</p></div>
+<div class="split"><div><pre aria-label="Example output folders" class="file-tree"><span class="comment">// Simplified PLC project output</span>
+PLC/
+├── PLC.plcproj
+├── PLC.etab.json
+├── <span class="highlight">Application/</span>
+│   └── Area/
+│       └── Unit/
+│           ├── E_…Command.TcDUT
+│           ├── ST_…Request.TcDUT
+│           ├── ST_…Status.TcDUT
+│           └── FB_…Base.TcPOU
+└── <span class="highlight">ETAB/</span>
+    ├── Shared/
+    └── Runtime/ <span class="comment">// optional</span></pre><p class="file-caption">Output depends on the model, node type and enabled options.</p></div><div><article class="principle"><h3>Conflicts block writes</h3><p>Invalid or unsaved models, conflicts and stale previews prevent generation. Duplicate IEC object names are checked in advance.</p></article><article class="principle"><h3>Managed artifacts stay traceable</h3><p>ETAB manages the files and entries recorded in its manifest. Optional ApplicationUnit user stubs are created once and are not overwritten afterwards.</p></article><article class="principle"><h3>Cyclic execution is optional</h3><p>When runtime generation is enabled, the preview also shows the planned task change. Ambiguous task assignments are blocked.</p></article><article class="principle"><h3>Your process logic stays with you</h3><p>The model describes structure and contracts. Process sequences, hardware binding and machine behaviour still need their own implementation and verification.</p></article></div></div>
+<div class="release-note"><strong>Current evidence for v0.1.0.8</strong><p>For the OmniGrind model, the README documents 36 nodes, 62 relationships and 168 managed artifacts, along with a successful TwinCAT "Rebuild All". Online runtime, simulation, safety and machine acceptance are separate checks that remain necessary. <a href="https://github.com/Auda29/ETAB_Engineering#current-status">Status and evidence ↗</a></p></div>
+</section>
+<section aria-labelledby="download-title" class="section" id="download">
+<div class="section-head"><div><span class="section-index">04 / INSTALLATION</span><h2 id="download-title">On your<br/>engineering PC.</h2></div><p class="section-intro">The Windows x64 version includes the application and local service. The target computer needs neither the .NET SDK nor Node.js.</p></div>
+<div class="steps"><article class="step"><h3>Install ETAB</h3><p>Run the installer. A normal installation is per-user without elevation. If WebView2 is missing, Setup installs the runtime through Microsoft.</p></article><article class="step"><h3>Prepare the libraries</h3><p>Use <a href="https://github.com/Auda29/ET_AutomationBase/releases/tag/v0.1.0.4">ET_AutomationBase 0.1.0.4</a> and the original EngineeringToolbox dependency. The library is provided separately.</p></article><article class="step"><h3>Select a PLC project</h3><p>Create an empty PLC project in TwinCAT. Open ETAB and choose "Connect TwinCAT PLC Project". Then model your first machine structure.</p></article></div>
+<div class="download-panel"><div><h3>ETAB Engineering v0.1.0.8</h3><p class="small">Windows x64 · Installer or portable version</p></div><div class="actions"><a class="btn primary" href="https://github.com/Auda29/ETAB_Engineering/releases/download/v0.1.0.8/ETAB-Engineering-v0.1.0.8-win-x64-setup.exe">Installer ↓</a><a class="btn" href="https://github.com/Auda29/ETAB_Engineering/releases/download/v0.1.0.8/ETAB-Engineering-v0.1.0.8-win-x64.zip">Portable ZIP ↓</a></div></div>
+<p class="small">Extract the entire portable ZIP and run <code>ETAB Engineering.exe</code>. WebView2 must already be installed for the portable version. Setup needs an internet connection to install the runtime if it is missing.</p>
+<p class="small"><a href="https://github.com/Auda29/ETAB_Engineering/releases/latest">Latest release, notes and checksums ↗</a> · <a href="https://github.com/Auda29/ETAB_Engineering/blob/main/docs/Desktop_Release.md">Windows package details ↗</a></p>
+</section>
+<section aria-labelledby="docs-title" class="section" id="docs">
+<div class="section-head"><div><span class="section-index">05 / READ MORE</span><h2 id="docs-title">The technical details<br/>are documented.</h2></div><p class="section-intro">From your first project to the data model and generation contract. These references link directly to the versioned repository documentation.</p></div>
+<div class="docs-grid"><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering#visual-editor"><span class="doc-no">01</span><h3>Editor quick start</h3><p>Connect a project, edit components and review a generation plan.</p><span aria-hidden="true" class="arrow">↗</span></a><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering/blob/main/docs/Component_Catalog_v0.1.md"><span class="doc-no">02</span><h3>Component catalog</h3><p>Node types, library foundations and modelling boundaries.</p><span aria-hidden="true" class="arrow">↗</span></a><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering/blob/main/docs/Model_Specification_v0.1.md"><span class="doc-no">03</span><h3>Model specification</h3><p>Project structure, stable IDs, data contracts and relationships.</p><span aria-hidden="true" class="arrow">↗</span></a><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering/blob/main/docs/Generation_Contract_v0.1.md"><span class="doc-no">04</span><h3>Generation contract</h3><p>Naming, managed files and regeneration rules.</p><span aria-hidden="true" class="arrow">↗</span></a><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering/blob/main/examples/BrushMachine.reference.etab.json"><span class="doc-no">05</span><h3>BrushMachine example</h3><p>A reference model for understanding the generator output.</p><span aria-hidden="true" class="arrow">↗</span></a><a class="doc-link" href="https://github.com/Auda29/ETAB_Engineering#cli"><span class="doc-no">06</span><h3>CLI workflow</h3><p>validate, preview, generate and check, using the same core as the editor.</p><span aria-hidden="true" class="arrow">↗</span></a></div>
+</section>
+<section aria-labelledby="faq-title" class="section"><div class="section-head"><div><span class="section-index">06 / GOOD TO KNOW</span><h2 id="faq-title">Before your first project.</h2></div></div>
+<details><summary>Does ETAB Engineering run in a browser?</summary><p>The released application is a Windows desktop program with WebView2 and a local service. This website explains the tool and links to downloads. It does not access your PLC project.</p></details>
+<details><summary>Does ETAB generate a complete machine controller?</summary><p>ETAB generates a structured PLC template from your model. Domain sequences, project-specific logic, hardware addressing and machine acceptance remain engineering tasks.</p></details>
+<details><summary>What happens to existing code?</summary><p>Project integration distinguishes managed artifacts from existing project files. Compatible existing entries are not taken over, and conflicts block writes. Still review the concrete preview before each generation and keep your projects under version control.</p></details>
+<details><summary>What are the TwinCAT prerequisites?</summary><p>You need a TwinCAT PLC project and the EngineeringToolbox and ET_AutomationBase libraries. This does not claim approval for every TwinCAT version or machine configuration. See the <a href="https://github.com/Auda29/ETAB_Engineering#documents">repository validation records</a> for the tested scope.</p></details>
+</section>
+</div></main>
+<footer class="wrap footer"><span>ETAB Engineering · EngineeringToolbox AutomationBase<br/>An independent project by Auda29. Not an official Beckhoff product.</span><div class="footer-links"><a href="https://github.com/Auda29/ETAB_Engineering">Source code ↗</a><a href="https://github.com/Auda29/ETAB_Engineering/issues">Report a bug ↗</a><a href="https://github.com/Auda29/ET_AutomationBase">PLC library ↗</a></div></footer>
+</body></html>
